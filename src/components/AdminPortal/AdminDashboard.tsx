@@ -1,0 +1,628 @@
+import React, { useState } from 'react';
+import { Store, Product, CategoryItem, MarketplaceConfig } from '../../types';
+import { StoreManager } from './StoreManager';
+import { ProductManager } from './ProductManager';
+import { GlobalConfigManager } from './GlobalConfigManager';
+import { AdminPasswordModal } from './AdminPasswordModal';
+import {
+  exportFullJsonBackup,
+  exportStoresCsv,
+  exportProductsCsv,
+  exportGeoCatalogCsv,
+  exportDepartmentsCsv,
+  exportTagsCsv,
+  exportConfigCsv,
+  parseAndImportAnyCsv,
+  FullMarketplaceBackup,
+} from '../../lib/backupUtils';
+import {
+  ShieldCheck,
+  Store as StoreIcon,
+  ShoppingBag,
+  Database,
+  LogOut,
+  Download,
+  Upload,
+  RefreshCw,
+  TrendingUp,
+  MapPin,
+  FolderTree,
+  Tag,
+  Settings,
+  FileText,
+} from 'lucide-react';
+
+interface AdminDashboardProps {
+  stores: Store[];
+  products: Product[];
+  categories: CategoryItem[];
+  marketplaceConfig?: MarketplaceConfig;
+  onUpdateMarketplaceConfig?: (newConfig: MarketplaceConfig) => void;
+  onUpdateStoreRate: (storeId: string, newRate: number) => void;
+  onUpdateAllStoresRate: (newRate: number) => void;
+  onAddStore: (store: Omit<Store, 'id' | 'createdAt'>) => void;
+  onUpdateStore: (store: Store) => void;
+  onDeleteStore: (storeId: string) => void;
+  onAddProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
+  onUpdateProduct: (product: Product) => void;
+  onDeleteProduct: (productId: string) => void;
+  onLogout: () => void;
+  onRestoreDefaults: () => void;
+  onImportData: (stores: Store[], products: Product[]) => void;
+  onShowToast: (title: string, desc?: string, type?: 'success' | 'info' | 'error') => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  stores,
+  products,
+  categories,
+  marketplaceConfig,
+  onUpdateMarketplaceConfig,
+  onUpdateStoreRate,
+  onUpdateAllStoresRate,
+  onAddStore,
+  onUpdateStore,
+  onDeleteStore,
+  onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct,
+  onLogout,
+  onRestoreDefaults,
+  onImportData,
+  onShowToast,
+}) => {
+  const [activeTab, setActiveTab] = useState<'config' | 'stores' | 'products' | 'backup'>('config');
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  const activeStores = stores.filter((s) => s.active);
+  const inactiveStoresCount = stores.length - activeStores.length;
+
+  const activeStoreIds = new Set(activeStores.map((s) => s.id));
+  const activeProducts = products.filter(
+    (p) => p.isAvailable !== false && activeStoreIds.has(p.storeId)
+  );
+  const inactiveProductsCount = products.length - activeProducts.length;
+
+  const rates = activeStores.map((s) => s.usdToCupRate).filter(Boolean);
+  const avgRate =
+    rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 675;
+  const minRate = rates.length > 0 ? Math.min(...rates) : 675;
+  const maxRate = rates.length > 0 ? Math.max(...rates) : 675;
+
+  const handleExportBackup = () => {
+    if (marketplaceConfig) {
+      exportFullJsonBackup(
+        stores,
+        products,
+        marketplaceConfig.geoCatalog || [],
+        marketplaceConfig.departmentsCatalog || [],
+        marketplaceConfig.tagsCatalog || [],
+        marketplaceConfig
+      );
+      onShowToast('Respaldo Total Descargado', 'Copia completa guardada como archivo JSON');
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content) as FullMarketplaceBackup;
+
+        if (Array.isArray(parsed.stores) && Array.isArray(parsed.products)) {
+          onImportData(parsed.stores, parsed.products);
+
+          if (marketplaceConfig && onUpdateMarketplaceConfig) {
+            const updatedConfig = {
+              ...marketplaceConfig,
+              ...(parsed.marketplaceConfig || {}),
+              geoCatalog: parsed.geoCatalog || marketplaceConfig.geoCatalog,
+              departmentsCatalog: parsed.departmentsCatalog || marketplaceConfig.departmentsCatalog,
+              tagsCatalog: parsed.tagsCatalog || marketplaceConfig.tagsCatalog,
+            };
+            onUpdateMarketplaceConfig(updatedConfig);
+          }
+
+          onShowToast('¡Respaldo Total Importado!', 'Se restauraron tiendas, productos, geografía, departamentos, etiquetas y configuraciones', 'success');
+        } else {
+          onShowToast('Archivo inválido', 'El archivo no tiene la estructura de respaldo requerida', 'error');
+        }
+      } catch (err) {
+        onShowToast('Error de lectura', 'No se pudo procesar el archivo JSON', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleAnyCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const result = parseAndImportAnyCsv(content);
+
+        if (result.type === 'stores' && result.stores) {
+          onImportData([...stores, ...result.stores], products);
+          onShowToast('CSV de Tiendas cargado', `Se importaron ${result.stores.length} tiendas correctamente`, 'success');
+        } else if (result.type === 'products' && result.products) {
+          onImportData(stores, [...products, ...result.products]);
+          onShowToast('CSV de Productos cargado', `Se importaron ${result.products.length} productos correctamente`, 'success');
+        } else if (result.type === 'geo' && result.geoCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, geoCatalog: result.geoCatalog });
+          onShowToast('CSV de Geografía cargado', `Se importaron ${result.geoCatalog.length} provincias con sus municipios y repartos`, 'success');
+        } else if (result.type === 'departments' && result.departmentsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, departmentsCatalog: result.departmentsCatalog });
+          onShowToast('CSV de Departamentos cargado', `Se importaron ${result.departmentsCatalog.length} departamentos y subdepartamentos`, 'success');
+        } else if (result.type === 'tags' && result.tagsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, tagsCatalog: result.tagsCatalog });
+          onShowToast('CSV de Etiquetas cargado', `Se importaron ${result.tagsCatalog.length} superetiquetas y etiquetas`, 'success');
+        } else if (result.type === 'config' && result.configPatch && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, ...result.configPatch });
+          onShowToast('CSV de Configuración cargado', 'Se actualizaron las variables de configuración del marketplace', 'success');
+        } else {
+          onShowToast('Error al leer CSV', result.error || 'No se reconoció el tipo de CSV', 'error');
+        }
+      } catch (err) {
+        onShowToast('Error de procesamiento', 'No se pudo leer el archivo CSV', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+      {/* Top Admin Header */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+                Panel de Administración
+              </h1>
+              <span className="text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
+                Dueño
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Configuración general del marketplace, tiendas, publicaciones y tasas de cambio.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs sm:text-sm font-bold transition-all border border-slate-200"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Contraseña</span>
+          </button>
+          <button
+            onClick={onLogout}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs sm:text-sm font-bold transition-all border border-slate-200"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Top Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
+            Tiendas Conectadas
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-slate-900">{activeStores.length}</span>
+            <span className="text-xs font-semibold text-emerald-600">conectadas</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">
+            <span className="font-semibold text-slate-700">{activeStores.length}</span> conectadas •{' '}
+            <span className="font-semibold text-rose-600">{inactiveStoresCount}</span> desconectadas
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
+            Productos/Servicios
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-slate-900">{activeProducts.length}</span>
+            <span className="text-xs font-semibold text-emerald-600">activados</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">
+            <span className="font-semibold text-slate-700">{activeProducts.length}</span> activados •{' '}
+            <span className="font-semibold text-amber-600">{inactiveProductsCount}</span> desactivados
+          </div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
+            Tasa de Cambio Promedio
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-indigo-600 font-mono">{avgRate}</span>
+            <span className="text-xs font-bold text-slate-500">CUP / USD</span>
+          </div>
+          <div className="mt-1 text-xs text-slate-500 font-medium">
+            Rango:{' '}
+            <span className="font-semibold text-slate-800 font-mono">
+              {minRate === maxRate ? `${minRate} CUP` : `${minRate} - ${maxRate} CUP`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('config')}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeTab === 'config'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>General</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('stores')}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeTab === 'stores'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <StoreIcon className="w-4 h-4" />
+          <span>Tiendas ({stores.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeTab === 'products'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span>Catálogo ({products.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeTab === 'backup'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Respaldo</span>
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === 'config' && marketplaceConfig && onUpdateMarketplaceConfig && (
+        <GlobalConfigManager
+          config={marketplaceConfig}
+          onUpdateConfig={onUpdateMarketplaceConfig}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {activeTab === 'stores' && (
+        <StoreManager
+          stores={stores}
+          marketplaceConfig={marketplaceConfig}
+          onAddStore={onAddStore}
+          onUpdateStore={onUpdateStore}
+          onDeleteStore={onDeleteStore}
+          onUpdateAllStoresRate={onUpdateAllStoresRate}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {activeTab === 'products' && (
+        <ProductManager
+          products={products}
+          stores={stores}
+          categories={categories}
+          departmentsCatalog={marketplaceConfig?.departmentsCatalog}
+          tagsCatalog={marketplaceConfig?.tagsCatalog}
+          onAddProduct={onAddProduct}
+          onUpdateProduct={onUpdateProduct}
+          onDeleteProduct={onDeleteProduct}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {activeTab === 'backup' && (
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 space-y-8">
+          <div>
+            <h3 className="text-xl font-black text-gray-900">
+              Gestión de Respaldos y Copias de Seguridad (.JSON y .CSV)
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Descarga o carga copias de seguridad de todas las tablas del marketplace (Tiendas, Productos, Geografía, Departamentos, Superetiquetas/Etiquetas y Configuraciones) en formato JSON unificado o archivos CSV individuales.
+            </p>
+          </div>
+
+          {/* Section 1: Export Respaldo (JSON & CSV) */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Download className="w-4 h-4 text-emerald-600" />
+              <span>1. Descargar Respaldos por Tabla o Total</span>
+            </h4>
+            
+            {/* Unified Full Backup JSON Card */}
+            <div className="border border-emerald-300 rounded-2xl p-5 bg-emerald-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Database className="w-6 h-6" />
+                </div>
+                <div>
+                  <h5 className="font-extrabold text-slate-900 text-base">Respaldo Total del Sistema (.JSON)</h5>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Exporta un solo archivo con las 6 tablas de datos: Tiendas ({stores.length}), Productos ({products.length}), Geografía, Departamentos, Etiquetas y Configuraciones.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleExportBackup}
+                className="w-full sm:w-auto py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all shrink-0 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Descargar Respaldo Total (.JSON)</span>
+              </button>
+            </div>
+
+            {/* Individual Table CSV Exporters */}
+            <h5 className="text-xs font-bold text-slate-600 pt-2">Exportar Tablas Individuales a formato CSV (.csv):</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Stores CSV */}
+              <div className="border border-indigo-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-indigo-50/20 hover:border-indigo-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                    <StoreIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Tiendas</h6>
+                    <p className="text-[11px] text-slate-500">{stores.length} registros</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    exportStoresCsv(stores);
+                    onShowToast('CSV de Tiendas generado', 'Tabla de tiendas descargada correctamente');
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Tiendas (.CSV)</span>
+                </button>
+              </div>
+
+              {/* Products CSV */}
+              <div className="border border-blue-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-blue-50/20 hover:border-blue-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Productos</h6>
+                    <p className="text-[11px] text-slate-500">{products.length} registros</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    exportProductsCsv(products);
+                    onShowToast('CSV de Productos generado', 'Tabla de productos descargada correctamente');
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Productos (.CSV)</span>
+                </button>
+              </div>
+
+              {/* Geo Catalog CSV */}
+              <div className="border border-amber-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-amber-50/20 hover:border-amber-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Geografía</h6>
+                    <p className="text-[11px] text-slate-500">Provincias, Municipios & Repartos</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.geoCatalog) {
+                      exportGeoCatalogCsv(marketplaceConfig.geoCatalog);
+                      onShowToast('CSV de Geografía generado', 'Tabla de geografía descargada correctamente');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Geografía (.CSV)</span>
+                </button>
+              </div>
+
+              {/* Departments CSV */}
+              <div className="border border-purple-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-purple-50/20 hover:border-purple-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <FolderTree className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Departamentos</h6>
+                    <p className="text-[11px] text-slate-500">Deptos & Subdepartamentos</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.departmentsCatalog) {
+                      exportDepartmentsCsv(marketplaceConfig.departmentsCatalog);
+                      onShowToast('CSV de Departamentos generado', 'Tabla de departamentos descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Departamentos (.CSV)</span>
+                </button>
+              </div>
+
+              {/* Tags CSV */}
+              <div className="border border-rose-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-rose-50/20 hover:border-rose-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
+                    <Tag className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Etiquetas</h6>
+                    <p className="text-[11px] text-slate-500">Superetiquetas & Tags</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.tagsCatalog) {
+                      exportTagsCsv(marketplaceConfig.tagsCatalog);
+                      onShowToast('CSV de Etiquetas generado', 'Tabla de etiquetas descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Etiquetas (.CSV)</span>
+                </button>
+              </div>
+
+              {/* Config CSV */}
+              <div className="border border-slate-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-slate-50 hover:border-slate-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center">
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Configuración</h6>
+                    <p className="text-[11px] text-slate-500">Variables Globales</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig) {
+                      exportConfigCsv(marketplaceConfig);
+                      onShowToast('CSV de Configuración generado', 'Configuración general descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Configuración (.CSV)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Import / Cargar Respaldo (JSON & CSV) */}
+          <div className="space-y-4 pt-4 border-t border-slate-200">
+            <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Upload className="w-4 h-4 text-blue-600" />
+              <span>2. Cargar Respaldos e Importar Datos</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Import JSON */}
+              <div className="border border-gray-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-gray-50/60">
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">Cargar Respaldo JSON</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selecciona un archivo .JSON para restaurar las 6 tablas del marketplace simultáneamente.
+                  </p>
+                </div>
+                <label className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span>Subir Archivo JSON</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Import CSV Intelligent */}
+              <div className="border border-gray-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-gray-50/60">
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">Cargar desde Archivo CSV</h5>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Detecta de forma inteligente si el CSV contiene Tiendas, Productos, Geografía, Departamentos, Etiquetas o Configuración.
+                  </p>
+                </div>
+                <label className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span>Subir Cualquier CSV</span>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleAnyCsvUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Restore Seed Demo */}
+              <div className="border border-amber-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-amber-50/40">
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">Restaurar Datos Demo</h5>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Restablece el marketplace con los datos de demostración iniciales.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        '¿Estás seguro de restaurar los datos iniciales de demostración? Se reemplazarán los datos actuales.'
+                      )
+                    ) {
+                      onRestoreDefaults();
+                      onShowToast('¡Datos restaurados!', 'El catálogo volvió a los datos de demostración');
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Restaurar Demo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AdminPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onShowToast={onShowToast}
+      />
+    </div>
+  );
+};
