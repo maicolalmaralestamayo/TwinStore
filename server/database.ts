@@ -9,7 +9,8 @@ import {
 import { Store, Product, MarketplaceConfig } from '../src/types';
 
 let dbInstance: Database | null = null;
-const DB_FILE_PATH = path.join(process.cwd(), 'mercadocuba.sqlite');
+const DB_FILE_PATH = path.join(process.cwd(), 'twinstore.sqlite');
+const OLD_DB_FILE_PATH = path.join(process.cwd(), 'mercadocuba.sqlite');
 
 export async function getDb(): Promise<Database> {
   if (dbInstance) return dbInstance;
@@ -21,7 +22,16 @@ export async function getDb(): Promise<Database> {
       const fileBuffer = fs.readFileSync(DB_FILE_PATH);
       dbInstance = new SQL.Database(fileBuffer);
     } catch (err) {
-      console.error('Error reading existing SQLite file, creating new:', err);
+      console.error('Error reading existing twinstore.sqlite file, creating new:', err);
+      dbInstance = new SQL.Database();
+    }
+  } else if (fs.existsSync(OLD_DB_FILE_PATH)) {
+    try {
+      console.log('Migrating existing mercadocuba.sqlite to twinstore.sqlite...');
+      const fileBuffer = fs.readFileSync(OLD_DB_FILE_PATH);
+      dbInstance = new SQL.Database(fileBuffer);
+    } catch (err) {
+      console.error('Error migrating old SQLite file, creating new:', err);
       dbInstance = new SQL.Database();
     }
   } else {

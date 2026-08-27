@@ -9,8 +9,8 @@ import {
 import {
   MessageCircle,
   Briefcase,
-  FolderTree,
 } from 'lucide-react';
+import { interfaz } from '../../data/interfaz';
 
 interface ProductCardProps {
   product: Product;
@@ -37,10 +37,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <div
       onClick={() => onSelectProduct(product)}
-      className="group bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative"
+      className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative"
     >
       {/* 1. Foto principal del producto o servicio */}
-      <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
+      <div className="relative h-48 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <ThemeImage
           src={product.imageUrl}
           alt={product.title}
@@ -51,14 +51,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
         {/* Badges: Tasa (1 USD x 328 CUP) + Badge Servicio */}
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-          <div className="bg-slate-900/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
-            1 USD x {formatNumberWithDots(usdRate)} CUP
+          <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
+            {interfaz.productCard.ratePrefix} {formatNumberWithDots(usdRate)} {interfaz.productCard.rateSuffix}
           </div>
 
           {product.isService && (
             <span className="inline-flex items-center gap-1 bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
-              <Briefcase className="w-2.5 h-2.5" />
-              Servicio
+              <Briefcase className="w-2.5 h-2.5 text-white" />
+              {interfaz.productCard.serviceBadge}
             </span>
           )}
         </div>
@@ -68,40 +68,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       <div className="p-4 flex-1 flex flex-col justify-between gap-3">
         <div className="space-y-2.5">
           {/* 2. Nombre del producto o servicio */}
-          <h3 className="font-extrabold text-slate-900 text-base leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2">
+          <h3 className="font-extrabold text-slate-900 dark:text-white text-base leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
             {product.title}
           </h3>
 
           {/* 3. Descripción del producto o servicio */}
-          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
             {product.description}
           </p>
 
-          {/* 4. Precios en USD y CUP sin la conjunción "y" con separadores de puntos de tres en tres */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center justify-between gap-2">
-            <span className="text-sm sm:text-base font-black text-slate-900">
-              {formatNumberWithDots(product.priceUSD)} USD
+          {/* 4. Precios en USD y CUP con separadores de puntos de tres en tres */}
+          <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between gap-2">
+            <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
+              {formatNumberWithDots(product.priceUSD)} {interfaz.productCard.currencyUsd}
             </span>
-            <span className="text-sm sm:text-base font-black text-indigo-700 font-mono">
-              {formatNumberWithDots(cupPrice)} CUP
+            <span className="text-sm sm:text-base font-black text-indigo-700 dark:text-indigo-400 font-mono">
+              {formatNumberWithDots(cupPrice)} {interfaz.productCard.currencyCup}
             </span>
           </div>
         </div>
 
-        {/* 5. Botón minimalista con el ícono de whatsapp y solamente el texto Contactar */}
+        {/* 5. Botón con el ícono de WhatsApp y texto Contactar */}
         <div className="pt-2">
           <button
+            type="button"
             onClick={handleWhatsAppClick}
             className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs text-xs sm:text-sm cursor-pointer"
-            title="Contactar por WhatsApp"
+            title={`${interfaz.productCard.contactAriaLabel} ${product.title}`}
+            aria-label={`${interfaz.productCard.contactAriaLabel} ${product.title}`}
           >
             <MessageCircle className="w-4 h-4 shrink-0 fill-current" />
-            <span>Contactar</span>
+            <span>{interfaz.productCard.contactButton}</span>
           </button>
         </div>
       </div>
     </div>
   );
 };
-
-

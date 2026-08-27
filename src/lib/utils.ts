@@ -94,7 +94,7 @@ export function generateWhatsAppOrderUrl(product: Product, store: Store): string
  */
 export function generateStoreWhatsAppUrl(store: Store): string {
   const phone = normalizeWhatsAppPhone(store.whatsappPhone || '');
-  const text = `¡Hola! 👋 Les escribo desde el directorio *MercadoCuba*. Quisiera consultar su catálogo y ofertas disponibles en *${store.name}*.`;
+  const text = `¡Hola! 👋 Les escribo desde el marketplace. Quisiera consultar su catálogo y ofertas disponibles en *${store.name}*.`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 

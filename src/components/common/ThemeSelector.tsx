@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ThemePreference } from '../../types';
 import { Sun, Moon, Laptop, ChevronDown, Check } from 'lucide-react';
+import { interfaz } from '../../data/interfaz';
 
 interface ThemeSelectorProps {
   theme: ThemePreference;
@@ -36,21 +37,21 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const options: { value: ThemePreference; label: string; icon: React.ReactNode; desc: string }[] = [
     {
       value: 'system',
-      label: 'Sistema',
+      label: interfaz.common.themeSelector.system,
       icon: <Laptop className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />,
-      desc: 'Sigue el tema del sistema operativo',
+      desc: interfaz.common.themeSelector.systemDesc,
     },
     {
       value: 'light',
-      label: 'Claro',
+      label: interfaz.common.themeSelector.light,
       icon: <Sun className="w-4 h-4 text-amber-500" />,
-      desc: 'Tema claro brillante',
+      desc: interfaz.common.themeSelector.lightDesc,
     },
     {
       value: 'dark',
-      label: 'Oscuro',
+      label: interfaz.common.themeSelector.dark,
       icon: <Moon className="w-4 h-4 text-indigo-400" />,
-      desc: 'Tema oscuro para menor fatiga visual',
+      desc: interfaz.common.themeSelector.darkDesc,
     },
   ];
 
@@ -62,8 +63,8 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        title={`Tema actual: ${currentOption.label} (${resolvedTheme === 'dark' ? 'Oscuro activo' : 'Claro activo'})`}
-        aria-label="Cambiar tema de la aplicación"
+        title={`${interfaz.common.themeSelector.title} ${currentOption.label} (${resolvedTheme === 'dark' ? interfaz.common.themeSelector.darkActive : interfaz.common.themeSelector.lightActive})`}
+        aria-label={interfaz.common.themeSelector.ariaLabel}
         className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <span className="flex items-center justify-center shrink-0">
@@ -75,7 +76,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         </span>
         {!compact && (
           <span className="hidden xl:inline capitalize font-semibold">
-            {theme === 'system' ? 'Auto' : currentOption.label}
+            {theme === 'system' ? interfaz.common.themeSelector.autoLabel : currentOption.label}
           </span>
         )}
         <ChevronDown className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
@@ -86,7 +87,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
         <div className="absolute right-0 z-50 mt-1.5 w-52 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
           <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
-              Preferencia de Tema
+              {interfaz.common.themeSelector.preferenceTitle}
             </span>
           </div>
 
@@ -112,11 +113,6 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                     <div className="truncate">
                       <div className="font-bold flex items-center gap-1.5">
                         <span>{opt.label}</span>
-                        {opt.value === 'system' && (
-                          <span className="text-[9px] font-normal px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                            Por defecto
-                          </span>
-                        )}
                       </div>
                       <div className="text-[10px] text-slate-400 dark:text-slate-400 truncate">
                         {opt.desc}

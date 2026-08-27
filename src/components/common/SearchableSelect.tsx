@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check, X } from 'lucide-react';
+import { interfaz } from '../../data/interfaz';
 
 export interface SelectOption {
   value: string;
@@ -26,8 +27,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Seleccionar...',
-  searchPlaceholder = 'Buscar...',
+  placeholder = interfaz.common.searchableSelect.selectOption,
+  searchPlaceholder = interfaz.common.searchableSelect.searchPlaceholder,
   disabled = false,
   className = '',
   icon,
@@ -117,7 +118,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             <span
               onClick={handleClear}
               className="p-0.5 hover:text-rose-600 dark:hover:text-rose-400 rounded-md transition-colors"
-              title="Limpiar"
+              title={interfaz.common.searchableSelect.clearSelection}
             >
               <X className="w-3.5 h-3.5" />
             </span>
@@ -165,7 +166,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           >
             {filteredOptions.length === 0 ? (
               <div className="p-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                No se encontraron opciones
+                {interfaz.common.searchableSelect.noResults}
               </div>
             ) : (
               filteredOptions.map((option) => {

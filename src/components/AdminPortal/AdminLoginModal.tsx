@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, X, Mail, CheckCircle2, ArrowRight, Camera, Upload } from 'lucide-react';
-import { UI_TEXTS } from '../../data/uiTexts';
+import { interfaz } from '../../data/interfaz';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -147,10 +147,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         </div>
 
         <h3 className="text-2xl font-black text-slate-900">
-          {UI_TEXTS.auth.title}
+          {interfaz.admin.auth.title}
         </h3>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed mb-4">
-          {UI_TEXTS.auth.subtitle}
+          {interfaz.admin.auth.subtitle}
         </p>
 
         {/* Tabs for Login / Register */}
@@ -164,7 +164,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              {UI_TEXTS.auth.loginTab}
+              {interfaz.admin.auth.loginTab}
             </button>
             <button
               onClick={() => { setActiveTab('register'); setError(''); }}
@@ -174,7 +174,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              {UI_TEXTS.auth.registerTab}
+              {interfaz.admin.auth.registerTab}
             </button>
           </div>
         )}
@@ -185,10 +185,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-2">
               <Mail className="w-8 h-8 text-emerald-600 mx-auto" />
               <h4 className="font-extrabold text-slate-900 text-sm">
-                {UI_TEXTS.auth.verifyEmailTitle}
+                {interfaz.admin.auth.verifyEmailTitle}
               </h4>
               <p className="text-xs text-slate-600">
-                {UI_TEXTS.auth.verifyEmailDesc} <strong className="text-emerald-800">{email}</strong>:
+                {interfaz.admin.auth.verifyEmailDesc} <strong className="text-emerald-800">{email}</strong>:
               </p>
               <div className="bg-white py-2 px-4 rounded-xl border border-emerald-300 inline-block text-xl font-mono font-black text-emerald-600 tracking-widest my-1 shadow-xs">
                 {generatedCode}
@@ -197,7 +197,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ingresa el Código de Verificación
+                {interfaz.admin.auth.enterVerificationCode}
               </label>
               <input
                 type="text"
@@ -219,13 +219,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 onClick={() => setIsVerifyingEmail(false)}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
               >
-                Volver
+                {interfaz.admin.auth.backBtn}
               </button>
               <button
                 type="submit"
                 className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md inline-flex items-center justify-center gap-1 cursor-pointer"
               >
-                <span>Verificar y Crear CEO</span>
+                <span>{interfaz.admin.auth.verifyAndCreateBtn}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -238,10 +238,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-2">
               <Mail className="w-8 h-8 text-emerald-600 mx-auto" />
               <h4 className="font-extrabold text-slate-900 text-sm">
-                {UI_TEXTS.auth.twoFactorLabel}
+                {interfaz.admin.auth.twoFactorLabel}
               </h4>
               <p className="text-xs text-slate-600">
-                Se ha enviado un código de seguridad de 6 dígitos a tu correo de CEO:
+                {interfaz.admin.auth.twoFactorDesc}
               </p>
               <div className="bg-white py-2 px-4 rounded-xl border border-emerald-300 inline-block text-xl font-mono font-black text-emerald-600 tracking-widest my-1 shadow-xs">
                 {generated2FACode}
@@ -250,7 +250,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ingresa el Código 2FA
+                {interfaz.admin.auth.enter2FACode}
               </label>
               <input
                 type="text"
@@ -272,13 +272,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 onClick={() => setIs2FAChallenge(false)}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
               >
-                Cancelar
+                {interfaz.admin.auth.cancelBtn}
               </button>
               <button
                 type="submit"
                 className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md inline-flex items-center justify-center gap-1 cursor-pointer"
               >
-                <span>Verificar 2FA</span>
+                <span>{interfaz.admin.passwordModal.test2FAModal.verifyBtn}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </button>
             </div>
@@ -291,7 +291,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             {/* Profile Photo field */}
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {UI_TEXTS.auth.photoLabel}
+                {interfaz.admin.auth.photoLabel}
               </label>
               <div className="flex items-center gap-3">
                 {avatarUrl ? (
@@ -310,12 +310,12 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     type="url"
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="URL de la Foto..."
+                    placeholder={interfaz.admin.auth.photoPlaceholder}
                     className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:border-emerald-500 outline-none"
                   />
                   <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer">
                     <Upload className="w-3.5 h-3.5" />
-                    <span>{UI_TEXTS.auth.uploadPhotoBtn}</span>
+                    <span>{interfaz.admin.auth.uploadPhotoBtn}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -329,7 +329,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {UI_TEXTS.auth.emailLabel}
+                {interfaz.admin.auth.emailLabel}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -337,7 +337,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  placeholder="ceo@mercadocuba.cu"
+                  placeholder={interfaz.admin.auth.emailPlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
                   required
                 />
@@ -346,7 +346,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {UI_TEXTS.auth.passwordLabel}
+                {interfaz.admin.auth.passwordLabel}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -354,7 +354,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   type="password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  placeholder="Crea tu contraseña de CEO..."
+                  placeholder={interfaz.admin.auth.passwordPlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
                   required
                 />
@@ -367,7 +367,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               type="submit"
               className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>{UI_TEXTS.auth.submitRegister}</span>
+              <span>{interfaz.admin.auth.submitRegister}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -378,7 +378,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {UI_TEXTS.auth.emailLabel}
+                {interfaz.admin.auth.emailLabel}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -386,7 +386,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  placeholder="ceo@mercadocuba.cu"
+                  placeholder={interfaz.admin.auth.emailPlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
                 />
               </div>
@@ -394,7 +394,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {UI_TEXTS.auth.passwordLabel}
+                {interfaz.admin.auth.passwordLabel}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -405,7 +405,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                     setPassword(e.target.value);
                     setError('');
                   }}
-                  placeholder="Contraseña de CEO..."
+                  placeholder={interfaz.admin.auth.passwordPlaceholder}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
                   autoFocus
                 />
@@ -420,13 +420,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                 onClick={onClose}
                 className="flex-1 py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors cursor-pointer"
               >
-                Cancelar
+                {interfaz.admin.auth.cancelBtn}
               </button>
               <button
                 type="submit"
                 className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all cursor-pointer"
               >
-                {UI_TEXTS.auth.submitLogin}
+                {interfaz.admin.auth.submitLogin}
               </button>
             </div>
           </form>

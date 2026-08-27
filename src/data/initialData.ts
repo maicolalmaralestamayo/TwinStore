@@ -374,7 +374,7 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
   defaultStoreLogoUrl: 'local:store', // Establecimiento con toldo
   defaultProductImageUrl: 'local:product', // Bolsa de compras
   bannerUrl: 'local:banner', // Cajas estibadas
-  bannerTitle: 'Compra directo a tiendas por WhatsApp',
+  bannerTitle: 'Compra directo a tiendas y proveedores por WhatsApp',
   bannerSubtitle: 'Sin pasarelas de pago ni intermediarios. Explora productos y servicios de múltiples proveedores, compara precios con la tasa de cambio USD/CUP de cada tienda y coordina tu compra con un solo clic.',
   primaryColor: '#4f46e5', // indigo-600
   secondaryColor: '#0284c7', // sky-600

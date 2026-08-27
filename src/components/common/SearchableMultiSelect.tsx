@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check, X, CheckSquare, Square } from 'lucide-react';
 import { SelectOption } from './SearchableSelect';
+import { interfaz } from '../../data/interfaz';
 
 interface SearchableMultiSelectProps {
   options: SelectOption[];
@@ -19,9 +20,9 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
   options,
   values = [],
   onChange,
-  placeholder = 'Seleccionar...',
-  searchPlaceholder = 'Buscar...',
-  allLabel = 'Todos',
+  placeholder = interfaz.common.searchableMultiSelect.selectOption,
+  searchPlaceholder = interfaz.common.searchableMultiSelect.searchPlaceholder,
+  allLabel = interfaz.common.searchableMultiSelect.allLabel,
   disabled = false,
   className = '',
   icon,
@@ -111,7 +112,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
     if (values.length === options.length && options.length > 0) {
       return (
         <span className="text-indigo-800 font-bold truncate">
-          Todos ({options.length})
+          {interfaz.common.searchableMultiSelect.allLabel} ({options.length})
         </span>
       );
     }
@@ -119,7 +120,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
     return (
       <div className="flex items-center gap-1.5 truncate">
         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 text-[10px] font-extrabold shrink-0 border border-indigo-200 dark:border-indigo-800">
-          {values.length} sel.
+          {values.length} {interfaz.common.searchableMultiSelect.selectedLabel}
         </span>
         <span className="truncate text-slate-800 dark:text-slate-200 text-xs font-semibold">
           {options
@@ -157,7 +158,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
                 handleClearAll();
               }}
               className="p-0.5 hover:text-rose-600 dark:hover:text-rose-400 rounded-md transition-colors"
-              title="Limpiar selecciones"
+              title={interfaz.common.searchableMultiSelect.clearSelectionsTooltip}
             >
               <X className="w-3.5 h-3.5" />
             </span>
@@ -199,10 +200,10 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
           <div className="px-2.5 py-1.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
             <span>
               {values.length === 0 ? (
-                'Todos seleccionados (por defecto)'
+                interfaz.common.searchableMultiSelect.allSelectedDefault
               ) : (
                 <strong className="text-indigo-700 dark:text-indigo-400 font-bold">
-                  {values.length} de {options.length} elegidos
+                  {values.length} de {options.length} {interfaz.common.searchableMultiSelect.chosenOf}
                 </strong>
               )}
             </span>
@@ -212,7 +213,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
                 onClick={handleSelectAllFiltered}
                 className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold hover:underline cursor-pointer"
               >
-                Todos
+                {interfaz.common.searchableMultiSelect.allLabel}
               </button>
               <span>•</span>
               <button
@@ -220,7 +221,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
                 onClick={handleClearAll}
                 className="text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-bold hover:underline cursor-pointer"
               >
-                Limpiar
+                {interfaz.common.searchableMultiSelect.clearAll}
               </button>
             </div>
           </div>
@@ -235,7 +236,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
           >
             {filteredOptions.length === 0 ? (
               <div className="p-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                No se encontraron opciones
+                {interfaz.common.searchableMultiSelect.noResults}
               </div>
             ) : (
               filteredOptions.map((option) => {
@@ -287,7 +288,7 @@ export const SearchableMultiSelect: React.FC<SearchableMultiSelectProps> = ({
               onClick={() => setIsOpen(false)}
               className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
             >
-              Listo
+              {interfaz.common.searchableMultiSelect.doneBtn}
             </button>
           </div>
         </div>

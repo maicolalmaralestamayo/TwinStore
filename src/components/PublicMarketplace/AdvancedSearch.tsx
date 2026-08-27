@@ -129,7 +129,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         return false;
       }
     }
-    // 4. Payment method filter
+    // 4. Payment method filter (Tipo de pago: Transferencia / Efectivo)
     if (filters.paymentMethods && filters.paymentMethods.length > 0) {
       const wantsTransfer = filters.paymentMethods.includes('transfer');
       const wantsCash = filters.paymentMethods.includes('cash');
@@ -140,7 +140,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       return false;
     }
 
-    // 5. Delivery method filter
+    // 5. Delivery method filter (Mensajería / Recogida en tienda)
     if (filters.deliveryMethods && filters.deliveryMethods.length > 0) {
       const wantsDelivery = filters.deliveryMethods.includes('delivery');
       const wantsPickup = filters.deliveryMethods.includes('pickup');
@@ -205,21 +205,21 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     {
       value: 'product',
       label: 'Productos',
-      sublabel: 'Artículos y bienes físicos',
+      sublabel: 'Artículos físicos y bienes',
     },
     {
       value: 'service',
       label: 'Servicios',
-      sublabel: 'Servicios profesionales y oficios',
+      sublabel: 'Servicios profesionales y prestaciones',
     },
   ];
 
-  // PAYMENT METHOD OPTIONS (Transferencia / Efectivo)
+  // TIPO DE PAGO OPTIONS (Transferencia / Efectivo)
   const paymentMethodOptions = [
     {
       value: 'transfer',
       label: 'Transferencia',
-      sublabel: 'Transfermóvil / EnZona / Transferencia',
+      sublabel: 'Pago por transferencia bancaria o entre tarjetas',
     },
     {
       value: 'cash',
@@ -228,17 +228,17 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     },
   ];
 
-  // DELIVERY METHOD OPTIONS (Domicilio / Recogida)
+  // MENSAJERÍA OPTIONS (Mensajería / Recogida en tienda)
   const deliveryMethodOptions = [
     {
       value: 'delivery',
-      label: 'Domicilio / Mensajería',
-      sublabel: 'Envío directo a la dirección',
+      label: 'Mensajería',
+      sublabel: 'Tiendas con servicio de mensajería',
     },
     {
       value: 'pickup',
       label: 'Recogida en tienda',
-      sublabel: 'Retiro presencial en el local',
+      sublabel: 'Tiendas sin servicio de mensajería (solo recogida)',
     },
   ];
 
@@ -412,6 +412,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         <button
           type="button"
           onClick={onToggleExpanded}
+          title={isExpanded ? 'Plegar filtros avanzados' : 'Desplegar filtros avanzados'}
+          aria-label={isExpanded ? 'Plegar filtros avanzados' : 'Desplegar filtros avanzados'}
           className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none flex-1 min-w-0"
         >
           <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
@@ -421,7 +423,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-none">
-                Filtrado de Productos y Servicios
+                Filtrado de Productos y servicios
               </h3>
               {hasActiveFilters && (
                 <span className="bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 text-[11px] font-extrabold px-2 py-0.5 rounded-full">
@@ -439,6 +441,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
+          {/* Botón de limpieza de filtros: sólo ícono con tooltip */}
           {hasActiveFilters && (
             <button
               type="button"
@@ -447,10 +450,10 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 onResetFilters();
               }}
               title="Restablecer o limpiar todos los filtros"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+              aria-label="Restablecer o limpiar todos los filtros"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Limpiar</span>
+              <RotateCcw className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             </button>
           )}
 
@@ -483,7 +486,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   <span>Provincias</span>
                 </span>
                 {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda)</span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
                 )}
               </label>
               <SearchableMultiSelect
@@ -505,7 +508,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   <span>Municipios</span>
                 </span>
                 {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda)</span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
                 )}
               </label>
               <SearchableMultiSelect
@@ -533,7 +536,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   <span>Repartos / Localidades</span>
                 </span>
                 {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda)</span>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
                 )}
               </label>
               <SearchableMultiSelect
@@ -553,12 +556,12 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               />
             </div>
 
-            {/* Tiendas / Proveedores */}
+            {/* Tiendas y proveedores */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Tiendas / Proveedores</span>
+                  <span>Tiendas y proveedores</span>
                 </span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
                   ({matchingStores.length} disp.)
@@ -571,10 +574,10 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 placeholder={
                   storeOptions.length === 0
                     ? 'No hay tiendas coincidentes'
-                    : 'Todas las tiendas'
+                    : 'Todas las tiendas y proveedores'
                 }
-                allLabel="Todas las tiendas disponibles"
-                searchPlaceholder="Buscar tienda..."
+                allLabel="Todas las tiendas y proveedores disponibles"
+                searchPlaceholder="Buscar tienda o proveedor..."
                 disabled={storeOptions.length === 0}
               />
             </div>
@@ -649,47 +652,47 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <Briefcase className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Tipo de Oferta</span>
+                <span>Productos y servicios</span>
               </label>
               <SearchableMultiSelect
                 options={itemTypeOptions}
                 values={filters.itemTypes || []}
                 onChange={(values) => handleUpdate('itemTypes', values)}
-                placeholder="Productos y Servicios"
-                allLabel="Productos y Servicios"
-                searchPlaceholder="Buscar tipo de oferta..."
+                placeholder="Productos y servicios"
+                allLabel="Productos y servicios"
+                searchPlaceholder="Buscar producto o servicio..."
               />
             </div>
 
-            {/* Método de Pago (Combobox: Transferencia / Efectivo) */}
+            {/* Tipo de Pago (Combobox: Efectivo / Transferencia) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Método de Pago</span>
+                <span>Tipo de pago</span>
               </label>
               <SearchableMultiSelect
                 options={paymentMethodOptions}
                 values={filters.paymentMethods || []}
                 onChange={(values) => handleUpdate('paymentMethods', values)}
-                placeholder="Todos los métodos"
-                allLabel="Todos los métodos"
-                searchPlaceholder="Buscar método de pago..."
+                placeholder="Todos los tipos de pago"
+                allLabel="Todos los tipos de pago"
+                searchPlaceholder="Buscar tipo de pago..."
               />
             </div>
 
-            {/* Modalidad de Entrega (Combobox: Domicilio / Recogida en tienda) */}
+            {/* Mensajería (Combobox: Mensajería / Recogida en tienda) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <Truck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Modalidad de Entrega</span>
+                <span>Mensajería</span>
               </label>
               <SearchableMultiSelect
                 options={deliveryMethodOptions}
                 values={filters.deliveryMethods || []}
                 onChange={(values) => handleUpdate('deliveryMethods', values)}
-                placeholder="Todas las modalidades"
-                allLabel="Todas las modalidades"
-                searchPlaceholder="Buscar modalidad de entrega..."
+                placeholder="Mensajería y Recogida"
+                allLabel="Mensajería y Recogida"
+                searchPlaceholder="Buscar opción de mensajería..."
               />
             </div>
 
@@ -705,6 +708,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     type="text"
                     inputMode="decimal"
                     placeholder="Ej. 10.50"
+                    title="Ingrese el valor numérico del precio mínimo"
+                    aria-label="Precio Mínimo"
                     value={filters.minPrice === '' ? '' : filters.minPrice}
                     onKeyDown={preventInvalidPriceKeys}
                     onChange={(e) => handleNumericPriceInput('minPrice', e.target.value)}
@@ -721,6 +726,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     type="text"
                     inputMode="decimal"
                     placeholder="Ej. 500"
+                    title="Ingrese el valor numérico del precio máximo"
+                    aria-label="Precio Máximo"
                     value={filters.maxPrice === '' ? '' : filters.maxPrice}
                     onKeyDown={preventInvalidPriceKeys}
                     onChange={(e) => handleNumericPriceInput('maxPrice', e.target.value)}

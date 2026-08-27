@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, ShieldCheck, X, KeyRound, Check, Mail, User, Smartphone, Camera, Upload } from 'lucide-react';
+import { interfaz } from '../../data/interfaz';
 
 interface AdminPasswordModalProps {
   isOpen: boolean;
@@ -136,13 +137,13 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
               <div className="flex items-center gap-1.5">
                 <h4 className="font-extrabold text-sm text-white">{ceoName}</h4>
                 <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Único CEO
+                  {interfaz.admin.passwordModal.ceoBadge}
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-mono mt-0.5">{ceoEmail}</p>
               <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
                 <Mail className="w-3 h-3 text-emerald-400" />
-                <span>Correo Verificado</span>
+                <span>{interfaz.admin.passwordModal.verifiedEmail}</span>
               </span>
             </div>
           </div>
@@ -153,10 +154,10 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
         </div>
 
         <h3 className="text-lg font-black text-slate-900">
-          Configuración del CEO del Marketplace
+          {interfaz.admin.passwordModal.title}
         </h3>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-          Edita tu foto de perfil, correo, activa el segundo factor de autenticación (2FA) por correo o cambia tu contraseña.
+          {interfaz.admin.passwordModal.subtitle}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -164,13 +165,13 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <span className="text-xs font-extrabold uppercase text-slate-800 block flex items-center gap-1.5">
               <User className="w-4 h-4 text-emerald-600" />
-              <span>Datos y Foto del CEO</span>
+              <span>{interfaz.admin.passwordModal.profileSectionTitle}</span>
             </span>
 
             {/* Photo update */}
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Foto de Perfil
+                {interfaz.admin.passwordModal.photoLabel}
               </label>
               <div className="flex items-center gap-3">
                 {avatarUrl ? (
@@ -194,7 +195,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                   />
                   <label className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer">
                     <Upload className="w-3 h-3" />
-                    <span>Subir desde archivo</span>
+                    <span>{interfaz.admin.passwordModal.uploadPhoto}</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -208,13 +209,13 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Nombre del CEO
+                {interfaz.admin.passwordModal.nameLabel}
               </label>
               <input
                 type="text"
                 value={ceoName}
                 onChange={(e) => setCeoName(e.target.value)}
-                placeholder="Nombre completo"
+                placeholder={interfaz.admin.passwordModal.namePlaceholder}
                 className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold outline-none focus:border-emerald-500"
                 required
               />
@@ -222,7 +223,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Correo Electrónico
+                {interfaz.admin.passwordModal.emailLabel}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -230,7 +231,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                   type="email"
                   value={ceoEmail}
                   onChange={(e) => setCeoEmail(e.target.value)}
-                  placeholder="ceo@mercadocuba.cu"
+                  placeholder={interfaz.admin.passwordModal.emailPlaceholder}
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-emerald-500 font-medium"
                   required
                 />
@@ -248,7 +249,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                     className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                   />
                   <span className="text-xs font-bold text-slate-800">
-                    Segundo Factor de Autenticación (2FA) por Correo
+                    {interfaz.admin.passwordModal.twoFactorCheckbox}
                   </span>
                 </label>
 
@@ -258,12 +259,12 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                     onClick={handleGenerate2FA}
                     className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-lg border border-emerald-200 cursor-pointer"
                   >
-                    Probar 2FA
+                    {interfaz.admin.passwordModal.test2FABtn}
                   </button>
                 )}
               </div>
               <p className="text-[11px] text-slate-500">
-                Al activar 2FA, se enviará un código de 6 dígitos a tu correo ({ceoEmail}) cada vez que inicies sesión.
+                {interfaz.admin.passwordModal.twoFactorExplanation}
               </p>
             </div>
           </div>
@@ -272,12 +273,12 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <span className="text-xs font-extrabold uppercase text-slate-800 block flex items-center gap-1.5">
               <KeyRound className="w-4 h-4 text-emerald-600" />
-              <span>Cambio de Contraseña (Opcional)</span>
+              <span>{interfaz.admin.passwordModal.passwordSectionTitle}</span>
             </span>
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                Contraseña Actual
+                {interfaz.admin.passwordModal.currentPasswordLabel}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -288,7 +289,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                     setCurrentPassword(e.target.value);
                     setError('');
                   }}
-                  placeholder="Escribe para cambiar contraseña..."
+                  placeholder={interfaz.admin.passwordModal.currentPasswordPlaceholder}
                   className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-emerald-500 outline-none text-xs"
                 />
               </div>
@@ -298,7 +299,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
               <>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Nueva Contraseña
+                    {interfaz.admin.passwordModal.newPasswordLabel}
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -309,7 +310,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                         setNewPassword(e.target.value);
                         setError('');
                       }}
-                      placeholder="Mínimo 12 caracteres..."
+                      placeholder={interfaz.admin.passwordModal.newPasswordPlaceholder}
                       className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
@@ -318,35 +319,35 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                 {/* Password Strength checklist */}
                 <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
                   <p className="font-extrabold text-slate-700 text-[10px] mb-1">
-                    Requisitos de seguridad:
+                    {interfaz.admin.passwordModal.requirementsTitle}
                   </p>
                   <div className="grid grid-cols-2 gap-1 font-semibold text-[10px]">
                     <div className={`flex items-center gap-1 ${ruleMinLength ? 'text-emerald-700' : 'text-slate-400'}`}>
                       {ruleMinLength ? <Check className="w-3 h-3 text-emerald-600" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                      <span>12+ car.</span>
+                      <span>{interfaz.admin.passwordModal.req12Chars}</span>
                     </div>
                     <div className={`flex items-center gap-1 ${ruleUppercase ? 'text-emerald-700' : 'text-slate-400'}`}>
                       {ruleUppercase ? <Check className="w-3 h-3 text-emerald-600" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                      <span>Mayúscula</span>
+                      <span>{interfaz.admin.passwordModal.reqUppercase}</span>
                     </div>
                     <div className={`flex items-center gap-1 ${ruleLowercase ? 'text-emerald-700' : 'text-slate-400'}`}>
                       {ruleLowercase ? <Check className="w-3 h-3 text-emerald-600" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                      <span>Minúscula</span>
+                      <span>{interfaz.admin.passwordModal.reqLowercase}</span>
                     </div>
                     <div className={`flex items-center gap-1 ${ruleNumber ? 'text-emerald-700' : 'text-slate-400'}`}>
                       {ruleNumber ? <Check className="w-3 h-3 text-emerald-600" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                      <span>Número</span>
+                      <span>{interfaz.admin.passwordModal.reqNumber}</span>
                     </div>
                     <div className={`flex items-center gap-1 ${ruleSpecial ? 'text-emerald-700' : 'text-slate-400'}`}>
                       {ruleSpecial ? <Check className="w-3 h-3 text-emerald-600" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                      <span>Especial</span>
+                      <span>{interfaz.admin.passwordModal.reqSpecial}</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Confirmar Nueva Contraseña
+                    {interfaz.admin.passwordModal.confirmPasswordLabel}
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -357,7 +358,7 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                         setConfirmPassword(e.target.value);
                         setError('');
                       }}
-                      placeholder="Repite la nueva contraseña"
+                      placeholder={interfaz.admin.passwordModal.confirmPasswordPlaceholder}
                       className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 bg-white focus:border-emerald-500 outline-none text-xs"
                     />
                   </div>
@@ -374,14 +375,14 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
               onClick={onClose}
               className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
             >
-              Cancelar
+              {interfaz.admin.passwordModal.cancelButton}
             </button>
             <button
               type="submit"
               className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Check className="w-4 h-4" />
-              <span>Guardar Cambios</span>
+              <span>{interfaz.admin.passwordModal.saveButton}</span>
             </button>
           </div>
         </form>
@@ -394,10 +395,10 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
             </div>
             <div>
               <h4 className="font-extrabold text-slate-900 text-base">
-                Prueba 2FA por Correo Electrónico
+                {interfaz.admin.passwordModal.test2FAModal.title}
               </h4>
               <p className="text-xs text-slate-500 mt-1">
-                Ingresa el código enviado a tu correo ({ceoEmail}):
+                {interfaz.admin.passwordModal.test2FAModal.desc} ({ceoEmail}):
               </p>
               <div className="text-xl font-mono font-black text-emerald-600 tracking-widest my-2 bg-emerald-50 py-1 px-4 rounded-xl border border-emerald-200">
                 {generated2FACode}
@@ -409,16 +410,16 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
               maxLength={6}
               value={testCodeInput}
               onChange={(e) => setTestCodeInput(e.target.value)}
-              placeholder="000000"
+              placeholder={interfaz.admin.passwordModal.test2FAModal.codePlaceholder}
               className="w-36 text-center text-xl font-mono tracking-widest py-2 rounded-xl border-2 border-emerald-500 font-bold"
             />
 
             <div className="flex gap-2">
               <button
                 onClick={() => setShow2FATest(false)}
-                className="px-3 py-1.5 rounded-xl bg-slate-200 text-xs font-bold"
+                className="px-3 py-1.5 rounded-xl bg-slate-200 text-xs font-bold cursor-pointer"
               >
-                Cerrar
+                {interfaz.admin.passwordModal.test2FAModal.closeBtn}
               </button>
               <button
                 onClick={() => {
@@ -429,9 +430,9 @@ export const AdminPasswordModal: React.FC<AdminPasswordModalProps> = ({
                     onShowToast('Código Inválido', 'El código ingresado no coincide', 'error');
                   }
                 }}
-                className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
               >
-                Verificar
+                {interfaz.admin.passwordModal.test2FAModal.verifyBtn}
               </button>
             </div>
           </div>

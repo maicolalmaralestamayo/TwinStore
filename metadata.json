@@ -1,5 +1,5 @@
 {
-  "name": "MercadoCuba - Marketplace por WhatsApp",
+  "name": "MercadoCubaOK - Marketplace por WhatsApp",
   "description": "Marketplace cubano que conecta clientes directamente con tiendas y proveedores por WhatsApp. Incluye panel de administración para tiendas, productos y tasas de cambio de dólar (USD a CUP) personalizables por tienda, además de buscador avanzado con filtros por precio y categoría.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

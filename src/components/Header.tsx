@@ -3,6 +3,7 @@ import { CurrencyDisplayMode, Store, Product, MarketplaceConfig } from '../types
 import { ThemeImage } from './common/ThemeImage';
 import { ThemeSelector } from './common/ThemeSelector';
 import { useTheme } from '../context/ThemeContext';
+import { interfaz } from '../data/interfaz';
 import {
   Store as StoreIcon,
   ShieldCheck,
@@ -40,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   // Extract branding configuration
-  const displayName = marketplaceConfig?.name || 'MercadoCuba';
-  const displaySlogan = marketplaceConfig?.slogan || 'Conecta directo con tiendas y proveedores en Cuba';
+  const displayName = marketplaceConfig?.name || 'TwinStore';
+  const displaySlogan = marketplaceConfig?.slogan || interfaz.hero.defaultSlogan;
   const logoUrl = marketplaceConfig?.logoUrl || '';
   const primaryColor = marketplaceConfig?.primaryColor || '#4f46e5';
   const secondaryColor = marketplaceConfig?.secondaryColor || '#0284c7';
@@ -122,32 +123,34 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center flex-wrap gap-1.5 sm:gap-2.5">
           {/* Average Exchange Rate Tag - Visible everywhere, text hidden on mobile/tablets */}
           <div
-            title={`Tasa promedio de cambio: 1 USD = ${avgRate} CUP (Rango: ${rateRangeText})`}
+            title={`${interfaz.header.avgRateLabel} 1 USD = ${avgRate} CUP (Rango: ${rateRangeText})`}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs"
           >
             <TrendingUp className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">Tasa promedio:</span>
+            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.avgRateLabel}</span>
             <span>1 USD = {avgRate} CUP</span>
           </div>
 
-          {/* Active Products Badge - Visible everywhere, text hidden on mobile/tablets */}
+          {/* Active Products and Services Badge */}
           <div
-            title={`${activeProducts.length} productos y servicios activos en el catálogo`}
+            title={`${activeProducts.length} ${interfaz.hero.productsCountLabel} en el catálogo`}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">Productos:</span>
+            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.productsBadge}</span>
             <span>{activeProducts.length}</span>
           </div>
 
-          {/* Directory of Active Stores Button - Visible everywhere, text hidden on mobile/tablets */}
+          {/* Directory of Active Stores and Providers Button */}
           <button
+            type="button"
             onClick={onOpenStoresModal}
-            title={`Ver directorio de ${activeStores.length} tiendas activas`}
+            title={`Ver directorio de ${activeStores.length} ${interfaz.hero.inStoresLabel}`}
+            aria-label={`Ver directorio de ${activeStores.length} ${interfaz.hero.inStoresLabel}`}
             className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700 shadow-2xs cursor-pointer"
           >
             <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">Tiendas:</span>
+            <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.storesBadge}</span>
             <span>{activeStores.length}</span>
           </button>
 
@@ -160,7 +163,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Admin / CEO Portal Toggle */}
           <button
+            type="button"
             onClick={() => onSwitchView(activeView === 'admin' ? 'public' : 'admin')}
+            title={activeView === 'admin' ? interfaz.header.btnCatalogTitle : interfaz.header.btnCeoTitle}
+            aria-label={activeView === 'admin' ? interfaz.header.btnCatalogTitle : interfaz.header.btnCeoTitle}
             style={
               activeView === 'admin'
                 ? { backgroundColor: primaryColor, color: '#ffffff' }
@@ -174,8 +180,8 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'bg-slate-900 dark:bg-slate-700 text-white hover:bg-slate-800 dark:hover:bg-slate-600'
             }`}
           >
-            <ShieldCheck className="w-4 h-4" />
-            <span className="hidden xs:inline">{activeView === 'admin' ? 'Catálogo' : 'CEO'}</span>
+            <ShieldCheck className="w-4 h-4 text-indigo-400" />
+            <span className="hidden xs:inline">{activeView === 'admin' ? interfaz.header.btnCatalog : interfaz.header.btnCeo}</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -23,7 +24,20 @@ app.use(express.json());
 
 // API route: Health Check
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "MercadoCuba API (SQLite Powered)" });
+  res.json({ status: "ok", service: "TwinStore API (SQLite Powered: twinstore.sqlite)" });
+});
+
+// API route: Get UI Strings from interfaz.json
+app.get("/api/interfaz", (req, res) => {
+  try {
+    const interfazPath = path.join(process.cwd(), "interfaz.json");
+    const fallbackPath = path.join(process.cwd(), "src", "data", "interfaz.json");
+    const targetPath = fs.existsSync(interfazPath) ? interfazPath : fallbackPath;
+    const content = fs.readFileSync(targetPath, "utf-8");
+    res.json(JSON.parse(content));
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to read interfaz.json", details: err.message });
+  }
 });
 
 // --- SQLite Database Relational Endpoints ---

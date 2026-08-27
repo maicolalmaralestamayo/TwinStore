@@ -38,6 +38,7 @@ import { ProductDetailModal } from './components/PublicMarketplace/ProductDetail
 import { StoreDirectoryModal } from './components/PublicMarketplace/StoreDirectoryModal';
 import { AdminLoginModal } from './components/AdminPortal/AdminLoginModal';
 import { AdminDashboard } from './components/AdminPortal/AdminDashboard';
+import { interfaz } from './data/interfaz';
 import {
   MessageCircle,
   ShoppingBag,
@@ -297,32 +298,26 @@ export default function App() {
     localStorage.setItem(LOCAL_STORAGE_KEYS.CONFIG, JSON.stringify(marketplaceConfig));
   }, [marketplaceConfig]);
 
-  // Dynamic Browser Tab Title & Favicon updating based on active store or marketplace name
+  // Dynamic Browser Tab Title & Favicon updating based on marketplace config
   useEffect(() => {
-    let title = marketplaceConfig.marketplaceName || 'Marketplace Cuba';
-    let iconUrl = marketplaceConfig.defaultStoreImageUrl || '/vite.svg';
-
-    if (filters.storeId) {
-      const selectedStoreObj = stores.find((s) => s.id === filters.storeId);
-      if (selectedStoreObj) {
-        title = `${selectedStoreObj.name} | ${marketplaceConfig.marketplaceName || 'Marketplace'}`;
-        const mainImage = selectedStoreObj.images?.find((img) => img.isMain)?.url || selectedStoreObj.images?.[0]?.url || selectedStoreObj.logoUrl;
-        if (mainImage) {
-          iconUrl = mainImage;
-        }
-      }
-    }
-
-    document.title = title;
+    const marketplaceName = marketplaceConfig?.name || 'TwinStore';
+    document.title = marketplaceName;
 
     let faviconLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
     if (!faviconLink) {
       faviconLink = document.createElement('link');
-      faviconLink.rel = 'shortcut icon';
+      faviconLink.rel = 'icon';
       document.head.appendChild(faviconLink);
     }
-    faviconLink.href = iconUrl;
-  }, [filters.storeId, stores, marketplaceConfig.marketplaceName, marketplaceConfig.defaultStoreImageUrl]);
+
+    if (marketplaceConfig.logoUrl && (marketplaceConfig.logoUrl.startsWith('http') || marketplaceConfig.logoUrl.startsWith('data:'))) {
+      faviconLink.href = marketplaceConfig.logoUrl;
+    } else {
+      const primary = marketplaceConfig.primaryColor || '#4f46e5';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${primary}"/><path d="M7 10h18l-2 14H9L7 10z" fill="white"/><path d="M12 10V7a4 4 0 0 1 8 0v3" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M12 17l3 3 5-5" stroke="${primary}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+      faviconLink.href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+  }, [marketplaceConfig.name, marketplaceConfig.logoUrl, marketplaceConfig.primaryColor]);
 
   // --- Toast Handler ---
   const showToast = (
@@ -698,10 +693,23 @@ export default function App() {
           if (!matchesRep) return false;
         }
 
-        if (storeFilters.deliveryOnly && !s.deliveryAvailable) {
+        if (storeFilters.deliveryMethods && storeFilters.deliveryMethods.length > 0) {
+          const wantsDelivery = storeFilters.deliveryMethods.includes('delivery');
+          const wantsPickup = storeFilters.deliveryMethods.includes('pickup');
+          if (wantsDelivery && !wantsPickup && !s.deliveryAvailable) {
+            return false;
+          }
+        } else if (storeFilters.deliveryOnly && !s.deliveryAvailable) {
           return false;
         }
-        if (storeFilters.transferOnly && !s.paymentOptions?.transferAccepted) {
+
+        if (storeFilters.paymentMethods && storeFilters.paymentMethods.length > 0) {
+          const wantsTransfer = storeFilters.paymentMethods.includes('transfer');
+          const wantsCash = storeFilters.paymentMethods.includes('cash');
+          if (wantsTransfer && !wantsCash && !s.paymentOptions?.transferAccepted) {
+            return false;
+          }
+        } else if (storeFilters.transferOnly && !s.paymentOptions?.transferAccepted) {
           return false;
         }
         return true;
@@ -853,7 +861,7 @@ export default function App() {
                 }`}
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>Productos y Servicios</span>
+                <span>{interfaz.subviews.products}</span>
                 <span
                   className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                     publicSubView === 'products'
@@ -877,7 +885,7 @@ export default function App() {
                 }`}
               >
                 <StoreIcon className="w-4 h-4" />
-                <span>Tiendas y Proveedores</span>
+                <span>{interfaz.subviews.stores}</span>
                 <span
                   className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                     publicSubView === 'stores'
@@ -913,16 +921,16 @@ export default function App() {
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-12 text-center my-6">
                     <ShoppingBag className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-slate-800">
-                      No se encontraron publicaciones con esos filtros
+                      {interfaz.filters.emptyResults.productsTitle}
                     </h3>
                     <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-                      Intenta cambiar de departamento, ampliar el rango de precios o limpiar los filtros activos.
+                      {interfaz.filters.emptyResults.productsSubtitle}
                     </p>
                     <button
                       onClick={() => handleFilterChange(DEFAULT_FILTERS)}
                       className="mt-5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all cursor-pointer"
                     >
-                      Restablecer filtros
+                      {interfaz.filters.emptyResults.resetButton}
                     </button>
                   </div>
                 ) : (
@@ -946,10 +954,10 @@ export default function App() {
                     {totalProductPages > 1 && (
                       <div className="bg-white rounded-2xl border border-slate-200 p-4 mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600 shadow-xs">
                         <div>
-                          Mostrando <span className="font-bold text-slate-900">{productStartItem}</span> -{' '}
-                          <span className="font-bold text-slate-900">{productEndItem}</span> de{' '}
-                          <span className="font-bold text-slate-900">{filteredProducts.length}</span> publicaciones{' '}
-                          (Página <span className="font-bold text-indigo-700">{validProductPage}</span> de{' '}
+                          {interfaz.pagination.showing} <span className="font-bold text-slate-900">{productStartItem}</span> -{' '}
+                          <span className="font-bold text-slate-900">{productEndItem}</span> {interfaz.pagination.of}{' '}
+                          <span className="font-bold text-slate-900">{filteredProducts.length}</span> {interfaz.pagination.products}{' '}
+                          ({interfaz.pagination.page} <span className="font-bold text-indigo-700">{validProductPage}</span> {interfaz.pagination.of}{' '}
                           <span className="font-bold text-slate-900">{totalProductPages}</span>)
                         </div>
 
@@ -963,7 +971,7 @@ export default function App() {
                             className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold transition-all cursor-pointer flex items-center gap-1"
                           >
                             <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>Anterior</span>
+                            <span>{interfaz.pagination.previous}</span>
                           </button>
 
                           <div className="flex items-center gap-1">
@@ -993,7 +1001,7 @@ export default function App() {
                             disabled={validProductPage === totalProductPages}
                             className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold transition-all cursor-pointer flex items-center gap-1"
                           >
-                            <span>Siguiente</span>
+                            <span>{interfaz.pagination.next}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1023,16 +1031,16 @@ export default function App() {
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-12 text-center my-6">
                     <StoreIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-slate-800">
-                      No se encontraron tiendas con esos filtros
+                      {interfaz.filters.emptyResults.storesTitle}
                     </h3>
                     <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-                      Intenta buscar por otra ubicación, o restablecer los filtros de búsqueda.
+                      {interfaz.filters.emptyResults.storesSubtitle}
                     </p>
                     <button
                       onClick={() => handleStoreFilterChange(DEFAULT_STORE_FILTERS)}
                       className="mt-5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-xs transition-all cursor-pointer"
                     >
-                      Restablecer filtros
+                      {interfaz.filters.emptyResults.resetButton}
                     </button>
                   </div>
                 ) : (
@@ -1057,10 +1065,10 @@ export default function App() {
                     {totalStorePages > 1 && (
                       <div className="bg-white rounded-2xl border border-slate-200 p-4 mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600 shadow-xs">
                         <div>
-                          Mostrando <span className="font-bold text-slate-900">{storeStartItem}</span> -{' '}
-                          <span className="font-bold text-slate-900">{storeEndItem}</span> de{' '}
-                          <span className="font-bold text-slate-900">{filteredStores.length}</span> tiendas{' '}
-                          (Página <span className="font-bold text-indigo-700">{validStorePage}</span> de{' '}
+                          {interfaz.pagination.showing} <span className="font-bold text-slate-900">{storeStartItem}</span> -{' '}
+                          <span className="font-bold text-slate-900">{storeEndItem}</span> {interfaz.pagination.of}{' '}
+                          <span className="font-bold text-slate-900">{filteredStores.length}</span> {interfaz.pagination.stores}{' '}
+                          ({interfaz.pagination.page} <span className="font-bold text-indigo-700">{validStorePage}</span> {interfaz.pagination.of}{' '}
                           <span className="font-bold text-slate-900">{totalStorePages}</span>)
                         </div>
 
@@ -1074,7 +1082,7 @@ export default function App() {
                             className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold transition-all cursor-pointer flex items-center gap-1"
                           >
                             <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>Anterior</span>
+                            <span>{interfaz.pagination.previous}</span>
                           </button>
 
                           <div className="flex items-center gap-1">
@@ -1104,7 +1112,7 @@ export default function App() {
                             disabled={validStorePage === totalStorePages}
                             className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 font-bold transition-all cursor-pointer flex items-center gap-1"
                           >
-                            <span>Siguiente</span>
+                            <span>{interfaz.pagination.next}</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         </div>

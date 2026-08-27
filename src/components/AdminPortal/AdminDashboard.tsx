@@ -15,6 +15,7 @@ import {
   parseAndImportAnyCsv,
   FullMarketplaceBackup,
 } from '../../lib/backupUtils';
+import { interfaz } from '../../data/interfaz';
 import {
   ShieldCheck,
   Store as StoreIcon,
@@ -187,14 +188,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
-                Panel de Administración
+                {interfaz.admin.portalTitle}
               </h1>
               <span className="text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md">
-                Dueño
+                {interfaz.admin.roleOwner}
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Configuración general del marketplace, tiendas, publicaciones y tasas de cambio.
+              {interfaz.admin.portalSubtitle}
             </p>
           </div>
         </div>
@@ -202,17 +203,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPasswordModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs sm:text-sm font-bold transition-all border border-slate-200"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 text-xs sm:text-sm font-bold transition-all border border-slate-200 cursor-pointer"
           >
             <Settings className="w-4 h-4" />
-            <span>Contraseña</span>
+            <span>{interfaz.admin.topButtons.changePassword}</span>
           </button>
           <button
             onClick={onLogout}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs sm:text-sm font-bold transition-all border border-slate-200"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 text-xs sm:text-sm font-bold transition-all border border-slate-200 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            <span>Cerrar Sesión</span>
+            <span>{interfaz.admin.topButtons.logout}</span>
           </button>
         </div>
       </div>
@@ -221,42 +222,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            Tiendas Conectadas
+            {interfaz.admin.metrics.connectedStores}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-slate-900">{activeStores.length}</span>
-            <span className="text-xs font-semibold text-emerald-600">conectadas</span>
+            <span className="text-xs font-semibold text-emerald-600">{interfaz.admin.metrics.connectedLabel}</span>
           </div>
           <div className="mt-1 text-xs text-slate-500 font-medium">
-            <span className="font-semibold text-slate-700">{activeStores.length}</span> conectadas •{' '}
-            <span className="font-semibold text-rose-600">{inactiveStoresCount}</span> desconectadas
+            <span className="font-semibold text-slate-700">{activeStores.length}</span> {interfaz.admin.metrics.connectedLabel} •{' '}
+            <span className="font-semibold text-rose-600">{inactiveStoresCount}</span> {interfaz.admin.metrics.disconnectedLabel}
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            Productos/Servicios
+            {interfaz.admin.metrics.productsAndServices}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-slate-900">{activeProducts.length}</span>
-            <span className="text-xs font-semibold text-emerald-600">activados</span>
+            <span className="text-xs font-semibold text-emerald-600">{interfaz.admin.metrics.activatedLabel}</span>
           </div>
           <div className="mt-1 text-xs text-slate-500 font-medium">
-            <span className="font-semibold text-slate-700">{activeProducts.length}</span> activados •{' '}
-            <span className="font-semibold text-amber-600">{inactiveProductsCount}</span> desactivados
+            <span className="font-semibold text-slate-700">{activeProducts.length}</span> {interfaz.admin.metrics.activatedLabel} •{' '}
+            <span className="font-semibold text-amber-600">{inactiveProductsCount}</span> {interfaz.admin.metrics.deactivatedLabel}
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            Tasa de Cambio Promedio
+            {interfaz.admin.metrics.avgRate}
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-indigo-600 font-mono">{avgRate}</span>
-            <span className="text-xs font-bold text-slate-500">CUP / USD</span>
+            <span className="text-xs font-bold text-slate-500">{interfaz.admin.metrics.rateUnit}</span>
           </div>
           <div className="mt-1 text-xs text-slate-500 font-medium">
-            Rango:{' '}
+            {interfaz.admin.metrics.rateRangePrefix}{' '}
             <span className="font-semibold text-slate-800 font-mono">
               {minRate === maxRate ? `${minRate} CUP` : `${minRate} - ${maxRate} CUP`}
             </span>
@@ -268,50 +269,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('config')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeTab === 'config'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <Settings className="w-4 h-4" />
-          <span>General</span>
+          <span>{interfaz.admin.tabs.general}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('stores')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeTab === 'stores'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
+          title={interfaz.admin.storesManager.title}
+          aria-label={interfaz.admin.storesManager.title}
         >
-          <StoreIcon className="w-4 h-4" />
-          <span>Tiendas ({stores.length})</span>
+          <StoreIcon className="w-4 h-4 text-indigo-400" />
+          <span>{interfaz.admin.tabs.stores} ({stores.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('products')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeTab === 'products'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
+          title={interfaz.admin.productsManager.title}
+          aria-label={interfaz.admin.productsManager.title}
         >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Catálogo ({products.length})</span>
+          <ShoppingBag className="w-4 h-4 text-indigo-400" />
+          <span>{interfaz.admin.tabs.products} ({products.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('backup')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
             activeTab === 'backup'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <Database className="w-4 h-4" />
-          <span>Respaldo</span>
+          <span>{interfaz.admin.tabs.backup}</span>
         </button>
       </div>
 
@@ -354,10 +359,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="bg-white rounded-3xl p-8 border border-gray-200 space-y-8">
           <div>
             <h3 className="text-xl font-black text-gray-900">
-              Gestión de Respaldos y Copias de Seguridad (.JSON y .CSV)
+              {interfaz.admin.backup.title}
             </h3>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Descarga o carga copias de seguridad de todas las tablas del marketplace (Tiendas, Productos, Geografía, Departamentos, Superetiquetas/Etiquetas y Configuraciones) en formato JSON unificado o archivos CSV individuales.
+              {interfaz.admin.backup.subtitle}
             </p>
           </div>
 
@@ -365,7 +370,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="space-y-4">
             <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Download className="w-4 h-4 text-emerald-600" />
-              <span>1. Descargar Respaldos por Tabla o Total</span>
+              <span>{interfaz.admin.backup.exportSection.title}</span>
             </h4>
             
             {/* Unified Full Backup JSON Card */}
@@ -375,9 +380,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <Database className="w-6 h-6" />
                 </div>
                 <div>
-                  <h5 className="font-extrabold text-slate-900 text-base">Respaldo Total del Sistema (.JSON)</h5>
+                  <h5 className="font-extrabold text-slate-900 text-base">{interfaz.admin.backup.exportSection.fullBackupTitle}</h5>
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Exporta un solo archivo con las 6 tablas de datos: Tiendas ({stores.length}), Productos ({products.length}), Geografía, Departamentos, Etiquetas y Configuraciones.
+                    {interfaz.admin.backup.exportSection.fullBackupDesc}
                   </p>
                 </div>
               </div>
@@ -386,12 +391,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 className="w-full sm:w-auto py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all shrink-0 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
-                <span>Descargar Respaldo Total (.JSON)</span>
+                <span>{interfaz.admin.backup.exportSection.fullBackupBtn}</span>
               </button>
             </div>
 
             {/* Individual Table CSV Exporters */}
-            <h5 className="text-xs font-bold text-slate-600 pt-2">Exportar Tablas Individuales a formato CSV (.csv):</h5>
+            <h5 className="text-xs font-bold text-slate-600 pt-2">{interfaz.admin.backup.exportSection.csvSubheading}</h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {/* Stores CSV */}
               <div className="border border-indigo-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-indigo-50/20 hover:border-indigo-300 transition-colors">
@@ -400,8 +405,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <StoreIcon className="w-4 h-4" />
                   </div>
                   <div>
-                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Tiendas</h6>
-                    <p className="text-[11px] text-slate-500">{stores.length} registros</p>
+                    <h6 className="font-bold text-slate-900 text-xs">{interfaz.admin.tabs.stores}</h6>
+                    <p className="text-[11px] text-slate-500">{stores.length} {interfaz.admin.backup.exportSection.recordsLabel}</p>
                   </div>
                 </div>
                 <button
@@ -412,7 +417,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Tiendas (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.storesCsv}</span>
                 </button>
               </div>
 
@@ -423,8 +428,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <ShoppingBag className="w-4 h-4" />
                   </div>
                   <div>
-                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Productos</h6>
-                    <p className="text-[11px] text-slate-500">{products.length} registros</p>
+                    <h6 className="font-bold text-slate-900 text-xs">{interfaz.admin.tabs.products}</h6>
+                    <p className="text-[11px] text-slate-500">{products.length} {interfaz.admin.backup.exportSection.recordsLabel}</p>
                   </div>
                 </div>
                 <button
@@ -435,7 +440,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Productos (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.productsCsv}</span>
                 </button>
               </div>
 
@@ -460,7 +465,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Geografía (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.geoCsv}</span>
                 </button>
               </div>
 
@@ -485,7 +490,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Departamentos (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.deptsCsv}</span>
                 </button>
               </div>
 
@@ -510,7 +515,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Etiquetas (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.tagsCsv}</span>
                 </button>
               </div>
 
@@ -535,7 +540,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Configuración (.CSV)</span>
+                  <span>{interfaz.admin.backup.exportSection.configCsv}</span>
                 </button>
               </div>
             </div>
@@ -545,20 +550,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="space-y-4 pt-4 border-t border-slate-200">
             <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Upload className="w-4 h-4 text-blue-600" />
-              <span>2. Cargar Respaldos e Importar Datos</span>
+              <span>{interfaz.admin.backup.importSection.title}</span>
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {/* Import JSON */}
               <div className="border border-gray-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-gray-50/60">
                 <div>
-                  <h5 className="font-bold text-gray-900 text-sm">Cargar Respaldo JSON</h5>
+                  <h5 className="font-bold text-gray-900 text-sm">{interfaz.admin.backup.importSection.jsonTitle}</h5>
                   <p className="text-xs text-gray-500 mt-1">
-                    Selecciona un archivo .JSON para restaurar las 6 tablas del marketplace simultáneamente.
+                    {interfaz.admin.backup.importSection.jsonDesc}
                   </p>
                 </div>
                 <label className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors">
                   <Upload className="w-4 h-4" />
-                  <span>Subir Archivo JSON</span>
+                  <span>{interfaz.admin.backup.importSection.jsonBtn}</span>
                   <input
                     type="file"
                     accept=".json"
@@ -571,14 +576,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Import CSV Intelligent */}
               <div className="border border-gray-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-gray-50/60">
                 <div>
-                  <h5 className="font-bold text-gray-900 text-sm">Cargar desde Archivo CSV</h5>
+                  <h5 className="font-bold text-gray-900 text-sm">{interfaz.admin.backup.importSection.csvTitle}</h5>
                   <p className="text-xs text-gray-500 mt-1">
-                    Detecta de forma inteligente si el CSV contiene Tiendas, Productos, Geografía, Departamentos, Etiquetas o Configuración.
+                    {interfaz.admin.backup.importSection.csvDesc}
                   </p>
                 </div>
                 <label className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-colors">
                   <Upload className="w-4 h-4" />
-                  <span>Subir Cualquier CSV</span>
+                  <span>{interfaz.admin.backup.importSection.csvBtn}</span>
                   <input
                     type="file"
                     accept=".csv"
@@ -591,16 +596,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Restore Seed Demo */}
               <div className="border border-amber-200 rounded-2xl p-5 flex flex-col justify-between gap-4 bg-amber-50/40">
                 <div>
-                  <h5 className="font-bold text-gray-900 text-sm">Restaurar Datos Demo</h5>
+                  <h5 className="font-bold text-gray-900 text-sm">{interfaz.admin.backup.importSection.demoTitle}</h5>
                   <p className="text-xs text-gray-600 mt-1">
-                    Restablece el marketplace con los datos de demostración iniciales.
+                    {interfaz.admin.backup.importSection.demoDesc}
                   </p>
                 </div>
                 <button
                   onClick={() => {
                     if (
                       window.confirm(
-                        '¿Estás seguro de restaurar los datos iniciales de demostración? Se reemplazarán los datos actuales.'
+                        interfaz.admin.backup.importSection.confirmRestore
                       )
                     ) {
                       onRestoreDefaults();
@@ -610,7 +615,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Restaurar Demo</span>
+                  <span>{interfaz.admin.backup.importSection.demoBtn}</span>
                 </button>
               </div>
             </div>
