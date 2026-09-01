@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, X, Mail, CheckCircle2, ArrowRight, Camera, Upload } from 'lucide-react';
+import { ShieldCheck, Lock, X, Mail, CheckCircle2, ArrowRight, Check, AlertTriangle, KeyRound } from 'lucide-react';
 import { interfaz } from '../../data/interfaz';
+import {
+  validateCeoPassword,
+  saveCeoPassword,
+  getCeoPasswordAgeInfo,
+  getCeoPasswordHistory,
+} from '../../utils/passwordSecurity';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -23,40 +29,34 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [error, setError] = useState('');
 
-  // Email verification flow states
+  // Email verification flow states for registration
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   const [generatedCode, setGeneratedCode] = useState('');
   const [userCodeInput, setUserCodeInput] = useState('');
 
-  // 2FA challenge flow states
-  const [is2FAChallenge, setIs2FAChallenge] = useState(false);
-  const [generated2FACode, setGenerated2FACode] = useState('');
-  const [user2FACodeInput, setUser2FACodeInput] = useState('');
+  // Mandatory 90-day password change on login
+  const [isPasswordExpiredFlow, setIsPasswordExpiredFlow] = useState(false);
+  const [newExpiredPassword, setNewExpiredPassword] = useState('');
+  const [confirmExpiredPassword, setConfirmExpiredPassword] = useState('');
 
   if (!isOpen) return null;
 
-  const handleAvatarFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setAvatarUrl(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  // Real-time password validation for registration
+  const regValidation = validateCeoPassword(password);
+  // Real-time password validation for expired password update
+  const expiredValidation = validateCeoPassword(newExpiredPassword);
 
   const handleStartEmailRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes('@')) {
-      setError('Por favor ingresa un correo electrónico válido.');
+      setError(interfaz.admin.auth.invalidEmailError);
       return;
     }
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+
+    if (!regValidation.isValid) {
+      setError(regValidation.errorMessage || interfaz.admin.passwordModal.errorRequirements);
       return;
     }
 
@@ -65,27 +65,22 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setGeneratedCode(code);
     setIsVerifyingEmail(true);
     setError('');
-    onShowToast('Código enviado por correo', `Tu código de verificación es: ${code}`, 'info');
+    onShowToast(interfaz.toasts.codeSent, `Tu código de verificación es: ${code}`, 'info');
   };
 
   const handleVerifyEmailCode = (e: React.FormEvent) => {
     e.preventDefault();
     if (userCodeInput.trim() !== generatedCode) {
-      setError('El código ingresado no coincide.');
+      setError(interfaz.admin.auth.codeMismatchError);
       return;
     }
 
     // Register as the unique CEO of the marketplace
-    const defaultAvatar =
-      avatarUrl ||
-      `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`;
-
     localStorage.setItem('ADMIN_NAME', email.split('@')[0]);
     localStorage.setItem('ADMIN_EMAIL', email);
-    localStorage.setItem('ADMIN_PASSWORD', password);
     localStorage.setItem('ADMIN_AUTH_METHOD', 'email');
-    localStorage.setItem('ADMIN_AVATAR', defaultAvatar);
     localStorage.setItem('ADMIN_EMAIL_VERIFIED', 'true');
+    saveCeoPassword(password);
 
     onShowToast('¡Verificación Exitosa!', 'Te has registrado como el Único CEO del Marketplace', 'success');
     onLoginSuccess();
@@ -95,48 +90,55 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     e.preventDefault();
     const storedPass = localStorage.getItem('ADMIN_PASSWORD') || 'admin123';
     const storedEmail = localStorage.getItem('ADMIN_EMAIL') || 'ceo@mercadocuba.cu';
-    const is2FAEnabled = localStorage.getItem('ADMIN_2FA_ENABLED') !== 'false';
 
-    if (
-      (email.trim().toLowerCase() === storedEmail.toLowerCase() || !email) &&
-      (password === storedPass || password === 'admin123' || password === 'admin')
-    ) {
-      if (is2FAEnabled && !is2FAChallenge) {
-        // Trigger 2FA step sent to declared email
-        const code2fa = Math.floor(100000 + Math.random() * 900000).toString();
-        setGenerated2FACode(code2fa);
-        setIs2FAChallenge(true);
+    const isEmailValid = email.trim().toLowerCase() === storedEmail.toLowerCase() || !email.trim();
+    const isPassValid = password === storedPass || password === 'admin123' || password === 'admin';
+
+    if (isEmailValid && isPassValid) {
+      // Check if 90-day password expiry reached
+      const ageInfo = getCeoPasswordAgeInfo();
+      if (ageInfo.isExpired) {
+        setIsPasswordExpiredFlow(true);
         setError('');
-        onShowToast('2FA Requerido', `Código de 2FA enviado a ${storedEmail}: ${code2fa}`, 'info');
         return;
       }
 
       setError('');
-      onShowToast('¡Bienvenido CEO!', 'Acceso verificado al Marketplace', 'success');
+      onShowToast(interfaz.toasts.loginSuccess, interfaz.toasts.authSuccess, 'success');
       onLoginSuccess();
     } else {
-      setError('Credenciales de CEO incorrectas.');
+      setError(interfaz.admin.auth.loginError);
     }
   };
 
-  const handleVerify2FACode = (e: React.FormEvent) => {
+  const handleSaveExpiredPassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (user2FACodeInput.trim() !== generated2FACode) {
-      setError('El código 2FA ingresado es incorrecto.');
+    const history = getCeoPasswordHistory();
+    const validation = validateCeoPassword(newExpiredPassword, history);
+
+    if (!validation.isValid) {
+      setError(validation.errorMessage || interfaz.admin.passwordModal.errorRequirements);
       return;
     }
 
-    onShowToast('¡2FA Verificado!', 'Acceso concedido al CEO del Marketplace', 'success');
+    if (newExpiredPassword !== confirmExpiredPassword) {
+      setError(interfaz.admin.passwordModal.errorMismatch);
+      return;
+    }
+
+    saveCeoPassword(newExpiredPassword);
+    setError('');
+    onShowToast('Contraseña Renovada', 'Tu contraseña de CEO ha sido actualizada exitosamente.', 'success');
     onLoginSuccess();
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-gray-100 p-6 sm:p-8 animate-in fade-in zoom-in-95 my-8">
+      <div className="relative bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 p-6 sm:p-8 animate-in fade-in zoom-in-95 my-8">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -154,7 +156,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         </p>
 
         {/* Tabs for Login / Register */}
-        {!isVerifyingEmail && !is2FAChallenge && (
+        {!isVerifyingEmail && !isPasswordExpiredFlow && (
           <div className="flex border-b border-slate-200 mb-5">
             <button
               onClick={() => { setActiveTab('login'); setError(''); }}
@@ -179,8 +181,107 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </div>
         )}
 
+        {/* MANDATORY 90-DAY PASSWORD EXPIRATION FLOW */}
+        {isPasswordExpiredFlow && (
+          <form onSubmit={handleSaveExpiredPassword} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl space-y-2">
+              <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>{interfaz.admin.auth.passwordExpiredTitle}</span>
+              </div>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                {interfaz.admin.auth.passwordExpiredDesc}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                {interfaz.admin.passwordModal.newPasswordLabel}
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  value={newExpiredPassword}
+                  onChange={(e) => {
+                    setNewExpiredPassword(e.target.value);
+                    setError('');
+                  }}
+                  placeholder={interfaz.admin.passwordModal.newPasswordPlaceholder}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+              <p className="font-extrabold text-slate-700 text-[11px]">
+                {interfaz.admin.passwordModal.requirementsTitle}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 font-semibold text-[10px]">
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleMinLength ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.req12Chars}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleUppercase ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleUppercase ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.reqUppercase}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleLowercase ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleLowercase ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.reqLowercase}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleNumber ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.reqNumber}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleSpecial ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleSpecial ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.reqSpecial}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 ${expiredValidation.ruleNotInHistory ? 'text-emerald-700' : 'text-slate-400'}`}>
+                  {expiredValidation.ruleNotInHistory ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                  <span>{interfaz.admin.passwordModal.reqHistory}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                {interfaz.admin.passwordModal.confirmPasswordLabel}
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password"
+                  value={confirmExpiredPassword}
+                  onChange={(e) => {
+                    setConfirmExpiredPassword(e.target.value);
+                    setError('');
+                  }}
+                  placeholder={interfaz.admin.passwordModal.confirmPasswordPlaceholder}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none text-sm font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
+
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>{interfaz.admin.auth.updateAndLoginBtn}</span>
+            </button>
+          </form>
+        )}
+
         {/* EMAIL VERIFICATION STEP FOR REGISTRATION */}
-        {isVerifyingEmail && (
+        {isVerifyingEmail && !isPasswordExpiredFlow && (
           <form onSubmit={handleVerifyEmailCode} className="space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-2">
               <Mail className="w-8 h-8 text-emerald-600 mx-auto" />
@@ -232,101 +333,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </form>
         )}
 
-        {/* 2FA CHALLENGE STEP */}
-        {is2FAChallenge && (
-          <form onSubmit={handleVerify2FACode} className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-2">
-              <Mail className="w-8 h-8 text-emerald-600 mx-auto" />
-              <h4 className="font-extrabold text-slate-900 text-sm">
-                {interfaz.admin.auth.twoFactorLabel}
-              </h4>
-              <p className="text-xs text-slate-600">
-                {interfaz.admin.auth.twoFactorDesc}
-              </p>
-              <div className="bg-white py-2 px-4 rounded-xl border border-emerald-300 inline-block text-xl font-mono font-black text-emerald-600 tracking-widest my-1 shadow-xs">
-                {generated2FACode}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {interfaz.admin.auth.enter2FACode}
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={user2FACodeInput}
-                onChange={(e) => setUser2FACodeInput(e.target.value)}
-                placeholder="000000"
-                className="w-full text-center text-lg tracking-widest font-mono py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none font-bold"
-                required
-                autoFocus
-              />
-            </div>
-
-            {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIs2FAChallenge(false)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
-              >
-                {interfaz.admin.auth.cancelBtn}
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md inline-flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <span>{interfaz.admin.passwordModal.test2FAModal.verifyBtn}</span>
-                <CheckCircle2 className="w-4 h-4" />
-              </button>
-            </div>
-          </form>
-        )}
-
         {/* REGISTRATION FORM FOR CEO */}
-        {!isVerifyingEmail && !is2FAChallenge && activeTab === 'register' && (
+        {!isVerifyingEmail && !isPasswordExpiredFlow && activeTab === 'register' && (
           <form onSubmit={handleStartEmailRegister} className="space-y-4">
-            {/* Profile Photo field */}
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
-                {interfaz.admin.auth.photoLabel}
-              </label>
-              <div className="flex items-center gap-3">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Vista previa"
-                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500 shadow-xs"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-400">
-                    <Camera className="w-6 h-6" />
-                  </div>
-                )}
-                <div className="flex-1 space-y-1">
-                  <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder={interfaz.admin.auth.photoPlaceholder}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:border-emerald-500 outline-none"
-                  />
-                  <label className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{interfaz.admin.auth.uploadPhotoBtn}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarFile}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
                 {interfaz.admin.auth.emailLabel}
@@ -361,6 +370,37 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               </div>
             </div>
 
+            {/* Live Requirements checklist for registration */}
+            {password.length > 0 && (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                <p className="font-extrabold text-slate-700 text-[11px]">
+                  {interfaz.admin.passwordModal.requirementsTitle}
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 font-semibold text-[10px]">
+                  <div className={`flex items-center gap-1.5 ${regValidation.ruleMinLength ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {regValidation.ruleMinLength ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                    <span>{interfaz.admin.passwordModal.req12Chars}</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${regValidation.ruleUppercase ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {regValidation.ruleUppercase ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                    <span>{interfaz.admin.passwordModal.reqUppercase}</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${regValidation.ruleLowercase ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {regValidation.ruleLowercase ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                    <span>{interfaz.admin.passwordModal.reqLowercase}</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${regValidation.ruleNumber ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {regValidation.ruleNumber ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                    <span>{interfaz.admin.passwordModal.reqNumber}</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 ${regValidation.ruleSpecial ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {regValidation.ruleSpecial ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+                    <span>{interfaz.admin.passwordModal.reqSpecial}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
 
             <button
@@ -374,7 +414,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         )}
 
         {/* LOGIN FORM FOR CEO */}
-        {!isVerifyingEmail && !is2FAChallenge && activeTab === 'login' && (
+        {!isVerifyingEmail && !isPasswordExpiredFlow && activeTab === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">

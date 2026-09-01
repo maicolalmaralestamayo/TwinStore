@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { SearchableMultiSelect } from '../common/SearchableMultiSelect';
 import { SearchableSelect } from '../common/SearchableSelect';
+import { interfaz } from '../../data/interfaz';
 
 interface AdvancedSearchProps {
   categories?: CategoryItem[];
@@ -56,6 +57,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   isExpanded,
   onToggleExpanded,
 }) => {
+  const t = interfaz.filters;
   const activeStores = stores.filter((s) => s.active);
   const catalogToUse =
     departmentsCatalog && departmentsCatalog.length > 0
@@ -66,23 +68,49 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const effectiveGeoCatalog =
     geoCatalog && geoCatalog.length > 0 ? geoCatalog : INITIAL_GEO_CATALOG;
 
-  // Check if store is directly selected (disables Province, Municipality and Reparto filters)
-  const isGeoDisabled = Boolean(filters.storeIds && filters.storeIds.length > 0);
+  // --- DEPENDENCY & DISABLING LOGIC ---
 
-  // GEO: Provinces Options
+  // Helper to extract location safely from Store
+  const getStoreLocation = (s: Store) => ({
+    province: s.address?.province || (s as any).province || '',
+    municipality: s.address?.municipality || (s as any).municipality || '',
+    reparto: s.address?.neighborhood || (s as any).reparto || (s as any).neighborhood || '',
+  });
+
+  // 1. Geography & Stores hierarchy:
+  // ONLY if Store is directly selected -> disables Reparto, Municipality, Province
+  const isStoreSelected = Boolean(filters.storeIds && filters.storeIds.length > 0);
+
+  const isProvinceDisabled = isStoreSelected;
+  const isMunicipalityDisabled = isStoreSelected;
+  const isRepartoDisabled = isStoreSelected;
+
+  // 2. Departments & Subdepartments:
+  // If Subdepartment is directly selected -> disables Department
+  const isSubcategorySelected = Boolean(filters.subcategories && filters.subcategories.length > 0);
+  const isDepartmentDisabled = isSubcategorySelected;
+
+  // 3. Supertags & Tags:
+  // If Tag is directly selected -> disables Supertag
+  const isTagSelected = Boolean(filters.tagValues && filters.tagValues.length > 0);
+  const isSupertagDisabled = isTagSelected;
+
+  // --- ESCALONADO / CASCADING OPTIONS ---
+
+  // PROVINCES OPTIONS
   const provinceOptions = effectiveGeoCatalog.map((p) => ({
     value: p.name,
     label: p.name,
     sublabel: `${p.municipalities?.length || 0} municipios`,
   }));
 
-  // Selected Provinces List (or all if none selected)
+  // Selected Provinces List for cascading down
   const selectedProvincesList =
     filters.provinces && filters.provinces.length > 0
-      ? effectiveGeoCatalog.filter((p) => filters.provinces.includes(p.name))
+      ? effectiveGeoCatalog.filter((p) => filters.provinces?.includes(p.name))
       : effectiveGeoCatalog;
 
-  // GEO: Municipalities Options (only belonging to selected provinces)
+  // MUNICIPALITIES OPTIONS (cascades from selected provinces)
   const municipalityOptions = selectedProvincesList.flatMap((p) =>
     (p.municipalities || []).map((m) => ({
       value: m.name,
@@ -91,16 +119,16 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     }))
   );
 
-  // Selected Municipalities List
+  // Selected Municipalities List for cascading down
   const selectedMunicipalitiesList = selectedProvincesList.flatMap((p) =>
     filters.municipalities && filters.municipalities.length > 0
       ? (p.municipalities || []).filter((m) =>
-          filters.municipalities.includes(m.name)
+          filters.municipalities?.includes(m.name)
         )
       : p.municipalities || []
   );
 
-  // GEO: Repartos Options (only belonging to selected municipalities)
+  // REPARTOS OPTIONS (cascades from selected municipalities)
   const repartoOptions = selectedMunicipalitiesList.flatMap((m) =>
     (m.repartos || []).map((r) => ({
       value: r.name,
@@ -109,27 +137,29 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     }))
   );
 
-  // STORES: Filtered dynamically by Province -> Municipality -> Reparto -> Payment -> Delivery
+  // STORES OPTIONS (cascades from Repartos -> Municipalities -> Provinces -> Payment/Delivery)
   const matchingStores = activeStores.filter((s) => {
-    // 1. Province filter
-    if (filters.provinces && filters.provinces.length > 0) {
-      if (!s.province || !filters.provinces.includes(s.province)) {
-        return false;
-      }
-    }
-    // 2. Municipality filter
-    if (filters.municipalities && filters.municipalities.length > 0) {
-      if (!s.municipality || !filters.municipalities.includes(s.municipality)) {
-        return false;
-      }
-    }
-    // 3. Reparto filter
+    const loc = getStoreLocation(s);
+
+    // 1. Reparto filter
     if (filters.repartos && filters.repartos.length > 0) {
-      if (!s.reparto || !filters.repartos.includes(s.reparto)) {
+      if (!loc.reparto || !filters.repartos.includes(loc.reparto)) {
         return false;
       }
     }
-    // 4. Payment method filter (Tipo de pago: Transferencia / Efectivo)
+    // 2. Municipality filter (if no reparto filter, or in addition)
+    if (filters.municipalities && filters.municipalities.length > 0) {
+      if (!loc.municipality || !filters.municipalities.includes(loc.municipality)) {
+        return false;
+      }
+    }
+    // 3. Province filter (if no municipality filter, or in addition)
+    if (filters.provinces && filters.provinces.length > 0) {
+      if (!loc.province || !filters.provinces.includes(loc.province)) {
+        return false;
+      }
+    }
+    // 4. Payment method filter (Transferencia / Efectivo)
     if (filters.paymentMethods && filters.paymentMethods.length > 0) {
       const wantsTransfer = filters.paymentMethods.includes('transfer');
       const wantsCash = filters.paymentMethods.includes('cash');
@@ -140,7 +170,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       return false;
     }
 
-    // 5. Delivery method filter (Mensajería / Recogida en tienda)
+    // 5. Delivery method filter (Mensajería / Recogida)
     if (filters.deliveryMethods && filters.deliveryMethods.length > 0) {
       const wantsDelivery = filters.deliveryMethods.includes('delivery');
       const wantsPickup = filters.deliveryMethods.includes('pickup');
@@ -154,11 +184,14 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     return true;
   });
 
-  const storeOptions = matchingStores.map((s) => ({
-    value: s.id,
-    label: s.name,
-    sublabel: `${s.province || ''}${s.municipality ? ' • ' + s.municipality : ''}${s.reparto ? ' • ' + s.reparto : ''}`,
-  }));
+  const storeOptions = matchingStores.map((s) => {
+    const loc = getStoreLocation(s);
+    return {
+      value: s.id,
+      label: s.name,
+      sublabel: `${loc.province || ''}${loc.municipality ? ' • ' + loc.municipality : ''}${loc.reparto ? ' • ' + loc.reparto : ''}`,
+    };
+  });
 
   // DEPARTMENTS & SUBDEPARTMENTS
   const departmentOptions = catalogToUse.map((dept) => ({
@@ -169,7 +202,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   const selectedDeptsList =
     filters.categories && filters.categories.length > 0
-      ? catalogToUse.filter((d) => filters.categories.includes(d.name))
+      ? catalogToUse.filter((d) => filters.categories?.includes(d.name))
       : catalogToUse;
 
   const subcategoryOptions = selectedDeptsList.flatMap((d) =>
@@ -189,73 +222,110 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   const selectedTagGroupsList =
     filters.tagGroups && filters.tagGroups.length > 0
-      ? effectiveTagsCatalog.filter((g) => filters.tagGroups.includes(g.name))
+      ? effectiveTagsCatalog.filter((g) => filters.tagGroups?.includes(g.name))
       : effectiveTagsCatalog;
 
   const tagOptions = selectedTagGroupsList.flatMap((g) =>
-    (g.tags || []).map((t) => ({
-      value: t.name,
-      label: t.name,
+    (g.tags || []).map((tItem) => ({
+      value: tItem.name,
+      label: tItem.name,
       sublabel: g.name,
     }))
   );
 
-  // OFFER TYPE OPTIONS (Productos / Servicios)
+  // OFFER TYPE (Productos / Servicios)
   const itemTypeOptions = [
     {
       value: 'product',
-      label: 'Productos',
-      sublabel: 'Artículos físicos y bienes',
+      label: t.options.product || 'Productos',
+      sublabel: t.options.productSublabel || 'Artículos físicos y bienes',
     },
     {
       value: 'service',
-      label: 'Servicios',
-      sublabel: 'Servicios profesionales y prestaciones',
+      label: t.options.service || 'Servicios',
+      sublabel: t.options.serviceSublabel || 'Servicios profesionales y prestaciones',
     },
   ];
 
-  // TIPO DE PAGO OPTIONS (Transferencia / Efectivo)
+  // TIPO DE PAGO (Transferencia / Efectivo)
   const paymentMethodOptions = [
     {
       value: 'transfer',
-      label: 'Transferencia',
-      sublabel: 'Pago por transferencia bancaria o entre tarjetas',
+      label: t.options.payTransfer || 'Transferencia',
+      sublabel: t.options.transferSublabel || 'Pago por transferencia bancaria o entre tarjetas',
     },
     {
       value: 'cash',
-      label: 'Efectivo',
-      sublabel: 'Pago en efectivo directo',
+      label: t.options.payCash || 'Efectivo',
+      sublabel: t.options.cashSublabel || 'Pago en efectivo directo',
     },
   ];
 
-  // MENSAJERÍA OPTIONS (Mensajería / Recogida en tienda)
+  // MENSAJERÍA (Mensajería / Recogida)
   const deliveryMethodOptions = [
     {
       value: 'delivery',
-      label: 'Mensajería',
-      sublabel: 'Tiendas con servicio de mensajería',
+      label: t.options.deliveryCourier || 'Mensajería',
+      sublabel: t.options.courierSublabel || 'Tiendas con servicio de mensajería',
     },
     {
       value: 'pickup',
-      label: 'Recogida en tienda',
-      sublabel: 'Tiendas sin servicio de mensajería (solo recogida)',
+      label: t.options.deliveryPickup || 'Recogida',
+      sublabel: t.options.pickupSublabel || 'Tiendas con recogida en local',
     },
   ];
 
-  // Filter Update Logic with cascading reset and validation
+  // Filter Update Logic with cascading prune and sync
   const handleUpdate = <K extends keyof FilterState>(
     key: K,
     value: FilterState[K]
   ) => {
     if (key === 'storeIds') {
       const newStoreIds = value as string[];
-      // If user directly filters by store, clear geo filters
       onFilterChange({
         ...filters,
         storeIds: newStoreIds,
-        provinces: newStoreIds.length > 0 ? [] : filters.provinces,
-        municipalities: newStoreIds.length > 0 ? [] : filters.municipalities,
-        repartos: newStoreIds.length > 0 ? [] : filters.repartos,
+      });
+    } else if (key === 'repartos') {
+      const newReps = value as string[];
+      // Prune storeIds if store is not in new repartos
+      const validStores = (filters.storeIds || []).filter((id) => {
+        const st = activeStores.find((s) => s.id === id);
+        if (!st) return false;
+        const loc = getStoreLocation(st);
+        if (newReps.length > 0 && (!loc.reparto || !newReps.includes(loc.reparto))) return false;
+        return true;
+      });
+
+      onFilterChange({
+        ...filters,
+        repartos: newReps,
+        storeIds: validStores,
+      });
+    } else if (key === 'municipalities') {
+      const newMuns = value as string[];
+      // Prune repartos that no longer belong to selected municipalities
+      const validReps = (filters.repartos || []).filter((r) =>
+        effectiveGeoCatalog
+          .filter((p) => (filters.provinces || []).length === 0 || (filters.provinces || []).includes(p.name))
+          .flatMap((p) => p.municipalities || [])
+          .filter((m) => newMuns.length === 0 || newMuns.includes(m.name))
+          .some((m) => m.repartos?.some((rep) => rep.name === r))
+      );
+      // Prune storeIds
+      const validStores = (filters.storeIds || []).filter((id) => {
+        const st = activeStores.find((s) => s.id === id);
+        if (!st) return false;
+        const loc = getStoreLocation(st);
+        if (newMuns.length > 0 && (!loc.municipality || !newMuns.includes(loc.municipality))) return false;
+        return true;
+      });
+
+      onFilterChange({
+        ...filters,
+        municipalities: newMuns,
+        repartos: validReps,
+        storeIds: validStores,
       });
     } else if (key === 'provinces') {
       const newProvs = value as string[];
@@ -277,7 +347,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       const validStores = (filters.storeIds || []).filter((id) => {
         const st = activeStores.find((s) => s.id === id);
         if (!st) return false;
-        if (newProvs.length > 0 && (!st.province || !newProvs.includes(st.province))) return false;
+        const loc = getStoreLocation(st);
+        if (newProvs.length > 0 && (!loc.province || !newProvs.includes(loc.province))) return false;
         return true;
       });
 
@@ -288,47 +359,15 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         repartos: validReps,
         storeIds: validStores,
       });
-    } else if (key === 'municipalities') {
-      const newMuns = value as string[];
-      // Prune repartos
-      const validReps = (filters.repartos || []).filter((r) =>
-        effectiveGeoCatalog
-          .filter((p) => (filters.provinces || []).length === 0 || (filters.provinces || []).includes(p.name))
-          .flatMap((p) => p.municipalities || [])
-          .filter((m) => newMuns.length === 0 || newMuns.includes(m.name))
-          .some((m) => m.repartos?.some((rep) => rep.name === r))
-      );
-      // Prune storeIds
-      const validStores = (filters.storeIds || []).filter((id) => {
-        const st = activeStores.find((s) => s.id === id);
-        if (!st) return false;
-        if (newMuns.length > 0 && (!st.municipality || !newMuns.includes(st.municipality))) return false;
-        return true;
-      });
-
+    } else if (key === 'subcategories') {
+      const newSubcats = value as string[];
       onFilterChange({
         ...filters,
-        municipalities: newMuns,
-        repartos: validReps,
-        storeIds: validStores,
-      });
-    } else if (key === 'repartos') {
-      const newReps = value as string[];
-      // Prune storeIds
-      const validStores = (filters.storeIds || []).filter((id) => {
-        const st = activeStores.find((s) => s.id === id);
-        if (!st) return false;
-        if (newReps.length > 0 && (!st.reparto || !newReps.includes(st.reparto))) return false;
-        return true;
-      });
-
-      onFilterChange({
-        ...filters,
-        repartos: newReps,
-        storeIds: validStores,
+        subcategories: newSubcats,
       });
     } else if (key === 'categories') {
       const newCats = value as string[];
+      // Prune subcategories that don't belong to the selected departments
       const validSubcats = (filters.subcategories || []).filter((sub) =>
         catalogToUse
           .filter((d) => newCats.length === 0 || newCats.includes(d.name))
@@ -339,12 +378,19 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         categories: newCats,
         subcategories: validSubcats,
       });
+    } else if (key === 'tagValues') {
+      const newTags = value as string[];
+      onFilterChange({
+        ...filters,
+        tagValues: newTags,
+      });
     } else if (key === 'tagGroups') {
       const newGroups = value as string[];
-      const validTags = (filters.tagValues || []).filter((t) =>
+      // Prune tag values that don't belong to the selected supertags
+      const validTags = (filters.tagValues || []).filter((tv) =>
         effectiveTagsCatalog
           .filter((g) => newGroups.length === 0 || newGroups.includes(g.name))
-          .some((g) => g.tags?.some((tag) => tag.name === t))
+          .some((g) => g.tags?.some((tag) => tag.name === tv))
       );
       onFilterChange({
         ...filters,
@@ -361,7 +407,6 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   // Price validation: strictly enforce positive numbers only (no 'e', '+', '-', letters or negative values)
   const handleNumericPriceInput = (field: 'minPrice' | 'maxPrice', rawValue: string) => {
-    // Keep only numbers and a single decimal dot
     const cleaned = rawValue.replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned;
@@ -380,10 +425,15 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   };
 
   const preventInvalidPriceKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Block exponent 'e', 'E', minus '-', plus '+'
     if (['e', 'E', '+', '-'].includes(e.key)) {
       e.preventDefault();
     }
+  };
+
+  // Helper to generate disabled reason notice
+  const getGeoDisabledReason = () => {
+    if (isStoreSelected) return t.disabledNotices.byStore || '(Bloqueado por tienda o proveedor)';
+    return '';
   };
 
   // Count active filters
@@ -412,8 +462,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         <button
           type="button"
           onClick={onToggleExpanded}
-          title={isExpanded ? 'Plegar filtros avanzados' : 'Desplegar filtros avanzados'}
-          aria-label={isExpanded ? 'Plegar filtros avanzados' : 'Desplegar filtros avanzados'}
+          title={isExpanded ? t.tooltips.collapse : t.tooltips.expand}
+          aria-label={isExpanded ? t.tooltips.collapse : t.tooltips.expand}
           className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none flex-1 min-w-0"
         >
           <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
@@ -423,7 +473,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-none">
-                Filtrado de Productos y servicios
+                {t.productFilterTitle || 'Filtrado de Productos y servicios'}
               </h3>
               {hasActiveFilters && (
                 <span className="bg-slate-100 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 text-[11px] font-extrabold px-2 py-0.5 rounded-full">
@@ -432,7 +482,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               )}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Encontrados: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{totalResults}</strong> resultados{' '}
+              Encontrados: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{totalResults}</strong> {t.resultsFound || 'resultados encontrados'}{' '}
               <span className="text-slate-400 dark:text-slate-500">
                 • {isExpanded ? 'Filtros desplegados' : 'Filtros plegados'}
               </span>
@@ -441,7 +491,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
-          {/* Botón de limpieza de filtros: sólo ícono con tooltip */}
+          {/* Reset button: icon only with tooltip */}
           {hasActiveFilters && (
             <button
               type="button"
@@ -449,20 +499,20 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 e.stopPropagation();
                 onResetFilters();
               }}
-              title="Restablecer o limpiar todos los filtros"
-              aria-label="Restablecer o limpiar todos los filtros"
+              title={t.tooltips.reset || 'Restablecer o limpiar todos los filtros'}
+              aria-label={t.tooltips.reset || 'Restablecer o limpiar todos los filtros'}
               className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
             >
               <RotateCcw className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             </button>
           )}
 
-          {/* Toggle button - ONLY ICON */}
+          {/* Toggle button */}
           <button
             type="button"
             onClick={onToggleExpanded}
-            title={isExpanded ? 'Plegar filtros' : 'Desplegar filtros'}
-            aria-label={isExpanded ? 'Plegar filtros' : 'Desplegar filtros'}
+            title={isExpanded ? t.tooltips.collapse : t.tooltips.expand}
+            aria-label={isExpanded ? t.tooltips.collapse : t.tooltips.expand}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shrink-0"
           >
             {isExpanded ? (
@@ -474,287 +524,399 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         </div>
       </div>
 
-      {/* Expandable Body */}
+      {/* Expandable Body with Filter Groups */}
       {isExpanded && (
-        <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-4 animate-in fade-in duration-200 rounded-b-2xl">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {/* Provincias */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Provincias</span>
-                </span>
-                {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
-                )}
-              </label>
-              <SearchableMultiSelect
-                options={provinceOptions}
-                values={filters.provinces || []}
-                onChange={(values) => handleUpdate('provinces', values)}
-                placeholder={isGeoDisabled ? 'Deshabilitado (filtro tienda activo)' : 'Todas las provincias'}
-                allLabel="Todas las provincias"
-                searchPlaceholder="Buscar provincia..."
-                disabled={isGeoDisabled}
-              />
+        <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-6 animate-in fade-in duration-200 rounded-b-2xl">
+          
+          {/* ========================================================================= */}
+          {/* GRUPO 1: UBICACIÓN Y TIENDAS (PROVINCIAS, MUNICIPIOS, REPARTOS, TIENDAS) */}
+          {/* ========================================================================= */}
+          <div className="bg-white dark:bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <MapPin className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t.groups.locationAndStores || 'Ubicación y Tiendas'}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.groups.locationAndStoresDesc || 'Filtra por zona geográfica o selecciona directamente tus tiendas y proveedores'}
+                </p>
+              </div>
             </div>
 
-            {/* Municipios */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Municipios</span>
-                </span>
-                {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
-                )}
-              </label>
-              <SearchableMultiSelect
-                options={municipalityOptions}
-                values={filters.municipalities || []}
-                onChange={(values) => handleUpdate('municipalities', values)}
-                placeholder={
-                  isGeoDisabled
-                    ? 'Deshabilitado (filtro tienda activo)'
-                    : municipalityOptions.length === 0
-                    ? 'Sin municipios disponibles'
-                    : 'Todos los municipios'
-                }
-                allLabel="Todos los municipios"
-                searchPlaceholder="Buscar municipio..."
-                disabled={isGeoDisabled || municipalityOptions.length === 0}
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Provincias */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.province || 'Provincias'}</span>
+                  </span>
+                  {isProvinceDisabled && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
+                      {getGeoDisabledReason()}
+                    </span>
+                  )}
+                </label>
+                <SearchableMultiSelect
+                  options={provinceOptions}
+                  values={filters.provinces || []}
+                  onChange={(values) => handleUpdate('provinces', values)}
+                  placeholder={isProvinceDisabled ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)') : (t.placeholders.allProvinces || 'Todas las provincias')}
+                  allLabel={t.placeholders.allProvinces || 'Todas las provincias'}
+                  searchPlaceholder={t.placeholders.selectProvince || 'Buscar provincia...'}
+                  disabled={isProvinceDisabled}
+                />
+              </div>
 
-            {/* Reparto / Localidad */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Repartos / Localidades</span>
-                </span>
-                {isGeoDisabled && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">(Bloqueado por tienda o proveedor)</span>
-                )}
-              </label>
-              <SearchableMultiSelect
-                options={repartoOptions}
-                values={filters.repartos || []}
-                onChange={(values) => handleUpdate('repartos', values)}
-                placeholder={
-                  isGeoDisabled
-                    ? 'Deshabilitado (filtro tienda activo)'
-                    : repartoOptions.length === 0
-                    ? 'Sin repartos disponibles'
-                    : 'Todos los repartos'
-                }
-                allLabel="Todos los repartos"
-                searchPlaceholder="Buscar reparto..."
-                disabled={isGeoDisabled || repartoOptions.length === 0}
-              />
-            </div>
+              {/* Municipios */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.municipality || 'Municipios'}</span>
+                  </span>
+                  {isMunicipalityDisabled && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
+                      {getGeoDisabledReason()}
+                    </span>
+                  )}
+                </label>
+                <SearchableMultiSelect
+                  options={municipalityOptions}
+                  values={filters.municipalities || []}
+                  onChange={(values) => handleUpdate('municipalities', values)}
+                  placeholder={
+                    isMunicipalityDisabled
+                      ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)')
+                      : municipalityOptions.length === 0
+                      ? (t.placeholders.noMunicipalities || 'Sin municipios disponibles')
+                      : (t.placeholders.allMunicipalities || 'Todos los municipios')
+                  }
+                  allLabel={t.placeholders.allMunicipalities || 'Todos los municipios'}
+                  searchPlaceholder={t.placeholders.selectMunicipality || 'Buscar municipio...'}
+                  disabled={isMunicipalityDisabled || municipalityOptions.length === 0}
+                />
+              </div>
 
-            {/* Tiendas y proveedores */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Tiendas y proveedores</span>
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                  ({matchingStores.length} disp.)
-                </span>
-              </label>
-              <SearchableMultiSelect
-                options={storeOptions}
-                values={filters.storeIds || []}
-                onChange={(values) => handleUpdate('storeIds', values)}
-                placeholder={
-                  storeOptions.length === 0
-                    ? 'No hay tiendas coincidentes'
-                    : 'Todas las tiendas y proveedores'
-                }
-                allLabel="Todas las tiendas y proveedores disponibles"
-                searchPlaceholder="Buscar tienda o proveedor..."
-                disabled={storeOptions.length === 0}
-              />
-            </div>
+              {/* Repartos / Localidades */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.neighborhood || 'Repartos / Localidades'}</span>
+                  </span>
+                  {isRepartoDisabled && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
+                      {getGeoDisabledReason()}
+                    </span>
+                  )}
+                </label>
+                <SearchableMultiSelect
+                  options={repartoOptions}
+                  values={filters.repartos || []}
+                  onChange={(values) => handleUpdate('repartos', values)}
+                  placeholder={
+                    isRepartoDisabled
+                      ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)')
+                      : repartoOptions.length === 0
+                      ? (t.placeholders.noRepartos || 'Sin repartos disponibles')
+                      : (t.placeholders.allNeighborhoods || 'Todos los repartos')
+                  }
+                  allLabel={t.placeholders.allNeighborhoods || 'Todos los repartos'}
+                  searchPlaceholder={t.placeholders.selectNeighborhood || 'Buscar reparto...'}
+                  disabled={isRepartoDisabled || repartoOptions.length === 0}
+                />
+              </div>
 
-            {/* Departamentos */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Departamentos</span>
-              </label>
-              <SearchableMultiSelect
-                options={departmentOptions}
-                values={filters.categories || []}
-                onChange={(values) => handleUpdate('categories', values)}
-                placeholder="Todos los departamentos"
-                allLabel="Todos los departamentos"
-                searchPlaceholder="Buscar departamento..."
-              />
-            </div>
-
-            {/* Subdepartamentos */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Subdepartamentos</span>
-              </label>
-              <SearchableMultiSelect
-                options={subcategoryOptions}
-                values={filters.subcategories || []}
-                onChange={(values) => handleUpdate('subcategories', values)}
-                placeholder="Todos los subdepartamentos"
-                allLabel="Todos los subdepartamentos"
-                searchPlaceholder="Buscar subdepartamento..."
-                disabled={subcategoryOptions.length === 0}
-              />
-            </div>
-
-            {/* Superetiquetas */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Superetiquetas</span>
-              </label>
-              <SearchableMultiSelect
-                options={supertagOptions}
-                values={filters.tagGroups || []}
-                onChange={(values) => handleUpdate('tagGroups', values)}
-                placeholder="Todas las superetiquetas"
-                allLabel="Todas las superetiquetas"
-                searchPlaceholder="Buscar superetiqueta..."
-              />
-            </div>
-
-            {/* Etiquetas */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Etiquetas</span>
-              </label>
-              <SearchableMultiSelect
-                options={tagOptions}
-                values={filters.tagValues || []}
-                onChange={(values) => handleUpdate('tagValues', values)}
-                placeholder="Todas las etiquetas"
-                allLabel="Todas las etiquetas"
-                searchPlaceholder="Buscar etiqueta..."
-                disabled={tagOptions.length === 0}
-              />
-            </div>
-
-            {/* Tipo de Oferta (Combobox: Productos / Servicios) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Briefcase className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Productos y servicios</span>
-              </label>
-              <SearchableMultiSelect
-                options={itemTypeOptions}
-                values={filters.itemTypes || []}
-                onChange={(values) => handleUpdate('itemTypes', values)}
-                placeholder="Productos y servicios"
-                allLabel="Productos y servicios"
-                searchPlaceholder="Buscar producto o servicio..."
-              />
-            </div>
-
-            {/* Tipo de Pago (Combobox: Efectivo / Transferencia) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Tipo de pago</span>
-              </label>
-              <SearchableMultiSelect
-                options={paymentMethodOptions}
-                values={filters.paymentMethods || []}
-                onChange={(values) => handleUpdate('paymentMethods', values)}
-                placeholder="Todos los tipos de pago"
-                allLabel="Todos los tipos de pago"
-                searchPlaceholder="Buscar tipo de pago..."
-              />
-            </div>
-
-            {/* Mensajería (Combobox: Mensajería / Recogida en tienda) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                <Truck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Mensajería</span>
-              </label>
-              <SearchableMultiSelect
-                options={deliveryMethodOptions}
-                values={filters.deliveryMethods || []}
-                onChange={(values) => handleUpdate('deliveryMethods', values)}
-                placeholder="Mensajería y Recogida"
-                allLabel="Mensajería y Recogida"
-                searchPlaceholder="Buscar opción de mensajería..."
-              />
-            </div>
-
-            {/* Rango de Precios Mínimo, Máximo y Moneda */}
-            <div className="sm:col-span-2 md:col-span-3 lg:col-span-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>Precio Mínimo</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Ej. 10.50"
-                    title="Ingrese el valor numérico del precio mínimo"
-                    aria-label="Precio Mínimo"
-                    value={filters.minPrice === '' ? '' : filters.minPrice}
-                    onKeyDown={preventInvalidPriceKeys}
-                    onChange={(e) => handleNumericPriceInput('minPrice', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>Precio Máximo</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Ej. 500"
-                    title="Ingrese el valor numérico del precio máximo"
-                    aria-label="Precio Máximo"
-                    value={filters.maxPrice === '' ? '' : filters.maxPrice}
-                    onKeyDown={preventInvalidPriceKeys}
-                    onChange={(e) => handleNumericPriceInput('maxPrice', e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    <span>Moneda de Referencia</span>
-                  </label>
-                  <SearchableSelect
-                    options={[
-                      { value: 'USD', label: 'Moneda: USD (Dólares)' },
-                      { value: 'CUP', label: 'Moneda: CUP (Pesos Cubanos)' },
-                    ]}
-                    value={filters.priceCurrency || 'USD'}
-                    onChange={(val) =>
-                      handleUpdate('priceCurrency', (val || 'USD') as PriceFilterCurrency)
-                    }
-                    searchPlaceholder="Buscar moneda..."
-                  />
-                </div>
+              {/* Tiendas y Proveedores */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.store || 'Tiendas y proveedores'}</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                    ({matchingStores.length} disp.)
+                  </span>
+                </label>
+                <SearchableMultiSelect
+                  options={storeOptions}
+                  values={filters.storeIds || []}
+                  onChange={(values) => handleUpdate('storeIds', values)}
+                  placeholder={
+                    storeOptions.length === 0
+                      ? (t.placeholders.noStores || 'No hay tiendas coincidentes')
+                      : (t.placeholders.allStores || 'Todas las tiendas y proveedores')
+                  }
+                  allLabel={t.placeholders.allStores || 'Todas las tiendas y proveedores'}
+                  searchPlaceholder={t.placeholders.selectStore || 'Buscar tienda o proveedor...'}
+                  disabled={storeOptions.length === 0}
+                />
               </div>
             </div>
           </div>
+
+          {/* ========================================================================= */}
+          {/* GRUPO 2: DEPARTAMENTOS, SUBDEPARTAMENTOS, SUPERETIQUETAS Y ETIQUETAS      */}
+          {/* ========================================================================= */}
+          <div className="bg-white dark:bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <FolderTree className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t.groups.taxonomyAndTags || 'Departamentos y Etiquetas'}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.groups.taxonomyAndTagsDesc || 'Clasifica por categorías, subdepartamentos, superetiquetas y tags'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Departamentos */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.department || 'Departamentos'}</span>
+                  </span>
+                  {isDepartmentDisabled && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={t.disabledNotices.bySubcategory}>
+                      {t.disabledNotices.bySubcategory}
+                    </span>
+                  )}
+                </label>
+                <SearchableMultiSelect
+                  options={departmentOptions}
+                  values={filters.categories || []}
+                  onChange={(values) => handleUpdate('categories', values)}
+                  placeholder={isDepartmentDisabled ? 'Deshabilitado (subdepartamento activo)' : (t.placeholders.allDepartments || 'Todos los departamentos')}
+                  allLabel={t.placeholders.allDepartments || 'Todos los departamentos'}
+                  searchPlaceholder={t.placeholders.selectDept || 'Buscar departamento...'}
+                  disabled={isDepartmentDisabled}
+                />
+              </div>
+
+              {/* Subdepartamentos */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.subcategory || 'Subdepartamentos'}</span>
+                </label>
+                <SearchableMultiSelect
+                  options={subcategoryOptions}
+                  values={filters.subcategories || []}
+                  onChange={(values) => handleUpdate('subcategories', values)}
+                  placeholder={
+                    subcategoryOptions.length === 0
+                      ? (t.placeholders.noSubcategories || 'Sin subdepartamentos')
+                      : (t.placeholders.allSubcategories || 'Todos los subdepartamentos')
+                  }
+                  allLabel={t.placeholders.allSubcategories || 'Todos los subdepartamentos'}
+                  searchPlaceholder={t.placeholders.selectSubcat || 'Buscar subdepartamento...'}
+                  disabled={subcategoryOptions.length === 0}
+                />
+              </div>
+
+              {/* Superetiquetas */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels.supertag || 'Superetiquetas'}</span>
+                  </span>
+                  {isSupertagDisabled && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={t.disabledNotices.byTag}>
+                      {t.disabledNotices.byTag}
+                    </span>
+                  )}
+                </label>
+                <SearchableMultiSelect
+                  options={supertagOptions}
+                  values={filters.tagGroups || []}
+                  onChange={(values) => handleUpdate('tagGroups', values)}
+                  placeholder={isSupertagDisabled ? 'Deshabilitado (etiqueta activa)' : (t.placeholders.allSupertags || 'Todas las superetiquetas')}
+                  allLabel={t.placeholders.allSupertags || 'Todas las superetiquetas'}
+                  searchPlaceholder={t.placeholders.selectSupertag || 'Buscar superetiqueta...'}
+                  disabled={isSupertagDisabled}
+                />
+              </div>
+
+              {/* Etiquetas */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.tag || 'Etiquetas'}</span>
+                </label>
+                <SearchableMultiSelect
+                  options={tagOptions}
+                  values={filters.tagValues || []}
+                  onChange={(values) => handleUpdate('tagValues', values)}
+                  placeholder={
+                    tagOptions.length === 0
+                      ? (t.placeholders.noTags || 'Sin etiquetas')
+                      : (t.placeholders.allTags || 'Todas las etiquetas')
+                  }
+                  allLabel={t.placeholders.allTags || 'Todas las etiquetas'}
+                  searchPlaceholder={t.placeholders.selectTag || 'Buscar etiqueta...'}
+                  disabled={tagOptions.length === 0}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* GRUPO 3: TIPO DE OFERTA, FORMAS DE PAGO Y MENSAJERÍA                     */}
+          {/* ========================================================================= */}
+          <div className="bg-white dark:bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <Briefcase className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t.groups.publicationAndPayment || 'Tipo de Oferta, Pagos y Entrega'}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.groups.publicationAndPaymentDesc || 'Filtra por productos físicos o servicios, opciones de pago y mensajería'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Tipo de Oferta (Productos / Servicios) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <Briefcase className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.itemType || 'Productos y servicios'}</span>
+                </label>
+                <SearchableMultiSelect
+                  options={itemTypeOptions}
+                  values={filters.itemTypes || []}
+                  onChange={(values) => handleUpdate('itemTypes', values)}
+                  placeholder={t.placeholders.allItemTypes || 'Productos y servicios'}
+                  allLabel={t.placeholders.allItemTypes || 'Productos y servicios'}
+                  searchPlaceholder={t.placeholders.selectItemType || 'Buscar producto o servicio...'}
+                />
+              </div>
+
+              {/* Tipo de Pago (Efectivo / Transferencia) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.paymentMethod || 'Tipo de pago'}</span>
+                </label>
+                <SearchableMultiSelect
+                  options={paymentMethodOptions}
+                  values={filters.paymentMethods || []}
+                  onChange={(values) => handleUpdate('paymentMethods', values)}
+                  placeholder={t.placeholders.allPaymentMethods || 'Todos los tipos de pago'}
+                  allLabel={t.placeholders.allPaymentMethods || 'Todos los tipos de pago'}
+                  searchPlaceholder={t.placeholders.selectPayment || 'Buscar tipo de pago...'}
+                />
+              </div>
+
+              {/* Mensajería (Mensajería / Recogida) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <Truck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.deliveryMethod || 'Mensajería'}</span>
+                </label>
+                <SearchableMultiSelect
+                  options={deliveryMethodOptions}
+                  values={filters.deliveryMethods || []}
+                  onChange={(values) => handleUpdate('deliveryMethods', values)}
+                  placeholder={t.placeholders.allDeliveryMethods || 'Mensajería y Recogida'}
+                  allLabel={t.placeholders.allDeliveryMethods || 'Mensajería y Recogida'}
+                  searchPlaceholder={t.placeholders.selectDelivery || 'Buscar opción de mensajería...'}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* GRUPO 4: RANGO DE PRECIOS Y MONEDA                                        */}
+          {/* ========================================================================= */}
+          <div className="bg-white dark:bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <DollarSign className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {t.groups.priceRange || 'Rango de Precios y Moneda'}
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.groups.priceRangeDesc || 'Establece el rango de precios en USD o su equivalente calculado en CUP'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+              {/* Precio Mínimo */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.minPrice || 'Precio Mínimo'}</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={t.placeholders.minPrice || 'Ej. 10.50'}
+                  title={t.tooltips.minPriceInput || 'Ingrese el valor numérico del precio mínimo'}
+                  aria-label={t.labels.minPrice || 'Precio Mínimo'}
+                  value={filters.minPrice === '' ? '' : filters.minPrice}
+                  onKeyDown={preventInvalidPriceKeys}
+                  onChange={(e) => handleNumericPriceInput('minPrice', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              {/* Precio Máximo */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.maxPrice || 'Precio Máximo'}</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={t.placeholders.maxPrice || 'Ej. 500'}
+                  title={t.tooltips.maxPriceInput || 'Ingrese el valor numérico del precio máximo'}
+                  aria-label={t.labels.maxPrice || 'Precio Máximo'}
+                  value={filters.maxPrice === '' ? '' : filters.maxPrice}
+                  onKeyDown={preventInvalidPriceKeys}
+                  onChange={(e) => handleNumericPriceInput('maxPrice', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              {/* Moneda de Referencia */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{t.labels.priceCurrency || 'Moneda de Referencia'}</span>
+                </label>
+                <SearchableSelect
+                  options={[
+                    { value: 'USD', label: t.placeholders.currencyUsd || 'Moneda: USD (Dólares)' },
+                    { value: 'CUP', label: t.placeholders.currencyCup || 'Moneda: CUP (Pesos Cubanos)' },
+                  ]}
+                  value={filters.priceCurrency || 'USD'}
+                  onChange={(val) =>
+                    handleUpdate('priceCurrency', (val || 'USD') as PriceFilterCurrency)
+                  }
+                  searchPlaceholder={t.placeholders.selectCurrency || 'Buscar moneda...'}
+                />
+              </div>
+            </div>
+          </div>
+
         </div>
       )}
     </div>

@@ -168,9 +168,17 @@ export default function App() {
             ...(parsed.socialLinks || {}),
           },
           geoCatalog:
-            parsed.geoCatalog && parsed.geoCatalog.length > 0
+            Array.isArray(parsed.geoCatalog) && parsed.geoCatalog.length > 0
               ? parsed.geoCatalog
               : INITIAL_MARKETPLACE_CONFIG.geoCatalog,
+          departmentsCatalog:
+            Array.isArray(parsed.departmentsCatalog) && parsed.departmentsCatalog.length > 0
+              ? parsed.departmentsCatalog
+              : INITIAL_MARKETPLACE_CONFIG.departmentsCatalog,
+          tagsCatalog:
+            Array.isArray(parsed.tagsCatalog) && parsed.tagsCatalog.length > 0
+              ? parsed.tagsCatalog
+              : INITIAL_MARKETPLACE_CONFIG.tagsCatalog,
         };
       }
     } catch (e) {
@@ -269,7 +277,22 @@ export default function App() {
           setProducts(dbProducts);
         }
         if (dbConfig) {
-          setMarketplaceConfig((prev) => ({ ...prev, ...dbConfig }));
+          setMarketplaceConfig((prev) => ({
+            ...prev,
+            ...dbConfig,
+            geoCatalog:
+              Array.isArray(dbConfig.geoCatalog) && dbConfig.geoCatalog.length > 0
+                ? dbConfig.geoCatalog
+                : prev.geoCatalog,
+            departmentsCatalog:
+              Array.isArray(dbConfig.departmentsCatalog) && dbConfig.departmentsCatalog.length > 0
+                ? dbConfig.departmentsCatalog
+                : prev.departmentsCatalog,
+            tagsCatalog:
+              Array.isArray(dbConfig.tagsCatalog) && dbConfig.tagsCatalog.length > 0
+                ? dbConfig.tagsCatalog
+                : prev.tagsCatalog,
+          }));
         }
       } catch (err) {
         console.error('Error cargando datos de SQLite:', err);
@@ -557,34 +580,40 @@ export default function App() {
       }
 
       // 8. Location filter (3-Tier Address: Provincia, Municipio, Reparto) (Multiselect)
-      if (filters.provinces && filters.provinces.length > 0 && store) {
-        const matchesProv = filters.provinces.includes(store.province || '');
-        if (!matchesProv) return false;
-      } else if (filters.province && filters.province !== 'ALL' && store) {
-        const matchesProv =
-          store.province === filters.province ||
-          store.location?.toLowerCase().includes(filters.province.toLowerCase());
-        if (!matchesProv) return false;
-      }
+      if (store) {
+        const storeProv = store.address?.province || (store as any).province || '';
+        const storeMun = store.address?.municipality || (store as any).municipality || '';
+        const storeRep = store.address?.neighborhood || (store as any).reparto || (store as any).neighborhood || '';
 
-      if (filters.municipalities && filters.municipalities.length > 0 && store) {
-        const matchesMun = filters.municipalities.includes(store.municipality || '');
-        if (!matchesMun) return false;
-      } else if (filters.municipality && filters.municipality !== 'ALL' && store) {
-        const matchesMun =
-          store.municipality === filters.municipality ||
-          store.location?.toLowerCase().includes(filters.municipality.toLowerCase());
-        if (!matchesMun) return false;
-      }
+        if (filters.provinces && filters.provinces.length > 0) {
+          const matchesProv = filters.provinces.includes(storeProv);
+          if (!matchesProv) return false;
+        } else if (filters.province && filters.province !== 'ALL') {
+          const matchesProv =
+            storeProv === filters.province ||
+            store.location?.toLowerCase().includes(filters.province.toLowerCase());
+          if (!matchesProv) return false;
+        }
 
-      if (filters.repartos && filters.repartos.length > 0 && store) {
-        const matchesRep = filters.repartos.includes(store.reparto || '');
-        if (!matchesRep) return false;
-      } else if (filters.reparto && filters.reparto !== 'ALL' && store) {
-        const matchesRep =
-          store.reparto === filters.reparto ||
-          store.location?.toLowerCase().includes(filters.reparto.toLowerCase());
-        if (!matchesRep) return false;
+        if (filters.municipalities && filters.municipalities.length > 0) {
+          const matchesMun = filters.municipalities.includes(storeMun);
+          if (!matchesMun) return false;
+        } else if (filters.municipality && filters.municipality !== 'ALL') {
+          const matchesMun =
+            storeMun === filters.municipality ||
+            store.location?.toLowerCase().includes(filters.municipality.toLowerCase());
+          if (!matchesMun) return false;
+        }
+
+        if (filters.repartos && filters.repartos.length > 0) {
+          const matchesRep = filters.repartos.includes(storeRep);
+          if (!matchesRep) return false;
+        } else if (filters.reparto && filters.reparto !== 'ALL') {
+          const matchesRep =
+            storeRep === filters.reparto ||
+            store.location?.toLowerCase().includes(filters.reparto.toLowerCase());
+          if (!matchesRep) return false;
+        }
       }
 
       // 9. 2-Tier Tags Filter (Superetiquetas and Etiquetas) (Multiselect)
@@ -663,32 +692,36 @@ export default function App() {
             return false;
           }
         }
+        const sProv = s.address?.province || (s as any).province || '';
+        const sMun = s.address?.municipality || (s as any).municipality || '';
+        const sRep = s.address?.neighborhood || (s as any).reparto || (s as any).neighborhood || '';
+
         if (storeFilters.provinces && storeFilters.provinces.length > 0) {
-          const matchesProv = storeFilters.provinces.includes(s.province || '');
+          const matchesProv = storeFilters.provinces.includes(sProv);
           if (!matchesProv) return false;
         } else if (storeFilters.province && storeFilters.province !== 'ALL') {
           const matchesProv =
-            s.province === storeFilters.province ||
+            sProv === storeFilters.province ||
             s.location?.toLowerCase().includes(storeFilters.province.toLowerCase());
           if (!matchesProv) return false;
         }
 
         if (storeFilters.municipalities && storeFilters.municipalities.length > 0) {
-          const matchesMun = storeFilters.municipalities.includes(s.municipality || '');
+          const matchesMun = storeFilters.municipalities.includes(sMun);
           if (!matchesMun) return false;
         } else if (storeFilters.municipality && storeFilters.municipality !== 'ALL') {
           const matchesMun =
-            s.municipality === storeFilters.municipality ||
+            sMun === storeFilters.municipality ||
             s.location?.toLowerCase().includes(storeFilters.municipality.toLowerCase());
           if (!matchesMun) return false;
         }
 
         if (storeFilters.repartos && storeFilters.repartos.length > 0) {
-          const matchesRep = storeFilters.repartos.includes(s.reparto || '');
+          const matchesRep = storeFilters.repartos.includes(sRep);
           if (!matchesRep) return false;
         } else if (storeFilters.reparto && storeFilters.reparto !== 'ALL') {
           const matchesRep =
-            s.reparto === storeFilters.reparto ||
+            sRep === storeFilters.reparto ||
             s.location?.toLowerCase().includes(storeFilters.reparto.toLowerCase());
           if (!matchesRep) return false;
         }

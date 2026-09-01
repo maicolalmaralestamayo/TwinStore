@@ -268,7 +268,7 @@ export const MarketplaceLogoIllustration: React.FC<{ className?: string }> = ({ 
 );
 
 /**
- * Renders the Hero Banner Illustration:
+ * Renders the Banner Illustration:
  * Stacked shipping and merchandise boxes on a pallet.
  */
 export const BannerIllustration: React.FC<{ className?: string }> = ({ className }) => (

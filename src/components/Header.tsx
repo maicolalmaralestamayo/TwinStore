@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Extract branding configuration
   const displayName = marketplaceConfig?.name || 'TwinStore';
-  const displaySlogan = marketplaceConfig?.slogan || interfaz.hero.defaultSlogan;
+  const displaySlogan = marketplaceConfig?.slogan || interfaz.header.defaultSlogan;
   const logoUrl = marketplaceConfig?.logoUrl || '';
   const primaryColor = marketplaceConfig?.primaryColor || '#4f46e5';
   const secondaryColor = marketplaceConfig?.secondaryColor || '#0284c7';
@@ -133,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Active Products and Services Badge */}
           <div
-            title={`${activeProducts.length} ${interfaz.hero.productsCountLabel} en el catálogo`}
+            title={`${activeProducts.length} ${interfaz.header.productsCountLabel} en el catálogo`}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -145,8 +145,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onOpenStoresModal}
-            title={`Ver directorio de ${activeStores.length} ${interfaz.hero.inStoresLabel}`}
-            aria-label={`Ver directorio de ${activeStores.length} ${interfaz.hero.inStoresLabel}`}
+            title={`Ver directorio de ${activeStores.length} ${interfaz.header.inStoresLabel}`}
+            aria-label={`Ver directorio de ${activeStores.length} ${interfaz.header.inStoresLabel}`}
             className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700 shadow-2xs cursor-pointer"
           >
             <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />

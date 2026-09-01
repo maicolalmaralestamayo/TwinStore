@@ -4,6 +4,7 @@ import {
   GeoProvince,
   DepartmentCategory,
   TagGroup,
+  NomenclatorItem,
   MarketplaceConfig,
 } from '../types';
 import { downloadJsonFile } from './utils';
@@ -16,6 +17,9 @@ export interface FullMarketplaceBackup {
   geoCatalog?: GeoProvince[];
   departmentsCatalog?: DepartmentCategory[];
   tagsCatalog?: TagGroup[];
+  productTypesCatalog?: NomenclatorItem[];
+  paymentMethodsCatalog?: NomenclatorItem[];
+  deliveryMethodsCatalog?: NomenclatorItem[];
   marketplaceConfig?: MarketplaceConfig;
 }
 
@@ -82,7 +86,10 @@ export function exportFullJsonBackup(
   geoCatalog: GeoProvince[],
   departmentsCatalog: DepartmentCategory[],
   tagsCatalog: TagGroup[],
-  marketplaceConfig: MarketplaceConfig
+  marketplaceConfig: MarketplaceConfig,
+  productTypesCatalog?: NomenclatorItem[],
+  paymentMethodsCatalog?: NomenclatorItem[],
+  deliveryMethodsCatalog?: NomenclatorItem[]
 ) {
   const backupData: FullMarketplaceBackup = {
     version: '2.0.0',
@@ -92,6 +99,9 @@ export function exportFullJsonBackup(
     geoCatalog,
     departmentsCatalog,
     tagsCatalog,
+    productTypesCatalog: productTypesCatalog || marketplaceConfig.productTypesCatalog || [],
+    paymentMethodsCatalog: paymentMethodsCatalog || marketplaceConfig.paymentMethodsCatalog || [],
+    deliveryMethodsCatalog: deliveryMethodsCatalog || marketplaceConfig.deliveryMethodsCatalog || [],
     marketplaceConfig,
   };
   downloadJsonFile(
@@ -142,6 +152,10 @@ export function exportProductsCsv(products: Product[]) {
     'priceUSD',
     'category',
     'subcategory',
+    'productTypeId',
+    'productType',
+    'paymentMethodIds',
+    'deliveryMethodIds',
     'imageUrl',
     'isAvailable',
     'isService',
@@ -158,6 +172,10 @@ export function exportProductsCsv(products: Product[]) {
     p.priceUSD,
     p.category,
     p.subcategory || '',
+    p.productTypeId || '',
+    p.productType || '',
+    Array.isArray(p.paymentMethodIds) ? p.paymentMethodIds.join(';') : '',
+    Array.isArray(p.deliveryMethodIds) ? p.deliveryMethodIds.join(';') : '',
     p.imageUrl || '',
     p.isAvailable,
     p.isService || false,
@@ -254,7 +272,49 @@ export function exportTagsCsv(tagsCatalog: TagGroup[]) {
   triggerDownload(csvStr, `Etiquetas_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
-// 7. Export Marketplace Config CSV
+// 7. Export Product Types CSV
+export function exportProductTypesCsv(productTypesCatalog: NomenclatorItem[]) {
+  const headers = ['id', 'name', 'description', 'iconName', 'active'];
+  const rows = productTypesCatalog.map((item) => [
+    item.id,
+    item.name,
+    item.description || '',
+    item.iconName || '',
+    item.active !== false,
+  ]);
+  const csvStr = arrayToCsv(headers, rows);
+  triggerDownload(csvStr, `Tipos_Producto_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// 8. Export Payment Methods CSV
+export function exportPaymentMethodsCsv(paymentMethodsCatalog: NomenclatorItem[]) {
+  const headers = ['id', 'name', 'description', 'iconName', 'active'];
+  const rows = paymentMethodsCatalog.map((item) => [
+    item.id,
+    item.name,
+    item.description || '',
+    item.iconName || '',
+    item.active !== false,
+  ]);
+  const csvStr = arrayToCsv(headers, rows);
+  triggerDownload(csvStr, `Tipos_Pago_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// 9. Export Delivery Methods CSV
+export function exportDeliveryMethodsCsv(deliveryMethodsCatalog: NomenclatorItem[]) {
+  const headers = ['id', 'name', 'description', 'iconName', 'active'];
+  const rows = deliveryMethodsCatalog.map((item) => [
+    item.id,
+    item.name,
+    item.description || '',
+    item.iconName || '',
+    item.active !== false,
+  ]);
+  const csvStr = arrayToCsv(headers, rows);
+  triggerDownload(csvStr, `Tipos_Recogida_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// 10. Export Marketplace Config CSV
 export function exportConfigCsv(config: MarketplaceConfig) {
   const headers = ['Key', 'Value'];
   const rows = [
@@ -281,12 +341,25 @@ export function exportConfigCsv(config: MarketplaceConfig) {
 // --- IMPORT PARSERS ---
 
 export interface ImportedCsvResult {
-  type: 'stores' | 'products' | 'geo' | 'departments' | 'tags' | 'config' | 'unknown';
+  type:
+    | 'stores'
+    | 'products'
+    | 'geo'
+    | 'departments'
+    | 'tags'
+    | 'productTypes'
+    | 'paymentMethods'
+    | 'deliveryMethods'
+    | 'config'
+    | 'unknown';
   stores?: Store[];
   products?: Product[];
   geoCatalog?: GeoProvince[];
   departmentsCatalog?: DepartmentCategory[];
   tagsCatalog?: TagGroup[];
+  productTypesCatalog?: NomenclatorItem[];
+  paymentMethodsCatalog?: NomenclatorItem[];
+  deliveryMethodsCatalog?: NomenclatorItem[];
   configPatch?: Partial<MarketplaceConfig>;
   error?: string;
 }
@@ -325,24 +398,54 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
   // 2. Detect Products CSV
   if (header.includes('priceusd') || header.includes('storeid')) {
     const products: Product[] = [];
+    const idIdx = header.indexOf('id');
+    const storeIdIdx = header.indexOf('storeid');
+    const titleIdx = header.indexOf('title');
+    const descIdx = header.indexOf('description');
+    const priceIdx = header.indexOf('priceusd');
+    const catIdx = header.indexOf('category');
+    const subcatIdx = header.indexOf('subcategory');
+    const prodTypeIdx = header.indexOf('producttype');
+    const prodTypeIdIdx = header.indexOf('producttypeid');
+    const payMethodsIdx = header.indexOf('paymentmethodids');
+    const delivMethodsIdx = header.indexOf('deliverymethodids');
+    const imgIdx = header.indexOf('imageurl');
+    const isAvailIdx = header.indexOf('isavailable');
+    const isServIdx = header.indexOf('isservice');
+    const delivAvailIdx = header.indexOf('deliveryavailable');
+    const featIdx = header.indexOf('featured');
+    const tagsIdx = header.indexOf('tags');
+    const createdIdx = header.indexOf('createdat');
+
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
-      if (!r[2]) continue; // title missing
+      const title = titleIdx !== -1 ? r[titleIdx] : r[2];
+      if (!title) continue;
+
+      const pType = prodTypeIdx !== -1 ? r[prodTypeIdx] : '';
+      const pTypeId = prodTypeIdIdx !== -1 ? r[prodTypeIdIdx] : '';
+      const payIds = payMethodsIdx !== -1 && r[payMethodsIdx] ? r[payMethodsIdx].split(/;|,/).map((s) => s.trim()).filter(Boolean) : [];
+      const delivIds = delivMethodsIdx !== -1 && r[delivMethodsIdx] ? r[delivMethodsIdx].split(/;|,/).map((s) => s.trim()).filter(Boolean) : [];
+
       products.push({
-        id: r[0] || `prod_csv_${Date.now()}_${i}`,
-        storeId: r[1] || 'store-1',
-        title: r[2],
-        description: r[3] || '',
-        priceUSD: Number(r[4]) || 0,
-        category: r[5] || 'Alimentos y Combos',
-        subcategory: r[6] || '',
-        imageUrl: r[7] || '',
-        isAvailable: r[8] !== 'false' && r[8] !== '0',
-        isService: r[9] === 'true' || r[9] === '1',
-        deliveryAvailable: r[10] === 'true' || r[10] === '1',
-        featured: r[11] === 'true' || r[11] === '1',
-        tags: r[12] ? r[12].split(/;|,/).map((t) => t.trim()).filter(Boolean) : [],
-        createdAt: r[13] || new Date().toISOString(),
+        id: (idIdx !== -1 ? r[idIdx] : r[0]) || `prod_csv_${Date.now()}_${i}`,
+        storeId: (storeIdIdx !== -1 ? r[storeIdIdx] : r[1]) || 'store-1',
+        title,
+        description: (descIdx !== -1 ? r[descIdx] : r[3]) || '',
+        priceUSD: Number(priceIdx !== -1 ? r[priceIdx] : r[4]) || 0,
+        category: (catIdx !== -1 ? r[catIdx] : r[5]) || 'Alimentos y Combos',
+        subcategory: (subcatIdx !== -1 ? r[subcatIdx] : r[6]) || '',
+        productTypeId: pTypeId || undefined,
+        productType: pType || undefined,
+        paymentMethodIds: payIds.length > 0 ? payIds : undefined,
+        deliveryMethodIds: delivIds.length > 0 ? delivIds : undefined,
+        imageUrl: (imgIdx !== -1 ? r[imgIdx] : r[7]) || '',
+        isAvailable: (isAvailIdx !== -1 ? r[isAvailIdx] : r[8]) !== 'false' && (isAvailIdx !== -1 ? r[isAvailIdx] : r[8]) !== '0',
+        isService: (isServIdx !== -1 ? r[isServIdx] : r[9]) === 'true' || (isServIdx !== -1 ? r[isServIdx] : r[9]) === '1',
+        deliveryAvailable: (delivAvailIdx !== -1 ? r[delivAvailIdx] : r[10]) === 'true' || (delivAvailIdx !== -1 ? r[delivAvailIdx] : r[10]) === '1',
+        featured: (featIdx !== -1 ? r[featIdx] : r[11]) === 'true' || (featIdx !== -1 ? r[featIdx] : r[11]) === '1',
+        tags: (tagsIdx !== -1 ? r[tagsIdx] : r[12]) ? (tagsIdx !== -1 ? r[tagsIdx] : r[12]).split(/;|,/).map((t) => t.trim()).filter(Boolean) : [],
+        createdAt: (createdIdx !== -1 ? r[createdIdx] : r[13]) || new Date().toISOString(),
       });
     }
     return { type: 'products', products };
@@ -453,7 +556,37 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
     return { type: 'tags', tagsCatalog: Array.from(groupsMap.values()) };
   }
 
-  // 6. Detect Config CSV (Key, Value)
+  // 6. Detect Product Types CSV
+  if (header.includes('name') && (header.includes('iconname') || header.includes('description')) && header.includes('id')) {
+    // Check if it's product types, payment methods or delivery methods
+    const items: NomenclatorItem[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[1]) continue;
+      items.push({
+        id: r[0] || `nom_${Date.now()}_${i}`,
+        name: r[1],
+        description: r[2] || '',
+        iconName: r[3] || '',
+        active: r[4] !== 'false' && r[4] !== '0',
+      });
+    }
+
+    const firstId = items[0]?.id?.toLowerCase() || '';
+    const firstName = items[0]?.name?.toLowerCase() || '';
+    if (firstId.startsWith('pt-') || firstName.includes('producto') || firstName.includes('servicio')) {
+      return { type: 'productTypes', productTypesCatalog: items };
+    } else if (firstId.startsWith('pm-') || firstName.includes('efectivo') || firstName.includes('transferencia') || firstName.includes('pago')) {
+      return { type: 'paymentMethods', paymentMethodsCatalog: items };
+    } else if (firstId.startsWith('dm-') || firstName.includes('mensajer') || firstName.includes('recogida') || firstName.includes('entrega')) {
+      return { type: 'deliveryMethods', deliveryMethodsCatalog: items };
+    } else {
+      // Default to product types
+      return { type: 'productTypes', productTypesCatalog: items };
+    }
+  }
+
+  // 7. Detect Config CSV (Key, Value)
   if (header.includes('key') && header.includes('value')) {
     const patch: Partial<MarketplaceConfig> = {};
     const socialLinks: any = {};

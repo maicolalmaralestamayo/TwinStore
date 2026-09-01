@@ -1,6 +1,6 @@
 {
   "header": {
-    "avgRateLabel": "Tasa promedioOK:",
+    "avgRateLabel": "Tasa promedio:",
     "productsBadge": "Productos y servicios:",
     "storesBadge": "Tiendas y proveedores:",
     "directoryButton": "Directorio",
@@ -12,7 +12,12 @@
     "btnCeoTitle": "Acceso al panel de administración del marketplace",
     "btnCatalogTitle": "Ver catálogo público de productos y tiendas",
     "productsAndServices": "Productos y servicios",
-    "storesAndProviders": "Tiendas y proveedores"
+    "storesAndProviders": "Tiendas y proveedores",
+    "currencyUsd": "USD",
+    "currencyCup": "CUP",
+    "defaultSlogan": "El Marketplace para el Comercio en Cuba",
+    "productsCountLabel": "productos y servicios",
+    "inStoresLabel": "en tiendas y proveedores"
   },
   "subviews": {
     "products": "Productos y Servicios",
@@ -25,28 +30,8 @@
     "products": "publicaciones",
     "stores": "tiendas y proveedores",
     "previous": "Anterior",
-    "next": "Siguiente"
-  },
-  "hero": {
-    "defaultSlogan": "El Marketplace para el Comercio en Cuba",
-    "defaultTitle": "Compra directo a tiendas y proveedores por WhatsApp",
-    "defaultSubtitle": "Sin intermediarios ni comisiones ocultas. Compara precios en USD y CUP con la tasa de cambio de cada tienda y contacta en un clic.",
-    "catalogStatsLabel": "Catálogo Activo",
-    "productsCountLabel": "productos y servicios",
-    "inStoresLabel": "en tiendas y proveedores",
-    "exploreOffers": "Explorar Ofertas",
-    "exploreOffersButton": "Explorar Ofertas",
-    "carouselTitle": "Tiendas y Proveedores Destacados",
-    "carouselPrev": "Anterior",
-    "carouselNext": "Siguiente",
-    "prevButton": "Anterior",
-    "nextButton": "Siguiente",
-    "viewStoreButton": "Ver tienda",
-    "contactButton": "Contactar",
-    "deliveryCourier": "Mensajería",
-    "deliveryPickup": "Recogida",
-    "payCash": "Efectivo",
-    "payTransfer": "Transferencia"
+    "next": "Siguiente",
+    "results": "resultados"
   },
   "filters": {
     "searchPlaceholder": "Buscar productos, servicios, marcas o tiendas...",
@@ -56,42 +41,108 @@
     "resetFilters": "Limpiar Filtros",
     "activeFiltersLabel": "Filtros aplicados:",
     "clearAll": "Borrar todos",
+    "filtersTitle": "Búsqueda y Filtros",
+    "productFilterTitle": "Filtrado de Productos y servicios",
+    "storeFilterTitle": "Filtrado de Tiendas y proveedores",
+    "resultsFound": "resultados encontrados",
+    "storesFound": "tiendas encontradas",
+    "groups": {
+      "locationAndStores": "Ubicación y Tiendas",
+      "locationAndStoresDesc": "Filtra por zona geográfica o selecciona directamente tus tiendas y proveedores",
+      "geoOnly": "Ubicación Geográfica",
+      "geoOnlyDesc": "Filtra comercios por provincia, municipio o reparto",
+      "taxonomyAndTags": "Departamentos y Etiquetas",
+      "taxonomyAndTagsDesc": "Clasifica por categorías, subdepartamentos, superetiquetas y tags",
+      "publicationAndPayment": "Tipo de Oferta, Pagos y Entrega",
+      "publicationAndPaymentDesc": "Filtra por productos físicos o servicios, opciones de pago y mensajería",
+      "priceRange": "Rango de Precios y Moneda",
+      "priceRangeDesc": "Establece el rango de precios en USD o su equivalente calculado en CUP"
+    },
+    "disabledNotices": {
+      "byStore": "(Bloqueado por tienda o proveedor)",
+      "byReparto": "(Bloqueado por reparto / localidad)",
+      "byMunicipality": "(Bloqueado por municipio)",
+      "bySubcategory": "(Bloqueado por subdepartamento)",
+      "byTag": "(Bloqueado por etiqueta)"
+    },
     "options": {
       "deliveryCourier": "Mensajería",
       "deliveryPickup": "Recogida",
       "payCash": "Efectivo",
-      "payTransfer": "Transferencia"
+      "payTransfer": "Transferencia",
+      "product": "Productos",
+      "productSublabel": "Artículos físicos y bienes",
+      "service": "Servicios",
+      "serviceSublabel": "Servicios profesionales y prestaciones",
+      "transferSublabel": "Pago por transferencia bancaria o entre tarjetas",
+      "cashSublabel": "Pago en efectivo directo",
+      "courierSublabel": "Tiendas con servicio de mensajería",
+      "pickupSublabel": "Tiendas con recogida en local"
     },
     "labels": {
-      "province": "Provincia",
-      "municipality": "Municipio",
-      "neighborhood": "Reparto / Barrio",
-      "department": "Departamento",
-      "subcategory": "Subcategoría",
-      "store": "Tienda o Proveedor",
-      "supertag": "Superetiqueta",
-      "tag": "Etiqueta",
+      "province": "Provincias",
+      "municipality": "Municipios",
+      "neighborhood": "Repartos / Localidades",
+      "department": "Departamentos",
+      "subcategory": "Subdepartamentos",
+      "store": "Tiendas y proveedores",
+      "supertag": "Superetiquetas",
+      "tag": "Etiquetas",
+      "itemType": "Productos y servicios",
+      "paymentMethod": "Tipo de pago",
+      "deliveryMethod": "Mensajería",
+      "minPrice": "Precio Mínimo",
+      "maxPrice": "Precio Máximo",
+      "priceCurrency": "Moneda de Referencia",
       "onlyDelivery": "Solo con mensajería",
       "onlyInStock": "Solo en existencia",
       "onlyServices": "Solo servicios profesionales",
       "acceptsTransfer": "Acepta transferencia",
-      "minPrice": "Precio USD mín",
-      "maxPrice": "Precio USD máx",
       "sortBy": "Ordenar por:",
-      "rateRange": "Rango de tasa CUP"
+      "rateRange": "Rango de tasa CUP",
+      "rateRangeMin": "Tasa mín:",
+      "rateRangeMax": "Tasa máx:"
     },
     "placeholders": {
-      "allProvinces": "Todas las Provincias",
-      "allMunicipalities": "Todos los Municipios",
-      "allNeighborhoods": "Todos los Repartos",
-      "allDepartments": "Todos los Departamentos",
-      "allSubcategories": "Todas las Subcategorías",
-      "allStores": "Todas las Tiendas",
-      "allSupertags": "Todas las Superetiquetas",
-      "allTags": "Todas las Etiquetas",
-      "selectProvince": "Selecciona una provincia...",
-      "selectMunicipality": "Selecciona un municipio...",
-      "selectNeighborhood": "Selecciona un reparto..."
+      "allProvinces": "Todas las provincias",
+      "allMunicipalities": "Todos los municipios",
+      "allNeighborhoods": "Todos los repartos",
+      "allDepartments": "Todos los departamentos",
+      "allSubcategories": "Todos los subdepartamentos",
+      "allStores": "Todas las tiendas y proveedores",
+      "allSupertags": "Todas las superetiquetas",
+      "allTags": "Todas las etiquetas",
+      "allItemTypes": "Productos y servicios",
+      "allPaymentMethods": "Todos los tipos de pago",
+      "allDeliveryMethods": "Mensajería y Recogida",
+      "currencyUsd": "Moneda: USD (Dólares)",
+      "currencyCup": "Moneda: CUP (Pesos Cubanos)",
+      "selectProvince": "Buscar provincia...",
+      "selectMunicipality": "Buscar municipio...",
+      "selectNeighborhood": "Buscar reparto...",
+      "selectDept": "Buscar departamento...",
+      "selectSubcat": "Buscar subdepartamento...",
+      "selectSupertag": "Buscar superetiqueta...",
+      "selectTag": "Buscar etiqueta...",
+      "selectStore": "Buscar tienda o proveedor...",
+      "selectItemType": "Buscar producto o servicio...",
+      "selectPayment": "Buscar tipo de pago...",
+      "selectDelivery": "Buscar opción de mensajería...",
+      "selectCurrency": "Buscar moneda...",
+      "minPrice": "Ej. 10.50",
+      "maxPrice": "Ej. 500",
+      "noMunicipalities": "Sin municipios disponibles",
+      "noRepartos": "Sin repartos disponibles",
+      "noStores": "No hay tiendas coincidentes",
+      "noSubcategories": "Sin subdepartamentos",
+      "noTags": "Sin etiquetas"
+    },
+    "tooltips": {
+      "expand": "Desplegar filtros avanzados",
+      "collapse": "Plegar filtros avanzados",
+      "reset": "Restablecer o limpiar todos los filtros",
+      "minPriceInput": "Ingrese el valor numérico del precio mínimo",
+      "maxPriceInput": "Ingrese el valor numérico del precio máximo"
     },
     "sortOptions": {
       "default": "Predeterminado (Relevancia)",
@@ -127,7 +178,8 @@
     "currencyCup": "CUP",
     "inStock": "En Existencia",
     "outOfStock": "Agotado",
-    "featuredBadge": "Destacado"
+    "featuredBadge": "Destacado",
+    "viewDetails": "Ver detalles"
   },
   "storeCard": {
     "rateLabel": "Tasa",
@@ -142,7 +194,10 @@
     "viewProductsButton": "Ver productos",
     "contactButton": "Contactar",
     "verifiedBadge": "Verificada",
-    "inactiveBadge": "Inactiva"
+    "inactiveBadge": "Inactiva",
+    "locationTitle": "Ubicación",
+    "addressTitle": "Dirección",
+    "contactWhatsApp": "Contactar por WhatsApp"
   },
   "productDetailModal": {
     "title": "Detalle de la Publicación",
@@ -165,7 +220,11 @@
     "tagsLabel": "Etiquetas:",
     "descriptionLabel": "Descripción:",
     "serviceBadge": "Servicio Profesional",
-    "productBadge": "Producto en Venta"
+    "productBadge": "Producto en Venta",
+    "stockLabel": "Disponibilidad:",
+    "inStock": "En Existencia",
+    "outOfStock": "Agotado",
+    "noImages": "Sin imágenes disponibles"
   },
   "storeDirectoryModal": {
     "title": "Directorio de Tiendas y Proveedores",
@@ -177,7 +236,9 @@
     "emptySubtitle": "Intenta con otro término de búsqueda o selecciona otra provincia.",
     "resetButton": "Restablecer búsqueda",
     "viewCatalog": "Ver catálogo",
-    "contactWhatsApp": "Contactar WhatsApp"
+    "contactWhatsApp": "Contactar WhatsApp",
+    "storesFound": "tiendas y proveedores encontrados",
+    "ratePrefix": "Tasa 1 USD ="
   },
   "admin": {
     "portalTitle": "Panel de Administración",
@@ -198,7 +259,10 @@
       "deactivatedLabel": "desactivados",
       "avgRate": "Tasa de Cambio Promedio",
       "rateUnit": "CUP / USD",
-      "rateRangePrefix": "Rango:"
+      "rateRangePrefix": "Rango:",
+      "totalStores": "Total Tiendas",
+      "totalProducts": "Total Publicaciones",
+      "averageRate": "Tasa Promedio"
     },
     "tabs": {
       "general": "General",
@@ -211,7 +275,8 @@
         "identity": "1. Identidad y Marca",
         "geography": "2. Geografía y Repartos",
         "taxonomy": "3. Departamentos",
-        "tags": "4. Superetiquetas y Tags"
+        "tags": "4. Superetiquetas y Tags",
+        "businessModel": "5. Modelo de Negocio"
       },
       "identitySection": {
         "title": "Identidad y Marca del Marketplace",
@@ -226,6 +291,8 @@
         "bannerSubtitlePlaceholder": "Sin intermediarios...",
         "logoUrlLabel": "URL del Logo del Marketplace",
         "logoUrlPlaceholder": "https://... o sube una imagen",
+        "bannerUrlLabel": "URL del Banner Principal",
+        "bannerUrlPlaceholder": "https://... o sube una imagen",
         "defaultStoreLogoLabel": "Logo por defecto para tiendas",
         "defaultProductImageLabel": "Imagen por defecto para productos",
         "primaryColorLabel": "Color Principal",
@@ -234,12 +301,20 @@
         "socialSectionTitle": "Redes Sociales y Canales de Contacto",
         "socialSectionSubtitle": "Enlaces directos a las redes del marketplace.",
         "whatsappLabel": "WhatsApp Oficial",
+        "whatsappPlaceholder": "+5354292049",
         "telegramLabel": "Telegram",
+        "telegramPlaceholder": "https://t.me/...",
         "instagramLabel": "Instagram",
+        "instagramPlaceholder": "https://instagram.com/...",
         "facebookLabel": "Facebook",
+        "facebookPlaceholder": "https://facebook.com/...",
         "twitterLabel": "Twitter / X",
+        "twitterPlaceholder": "https://x.com/...",
         "linkedinLabel": "LinkedIn",
-        "saveButton": "Guardar Configuración General"
+        "linkedinPlaceholder": "https://linkedin.com/in/...",
+        "saveButton": "Guardar Configuración General",
+        "uploadImage": "Subir imagen local",
+        "previewImage": "Vista previa"
       },
       "geoSection": {
         "title": "Geografía y Divisiones Territoriales",
@@ -256,7 +331,13 @@
         "emptyProvinces": "No hay provincias registradas",
         "emptyMunicipalities": "Selecciona una provincia para ver municipios",
         "emptyRepartos": "Selecciona un municipio para ver repartos",
-        "saveGeoBtn": "Guardar Geografía"
+        "saveGeoBtn": "Guardar Geografía",
+        "editProvince": "Editar provincia",
+        "editMunicipality": "Editar municipio",
+        "editReparto": "Editar reparto",
+        "deleteProvince": "Eliminar provincia",
+        "deleteMunicipality": "Eliminar municipio",
+        "deleteReparto": "Eliminar reparto"
       },
       "taxonomySection": {
         "title": "Departamentos y Subcategorías",
@@ -269,7 +350,12 @@
         "subcatPlaceholder": "Nombre de la subcategoría...",
         "emptyDepartments": "No hay departamentos creados",
         "emptySubcategories": "Selecciona un departamento para ver subcategorías",
-        "saveTaxonomyBtn": "Guardar Departamentos"
+        "saveTaxonomyBtn": "Guardar Departamentos",
+        "editDepartment": "Editar departamento",
+        "editSubcategory": "Editar subcategoría",
+        "deleteDepartment": "Eliminar departamento",
+        "deleteSubcategory": "Eliminar subcategoría",
+        "subdeptCount": "subcategorías"
       },
       "tagsSection": {
         "title": "Superetiquetas y Etiquetas",
@@ -282,7 +368,31 @@
         "tagPlaceholder": "Nombre de la etiqueta...",
         "emptyGroups": "No hay superetiquetas creadas",
         "emptyTags": "Selecciona una superetiqueta para ver sus etiquetas",
-        "saveTagsBtn": "Guardar Etiquetas"
+        "saveTagsBtn": "Guardar Etiquetas",
+        "editGroup": "Editar superetiqueta",
+        "editTag": "Editar etiqueta",
+        "deleteGroup": "Eliminar superetiqueta",
+        "deleteTag": "Eliminar etiqueta",
+        "tagCount": "etiquetas"
+      },
+      "businessModelSection": {
+        "title": "Modelo de Negocio (Nomencladores Configurables)",
+        "subtitle": "Configura los 3 nomencladores dinámicos del marketplace: Tipos de Oferta / Productos, Métodos de Pago y Tipos de Entrega / Recogida.",
+        "productTypesColumn": "1. Tipos de Producto / Servicio",
+        "paymentMethodsColumn": "2. Tipos de Pago",
+        "deliveryMethodsColumn": "3. Tipos de Recogida / Entrega",
+        "addProductTypeBtn": "Agregar Tipo de Producto",
+        "addPaymentMethodBtn": "Agregar Tipo de Pago",
+        "addDeliveryMethodBtn": "Agregar Tipo de Recogida",
+        "productTypePlaceholder": "Ej: Productos Físicos, Servicios...",
+        "paymentMethodPlaceholder": "Ej: Efectivo, Transferencia, MLC...",
+        "deliveryMethodPlaceholder": "Ej: Mensajería directa, Recogida en local...",
+        "emptyProductTypes": "No hay tipos de productos registrados",
+        "emptyPaymentMethods": "No hay tipos de pago registrados",
+        "emptyDeliveryMethods": "No hay tipos de recogida registrados",
+        "saveBusinessModelBtn": "Guardar Nomencladores",
+        "editItem": "Editar nomenclador",
+        "deleteItem": "Eliminar nomenclador"
       }
     },
     "storesManager": {
@@ -317,7 +427,8 @@
         "active": "Activa",
         "inactive": "Inactiva",
         "editFullModal": "Editar en modal completo",
-        "deleteStore": "Eliminar tienda"
+        "deleteStore": "Eliminar tienda",
+        "verifiedBadge": "Verificada"
       },
       "modal": {
         "newTitle": "Nueva Tienda",
@@ -338,7 +449,8 @@
           "whatsapp": "WhatsApp",
           "whatsappPlaceholder": "+5354292049",
           "rate": "Tasa USD/CUP",
-          "activeCheckbox": "Tienda activa en el marketplace"
+          "activeCheckbox": "Tienda activa en el marketplace",
+          "primaryPhoto": "Foto principal"
         },
         "address": {
           "street": "Calle",
@@ -357,12 +469,14 @@
           "municipality": "Municipio",
           "neighborhood": "Reparto / Barrio",
           "mapsUrl": "Enlace Google Maps",
-          "mapsUrlPlaceholder": "https://maps.app.goo.gl/..."
+          "mapsUrlPlaceholder": "https://maps.app.goo.gl/...",
+          "locationSelectLabel": "Seleccionar ubicación geográfica:"
         },
         "payment": {
           "delivery": "Servicio de mensajería a domicilio disponible",
           "transfer": "Acepta pagos por transferencia bancaria (CUP)",
-          "transferFee": "Recargo o comisión por transferencia (%)"
+          "transferFee": "Recargo o comisión por transferencia (%)",
+          "transferFeeLabel": "Porcentaje de comisión:"
         },
         "buttons": {
           "save": "Guardar Tienda",
@@ -403,6 +517,7 @@
         "subtitle": "Detalles del producto o servicio ofrecido por la tienda",
         "fields": {
           "store": "Tienda o Proveedor",
+          "selectStorePlaceholder": "Selecciona la tienda...",
           "title": "Título del Producto o Servicio",
           "titlePlaceholder": "Ej: Jamón Pierna Especial",
           "description": "Descripción detallada",
@@ -410,11 +525,21 @@
           "priceUsd": "Precio en USD",
           "cupEquivalent": "Equivalente en CUP:",
           "department": "Departamento",
+          "selectDeptPlaceholder": "Selecciona un departamento...",
           "subcategory": "Subcategoría",
+          "selectSubcatPlaceholder": "Selecciona una subcategoría...",
           "supertag": "Superetiqueta",
+          "selectSupertagPlaceholder": "Selecciona una superetiqueta...",
           "tags": "Etiquetas",
+          "selectTagsPlaceholder": "Selecciona etiquetas...",
           "images": "Galería de Fotos del Producto",
           "imagesDesc": "Sube o agrega fotos locales o URLs. La principal se mostrará en la tarjeta.",
+          "productType": "Tipo de Oferta / Publicación",
+          "selectProductTypePlaceholder": "Selecciona el tipo de producto/servicio...",
+          "paymentMethods": "Tipos de Pago Aceptados",
+          "selectPaymentMethodsPlaceholder": "Selecciona métodos de pago aceptados...",
+          "deliveryMethods": "Tipos de Recogida / Entrega",
+          "selectDeliveryMethodsPlaceholder": "Selecciona métodos de entrega/recogida...",
           "isService": "Es un servicio profesional (no requiere inventario físico)",
           "isAvailable": "Producto disponible en existencia inmediata",
           "isFeatured": "Destacar este producto en la página principal"
@@ -427,11 +552,11 @@
     },
     "backup": {
       "title": "Gestión de Respaldos y Copias de Seguridad (.JSON y .CSV)",
-      "subtitle": "Descarga o carga copias de seguridad de todas las tablas del marketplace (Tiendas, Productos, Geografía, Departamentos, Superetiquetas/Etiquetas y Configuraciones) en formato JSON unificado o archivos CSV individuales.",
+      "subtitle": "Descarga o carga copias de seguridad de todas las tablas del marketplace (Tiendas, Productos, Geografía, Departamentos, Superetiquetas/Etiquetas, Nomencladores de Negocio y Configuraciones) en formato JSON unificado o archivos CSV individuales.",
       "exportSection": {
         "title": "1. Descargar Respaldos por Tabla o Total",
         "fullBackupTitle": "Respaldo Total del Sistema (.JSON)",
-        "fullBackupDesc": "Exporta un solo archivo con las 6 tablas de datos: Tiendas, Productos, Geografía, Departamentos, Etiquetas y Configuraciones.",
+        "fullBackupDesc": "Exporta un solo archivo con todas las tablas de datos: Tiendas, Productos, Geografía, Departamentos, Etiquetas, Nomencladores y Configuraciones.",
         "fullBackupBtn": "Descargar Respaldo Total (.JSON)",
         "csvSubheading": "Exportar Tablas Individuales a formato CSV (.csv):",
         "storesCsv": "Tiendas (.CSV)",
@@ -439,6 +564,9 @@
         "geoCsv": "Geografía (.CSV)",
         "deptsCsv": "Departamentos (.CSV)",
         "tagsCsv": "Etiquetas (.CSV)",
+        "productTypesCsv": "Tipos de Producto (.CSV)",
+        "paymentMethodsCsv": "Tipos de Pago (.CSV)",
+        "deliveryMethodsCsv": "Tipos de Recogida (.CSV)",
         "configCsv": "Configuración (.CSV)",
         "recordsLabel": "registros"
       },
@@ -464,13 +592,7 @@
       "emailLabel": "Correo Electrónico",
       "emailPlaceholder": "ceo@mercadocuba.cu",
       "passwordLabel": "Contraseña",
-      "passwordPlaceholder": "Contraseña de CEO...",
-      "photoLabel": "Foto de Perfil del CEO",
-      "photoPlaceholder": "URL de la Foto...",
-      "uploadPhotoBtn": "Subir imagen desde tu dispositivo",
-      "twoFactorLabel": "Autenticación de Doble Factor (2FA) por Correo",
-      "twoFactorDesc": "Se ha enviado un código de seguridad de 6 dígitos a tu correo de CEO:",
-      "enter2FACode": "Ingresa el Código 2FA",
+      "passwordPlaceholder": "Contraseña de CEO (mínimo 12 caracteres)...",
       "submitLogin": "Acceder como CEO",
       "submitRegister": "Continuar con Verificación de Correo",
       "verifyEmailTitle": "Verificación de Correo de CEO",
@@ -478,45 +600,48 @@
       "enterVerificationCode": "Ingresa el Código de Verificación",
       "verifyAndCreateBtn": "Verificar y Crear CEO",
       "backBtn": "Volver",
-      "cancelBtn": "Cancelar"
+      "cancelBtn": "Cancelar",
+      "invalidEmailError": "Por favor ingresa un correo electrónico válido.",
+      "passwordMinLengthError": "La contraseña debe tener al menos 12 caracteres.",
+      "codeMismatchError": "El código ingresado no coincide.",
+      "loginError": "Credenciales de CEO incorrectas.",
+      "passwordExpiredTitle": "Cambio de Contraseña Obligatorio (90 Días)",
+      "passwordExpiredDesc": "Tu contraseña de CEO ha superado los 90 días de vigencia obligatoria. Por motivos de seguridad debes establecer una nueva contraseña para ingresar.",
+      "updateAndLoginBtn": "Actualizar Contraseña e Ingresar"
     },
     "passwordModal": {
       "title": "Configuración del CEO del Marketplace",
-      "subtitle": "Edita tu foto de perfil, correo, activa el segundo factor de autenticación (2FA) por correo o cambia tu contraseña.",
+      "subtitle": "Edita los datos del CEO o cambia tu contraseña de acceso.",
       "ceoBadge": "Único CEO",
       "verifiedEmail": "Correo Verificado",
-      "profileSectionTitle": "Datos y Foto del CEO",
-      "photoLabel": "Foto de Perfil",
-      "uploadPhoto": "Subir desde archivo",
+      "profileSectionTitle": "Datos del CEO",
       "nameLabel": "Nombre del CEO",
       "namePlaceholder": "Nombre completo",
       "emailLabel": "Correo Electrónico",
       "emailPlaceholder": "ceo@mercadocuba.cu",
-      "twoFactorCheckbox": "Segundo Factor de Autenticación (2FA) por Correo",
-      "test2FABtn": "Probar 2FA",
-      "twoFactorExplanation": "Al activar 2FA, se enviará un código de 6 dígitos a tu correo cada vez que inicies sesión.",
-      "passwordSectionTitle": "Cambio de Contraseña (Opcional)",
+      "passwordSectionTitle": "Cambio de Contraseña de CEO",
       "currentPasswordLabel": "Contraseña Actual",
-      "currentPasswordPlaceholder": "Escribe para cambiar contraseña...",
+      "currentPasswordPlaceholder": "Escribe tu contraseña actual...",
       "newPasswordLabel": "Nueva Contraseña",
-      "newPasswordPlaceholder": "Mínimo 12 caracteres...",
+      "newPasswordPlaceholder": "Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos...",
       "confirmPasswordLabel": "Confirmar Nueva Contraseña",
       "confirmPasswordPlaceholder": "Repite la nueva contraseña",
-      "requirementsTitle": "Requisitos de seguridad:",
-      "req12Chars": "12+ car.",
-      "reqUppercase": "Mayúscula",
-      "reqLowercase": "Minúscula",
-      "reqNumber": "Número",
-      "reqSpecial": "Especial",
+      "requirementsTitle": "Requisitos obligatorios de contraseña:",
+      "req12Chars": "Mínimo 12 caracteres",
+      "reqUppercase": "Mayúscula (A-Z)",
+      "reqLowercase": "Minúscula (a-z)",
+      "reqNumber": "Número (0-9)",
+      "reqSpecial": "Carácter especial (!@#...)",
+      "reqHistory": "No usada en las últimas 5",
+      "reqExpiry": "Cambio cada 90 días",
       "saveButton": "Guardar Cambios",
       "cancelButton": "Cancelar",
-      "test2FAModal": {
-        "title": "Prueba 2FA por Correo Electrónico",
-        "desc": "Ingresa el código enviado a tu correo:",
-        "codePlaceholder": "000000",
-        "verifyBtn": "Verificar",
-        "closeBtn": "Cerrar"
-      }
+      "errorCurrentPassword": "La contraseña actual de CEO no es correcta.",
+      "errorRequirements": "La nueva contraseña debe cumplir con todos los requisitos de seguridad.",
+      "errorMismatch": "Las contraseñas nuevas no coinciden.",
+      "errorHistory": "No puedes reutilizar ninguna de tus últimas 5 contraseñas.",
+      "statusValid": "Contraseña vigente: le quedan {days} días antes del cambio obligatorio de 90 días.",
+      "statusExpired": "¡Contraseña caducada! Han pasado {days} días desde el último cambio. Debes renovarla obligatoriamente."
     }
   },
   "common": {
@@ -530,23 +655,42 @@
       "setMain": "Hacer principal",
       "deleteImg": "Eliminar foto",
       "maxFilesHint": "Formatos JPG, PNG, WebP hasta 3MB cada una.",
-      "pasteUrlPlaceholder": "https://images.unsplash.com/..."
+      "pasteUrlPlaceholder": "https://images.unsplash.com/...",
+      "dropFilesHint": "Suelta las imágenes aquí...",
+      "remove": "Eliminar"
     },
     "searchableSelect": {
       "searchPlaceholder": "Buscar opción...",
-      "noResults": "No se encontraron resultados",
-      "selectOption": "Seleccionar..."
+      "noResults": "No se encontraron opciones",
+      "selectOption": "Seleccionar...",
+      "clearSelection": "Limpiar selección",
+      "loading": "Cargando..."
     },
     "searchableMultiSelect": {
-      "searchPlaceholder": "Buscar y seleccionar...",
-      "noResults": "No se encontraron coincidencias",
+      "searchPlaceholder": "Buscar...",
+      "noResults": "No se encontraron opciones",
       "selectOption": "Seleccionar...",
-      "clearAll": "Limpiar selección"
+      "clearAll": "Limpiar",
+      "allLabel": "Todos",
+      "selectedLabel": "sel.",
+      "allSelectedDefault": "Todos seleccionados (por defecto)",
+      "chosenOf": "elegidos",
+      "doneBtn": "Listo",
+      "clearSelectionsTooltip": "Limpiar selecciones"
     },
     "themeSelector": {
-      "light": "Tema claro",
-      "dark": "Tema oscuro",
-      "system": "Tema del sistema"
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema",
+      "title": "Tema actual:",
+      "ariaLabel": "Cambiar tema de la aplicación",
+      "preferenceTitle": "Preferencia de Tema",
+      "lightDesc": "Tema claro brillante",
+      "darkDesc": "Tema oscuro para menor fatiga visual",
+      "systemDesc": "Sigue el tema del sistema operativo",
+      "autoLabel": "Auto",
+      "darkActive": "Oscuro activo",
+      "lightActive": "Claro activo"
     }
   },
   "footer": {
@@ -565,10 +709,32 @@
     "backupImported": "¡Respaldo Total Importado!",
     "backupImportedDesc": "Se restauraron tiendas, productos, geografía, departamentos, etiquetas y configuraciones",
     "storeSaved": "Tienda guardada con éxito",
+    "storeSavedDesc": "Se actualizaron los datos de la tienda",
     "storeDeleted": "Tienda eliminada del marketplace",
+    "storeDeletedDesc": "La tienda fue borrada",
+    "storeAdded": "Tienda agregada con éxito",
+    "storeAddedDesc": "Se registró la nueva tienda",
     "productSaved": "Publicación guardada con éxito",
+    "productSavedDesc": "Se actualizaron los datos del producto o servicio",
     "productDeleted": "Publicación eliminada",
+    "productDeletedDesc": "La publicación fue borrada",
+    "productAdded": "Publicación agregada con éxito",
+    "productAddedDesc": "Se registró el nuevo producto o servicio",
     "configSaved": "Configuración general actualizada",
-    "demoRestored": "Datos de demostración restaurados"
+    "configSavedDesc": "Se guardaron los cambios de configuración",
+    "demoRestored": "Datos de demostración restaurados",
+    "demoRestoredDesc": "Se restablecieron los datos iniciales de prueba",
+    "geoSaved": "Geografía guardada",
+    "geoCreated": "Elemento territorial creado",
+    "geoDeleted": "Elemento territorial eliminado",
+    "geoUpdated": "Elemento territorial actualizado",
+    "bulkRateUpdated": "Tasa masiva actualizada",
+    "bulkRateError": "Ingresa un valor numérico válido",
+    "imageUploaded": "Imagen cargada con éxito",
+    "imageTooLarge": "El tamaño máximo permitido es 3MB",
+    "authSuccess": "Acceso verificado al Marketplace",
+    "loginSuccess": "¡Bienvenido CEO!",
+    "codeSent": "Código enviado por correo",
+    "passwordChangedSuccess": "Contraseña de CEO actualizada con éxito"
   }
 }

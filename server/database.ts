@@ -105,6 +105,10 @@ function initTables(db: Database) {
       featured INTEGER NOT NULL DEFAULT 0,
       tags TEXT,
       tagSelections TEXT,
+      productTypeId TEXT,
+      productType TEXT,
+      paymentMethodIds TEXT,
+      deliveryMethodIds TEXT,
       createdAt TEXT,
       FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
     );
@@ -125,9 +129,21 @@ function initTables(db: Database) {
       socialLinks TEXT,
       geoCatalog TEXT,
       departmentsCatalog TEXT,
-      tagsCatalog TEXT
+      tagsCatalog TEXT,
+      productTypesCatalog TEXT,
+      paymentMethodsCatalog TEXT,
+      deliveryMethodsCatalog TEXT
     );
   `);
+
+  // Safe migration for existing SQLite files
+  try { db.run("ALTER TABLE products ADD COLUMN productTypeId TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN productType TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN paymentMethodIds TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN deliveryMethodIds TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN productTypesCatalog TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN paymentMethodsCatalog TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN deliveryMethodsCatalog TEXT;"); } catch (e) {}
 }
 
 function seedIfEmpty(db: Database) {
@@ -274,11 +290,11 @@ export function saveProductToDb(db: Database, product: Product) {
     INSERT OR REPLACE INTO products (
       id, storeId, title, description, priceUSD, category, subcategory,
       imageUrl, images, isAvailable, isService, deliveryAvailable, featured,
-      tags, tagSelections, createdAt
+      tags, tagSelections, productTypeId, productType, paymentMethodIds, deliveryMethodIds, createdAt
     ) VALUES (
       $id, $storeId, $title, $description, $priceUSD, $category, $subcategory,
       $imageUrl, $images, $isAvailable, $isService, $deliveryAvailable, $featured,
-      $tags, $tagSelections, $createdAt
+      $tags, $tagSelections, $productTypeId, $productType, $paymentMethodIds, $deliveryMethodIds, $createdAt
     )
   `;
 
@@ -298,6 +314,10 @@ export function saveProductToDb(db: Database, product: Product) {
     '$featured': product.featured ? 1 : 0,
     '$tags': JSON.stringify(product.tags || []),
     '$tagSelections': JSON.stringify(product.tagSelections || []),
+    '$productTypeId': product.productTypeId || '',
+    '$productType': product.productType || '',
+    '$paymentMethodIds': JSON.stringify(product.paymentMethodIds || []),
+    '$deliveryMethodIds': JSON.stringify(product.deliveryMethodIds || []),
     '$createdAt': product.createdAt || new Date().toISOString()
   };
 
@@ -308,7 +328,7 @@ export function rowToProduct(row: any[]): Product {
   const [
     id, storeId, title, description, priceUSD, category, subcategory,
     imageUrl, imagesStr, isAvailable, isService, deliveryAvailable, featured,
-    tagsStr, tagSelectionsStr, createdAt
+    tagsStr, tagSelectionsStr, productTypeId, productType, paymentMethodIdsStr, deliveryMethodIdsStr, createdAt
   ] = row;
 
   let tags: string[] = [];
@@ -321,10 +341,23 @@ export function rowToProduct(row: any[]): Product {
     if (tagSelectionsStr) tagSelections = JSON.parse(tagSelectionsStr);
   } catch (e) {}
 
+  let paymentMethodIds: string[] = [];
+  try {
+    if (paymentMethodIdsStr) paymentMethodIds = JSON.parse(paymentMethodIdsStr);
+  } catch (e) {}
+
+  let deliveryMethodIds: string[] = [];
+  try {
+    if (deliveryMethodIdsStr) deliveryMethodIds = JSON.parse(deliveryMethodIdsStr);
+  } catch (e) {}
+
   let images: string[] = [];
   try {
     if (imagesStr) images = JSON.parse(imagesStr);
   } catch (e) {}
+
+  const isServiceBool = Boolean(isService);
+  const deliveryAvailableBool = Boolean(deliveryAvailable);
 
   return {
     id: String(id),
@@ -337,11 +370,15 @@ export function rowToProduct(row: any[]): Product {
     imageUrl: String(imageUrl || ''),
     images: Array.isArray(images) && images.length > 0 ? images : (imageUrl ? [String(imageUrl)] : []),
     isAvailable: Boolean(isAvailable),
-    isService: Boolean(isService),
-    deliveryAvailable: Boolean(deliveryAvailable),
+    isService: isServiceBool,
+    deliveryAvailable: deliveryAvailableBool,
     featured: Boolean(featured),
     tags,
     tagSelections,
+    productTypeId: String(productTypeId || (isServiceBool ? 'pt-servicio' : 'pt-producto')),
+    productType: String(productType || (isServiceBool ? 'Servicios Profesionales' : 'Productos Físicos')),
+    paymentMethodIds: Array.isArray(paymentMethodIds) && paymentMethodIds.length > 0 ? paymentMethodIds : ['pm-efectivo', 'pm-transferencia'],
+    deliveryMethodIds: Array.isArray(deliveryMethodIds) && deliveryMethodIds.length > 0 ? deliveryMethodIds : (deliveryAvailableBool ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida']),
     createdAt: String(createdAt || ''),
   };
 }
@@ -351,11 +388,13 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
     INSERT OR REPLACE INTO marketplace_config (
       id, name, slogan, logoUrl, defaultStoreLogoUrl, defaultProductImageUrl,
       bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
-      accentColor, socialLinks, geoCatalog, departmentsCatalog, tagsCatalog
+      accentColor, socialLinks, geoCatalog, departmentsCatalog, tagsCatalog,
+      productTypesCatalog, paymentMethodsCatalog, deliveryMethodsCatalog
     ) VALUES (
       'default', $name, $slogan, $logoUrl, $defaultStoreLogoUrl, $defaultProductImageUrl,
       $bannerUrl, $bannerTitle, $bannerSubtitle, $primaryColor, $secondaryColor,
-      $accentColor, $socialLinks, $geoCatalog, $departmentsCatalog, $tagsCatalog
+      $accentColor, $socialLinks, $geoCatalog, $departmentsCatalog, $tagsCatalog,
+      $productTypesCatalog, $paymentMethodsCatalog, $deliveryMethodsCatalog
     )
   `;
 
@@ -374,7 +413,10 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
     '$socialLinks': JSON.stringify(config.socialLinks || {}),
     '$geoCatalog': JSON.stringify(config.geoCatalog || []),
     '$departmentsCatalog': JSON.stringify(config.departmentsCatalog || []),
-    '$tagsCatalog': JSON.stringify(config.tagsCatalog || [])
+    '$tagsCatalog': JSON.stringify(config.tagsCatalog || []),
+    '$productTypesCatalog': JSON.stringify(config.productTypesCatalog || []),
+    '$paymentMethodsCatalog': JSON.stringify(config.paymentMethodsCatalog || []),
+    '$deliveryMethodsCatalog': JSON.stringify(config.deliveryMethodsCatalog || [])
   };
 
   db.run(sql, params);
@@ -384,7 +426,8 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
   const [
     id, name, slogan, logoUrl, defaultStoreLogoUrl, defaultProductImageUrl,
     bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
-    accentColor, socialLinksStr, geoCatalogStr, departmentsCatalogStr, tagsCatalogStr
+    accentColor, socialLinksStr, geoCatalogStr, departmentsCatalogStr, tagsCatalogStr,
+    productTypesCatalogStr, paymentMethodsCatalogStr, deliveryMethodsCatalogStr
   ] = row;
 
   let socialLinks = INITIAL_MARKETPLACE_CONFIG.socialLinks;
@@ -398,6 +441,15 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
 
   let tagsCatalog = INITIAL_MARKETPLACE_CONFIG.tagsCatalog;
   try { if (tagsCatalogStr) tagsCatalog = JSON.parse(tagsCatalogStr); } catch (e) {}
+
+  let productTypesCatalog = INITIAL_MARKETPLACE_CONFIG.productTypesCatalog;
+  try { if (productTypesCatalogStr) productTypesCatalog = JSON.parse(productTypesCatalogStr); } catch (e) {}
+
+  let paymentMethodsCatalog = INITIAL_MARKETPLACE_CONFIG.paymentMethodsCatalog;
+  try { if (paymentMethodsCatalogStr) paymentMethodsCatalog = JSON.parse(paymentMethodsCatalogStr); } catch (e) {}
+
+  let deliveryMethodsCatalog = INITIAL_MARKETPLACE_CONFIG.deliveryMethodsCatalog;
+  try { if (deliveryMethodsCatalogStr) deliveryMethodsCatalog = JSON.parse(deliveryMethodsCatalogStr); } catch (e) {}
 
   return {
     name: String(name || 'MercadoCuba'),
@@ -415,5 +467,8 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
     geoCatalog,
     departmentsCatalog,
     tagsCatalog,
+    productTypesCatalog,
+    paymentMethodsCatalog,
+    deliveryMethodsCatalog,
   };
 }

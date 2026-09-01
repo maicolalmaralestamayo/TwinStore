@@ -8,10 +8,19 @@ import {
   SubcategoryItem,
   TagGroup,
   TagItem,
+  NomenclatorItem,
 } from '../../types';
-import { INITIAL_GEO_CATALOG, INITIAL_DEPARTMENT_CATALOG, INITIAL_TAGS_CATALOG } from '../../data/initialData';
+import {
+  INITIAL_GEO_CATALOG,
+  INITIAL_DEPARTMENT_CATALOG,
+  INITIAL_TAGS_CATALOG,
+  INITIAL_PRODUCT_TYPES_CATALOG,
+  INITIAL_PAYMENT_METHODS_CATALOG,
+  INITIAL_DELIVERY_METHODS_CATALOG,
+} from '../../data/initialData';
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
+import { NomenclatorIcon, AVAILABLE_NOMENCLATOR_ICONS } from '../common/NomenclatorIcon';
 import {
   Globe,
   Image as ImageIcon,
@@ -43,7 +52,18 @@ import {
   Zap,
   Smartphone,
   Briefcase,
+  CreditCard,
+  DollarSign,
+  Coins,
+  Truck,
+  Store as StoreIcon,
+  Package,
+  Sliders,
+  CheckCircle2,
+  ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { interfaz } from '../../data/interfaz';
 
 interface GlobalConfigManagerProps {
   config: MarketplaceConfig;
@@ -56,7 +76,45 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   onUpdateConfig,
   onShowToast,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'identity' | 'geography' | 'taxonomy' | 'tags'>('identity');
+  const [activeSubTab, setActiveSubTab] = useState<
+    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel'
+  >('identity');
+
+  // Business Model Nomenclators State
+  const [productTypesCatalog, setProductTypesCatalog] = useState<NomenclatorItem[]>(
+    config.productTypesCatalog && config.productTypesCatalog.length > 0
+      ? config.productTypesCatalog
+      : INITIAL_PRODUCT_TYPES_CATALOG
+  );
+
+  const [paymentMethodsCatalog, setPaymentMethodsCatalog] = useState<NomenclatorItem[]>(
+    config.paymentMethodsCatalog && config.paymentMethodsCatalog.length > 0
+      ? config.paymentMethodsCatalog
+      : INITIAL_PAYMENT_METHODS_CATALOG
+  );
+
+  const [deliveryMethodsCatalog, setDeliveryMethodsCatalog] = useState<NomenclatorItem[]>(
+    config.deliveryMethodsCatalog && config.deliveryMethodsCatalog.length > 0
+      ? config.deliveryMethodsCatalog
+      : INITIAL_DELIVERY_METHODS_CATALOG
+  );
+
+  const [activeNomCategory, setActiveNomCategory] = useState<
+    'productTypes' | 'paymentMethods' | 'deliveryMethods'
+  >('productTypes');
+
+  // New item inputs for Nomenclator
+  const [newNomName, setNewNomName] = useState('');
+  const [newNomDesc, setNewNomDesc] = useState('');
+  const [newNomIcon, setNewNomIcon] = useState('ShoppingBag');
+  const [newNomActive, setNewNomActive] = useState(true);
+
+  // Editing item states for Nomenclator
+  const [editingNomId, setEditingNomId] = useState<string | null>(null);
+  const [editingNomName, setEditingNomName] = useState('');
+  const [editingNomDesc, setEditingNomDesc] = useState('');
+  const [editingNomIcon, setEditingNomIcon] = useState('');
+  const [editingNomActive, setEditingNomActive] = useState(true);
 
   // Taxonomy catalog state (2 escalones: Departamentos -> Subcategorías)
   const [departmentsCatalog, setDepartmentsCatalog] = useState<DepartmentCategory[]>(
@@ -198,6 +256,11 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
         linkedin: linkedin.trim(),
       },
       geoCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog,
     };
     onUpdateConfig(updated);
     onShowToast(
@@ -256,6 +319,11 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
         linkedin,
       },
       geoCatalog: updatedCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog,
     });
   };
 
@@ -443,7 +511,34 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   // --- TAXONOMY (2 ESCALONES) ACTIONS ---
   const saveDepartmentsCatalog = (updated: DepartmentCategory[]) => {
     setDepartmentsCatalog(updated);
-    onUpdateConfig({ ...config, departmentsCatalog: updated });
+    onUpdateConfig({
+      ...config,
+      name,
+      slogan,
+      bannerTitle,
+      bannerSubtitle,
+      logoUrl,
+      bannerUrl,
+      defaultStoreLogoUrl,
+      defaultProductImageUrl,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+      socialLinks: {
+        whatsapp,
+        telegram,
+        instagram,
+        facebook,
+        twitter,
+        linkedin,
+      },
+      geoCatalog,
+      departmentsCatalog: updated,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog,
+    });
   };
 
   const handleAddDepartment = (e: React.FormEvent) => {
@@ -706,6 +801,237 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     onShowToast('Etiqueta actualizada', `Se cambió a "${editingTagItemText.trim()}"`);
   };
 
+  // --- BUSINESS MODEL NOMENCLATORS ACTIONS ---
+  const saveProductTypesCatalog = (updated: NomenclatorItem[]) => {
+    setProductTypesCatalog(updated);
+    onUpdateConfig({
+      ...config,
+      name,
+      slogan,
+      bannerTitle,
+      bannerSubtitle,
+      logoUrl,
+      bannerUrl,
+      defaultStoreLogoUrl,
+      defaultProductImageUrl,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+      socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+      geoCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog: updated,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog,
+    });
+  };
+
+  const savePaymentMethodsCatalog = (updated: NomenclatorItem[]) => {
+    setPaymentMethodsCatalog(updated);
+    onUpdateConfig({
+      ...config,
+      name,
+      slogan,
+      bannerTitle,
+      bannerSubtitle,
+      logoUrl,
+      bannerUrl,
+      defaultStoreLogoUrl,
+      defaultProductImageUrl,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+      socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+      geoCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog: updated,
+      deliveryMethodsCatalog,
+    });
+  };
+
+  const saveDeliveryMethodsCatalog = (updated: NomenclatorItem[]) => {
+    setDeliveryMethodsCatalog(updated);
+    onUpdateConfig({
+      ...config,
+      name,
+      slogan,
+      bannerTitle,
+      bannerSubtitle,
+      logoUrl,
+      bannerUrl,
+      defaultStoreLogoUrl,
+      defaultProductImageUrl,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+      socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+      geoCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog: updated,
+    });
+  };
+
+  const handleAddNomItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNomName.trim()) return;
+
+    const prefix =
+      activeNomCategory === 'productTypes'
+        ? 'pt'
+        : activeNomCategory === 'paymentMethods'
+        ? 'pm'
+        : 'dm';
+
+    const newItem: NomenclatorItem = {
+      id: `${prefix}-${Date.now()}`,
+      name: newNomName.trim(),
+      description: newNomDesc.trim() || undefined,
+      iconName: newNomIcon.trim() || undefined,
+      active: newNomActive,
+    };
+
+    if (activeNomCategory === 'productTypes') {
+      const updated = [...productTypesCatalog, newItem];
+      saveProductTypesCatalog(updated);
+      onShowToast('Tipo de oferta creado', `Se añadió "${newItem.name}"`);
+    } else if (activeNomCategory === 'paymentMethods') {
+      const updated = [...paymentMethodsCatalog, newItem];
+      savePaymentMethodsCatalog(updated);
+      onShowToast('Tipo de pago creado', `Se añadió "${newItem.name}"`);
+    } else {
+      const updated = [...deliveryMethodsCatalog, newItem];
+      saveDeliveryMethodsCatalog(updated);
+      onShowToast('Tipo de entrega creado', `Se añadió "${newItem.name}"`);
+    }
+
+    setNewNomName('');
+    setNewNomDesc('');
+    setNewNomIcon('ShoppingBag');
+    setNewNomActive(true);
+  };
+
+  const handleDeleteNomItem = (id: string, name: string) => {
+    const list =
+      activeNomCategory === 'productTypes'
+        ? productTypesCatalog
+        : activeNomCategory === 'paymentMethods'
+        ? paymentMethodsCatalog
+        : deliveryMethodsCatalog;
+
+    if (list.length <= 1) {
+      onShowToast('No se puede eliminar', 'Debe existir al menos un elemento en el nomenclador', 'error');
+      return;
+    }
+
+    const updated = list.filter((i) => i.id !== id);
+    if (activeNomCategory === 'productTypes') {
+      saveProductTypesCatalog(updated);
+    } else if (activeNomCategory === 'paymentMethods') {
+      savePaymentMethodsCatalog(updated);
+    } else {
+      saveDeliveryMethodsCatalog(updated);
+    }
+    onShowToast('Elemento eliminado', `Se eliminó "${name}"`);
+  };
+
+  const handleToggleNomActive = (id: string) => {
+    if (activeNomCategory === 'productTypes') {
+      const updated = productTypesCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
+      saveProductTypesCatalog(updated);
+    } else if (activeNomCategory === 'paymentMethods') {
+      const updated = paymentMethodsCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
+      savePaymentMethodsCatalog(updated);
+    } else {
+      const updated = deliveryMethodsCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
+      saveDeliveryMethodsCatalog(updated);
+    }
+  };
+
+  const handleStartEditNom = (item: NomenclatorItem) => {
+    setEditingNomId(item.id);
+    setEditingNomName(item.name);
+    setEditingNomDesc(item.description || '');
+    setEditingNomIcon(item.iconName || 'ShoppingBag');
+    setEditingNomActive(item.active !== false);
+  };
+
+  const handleSaveEditNom = () => {
+    if (!editingNomId || !editingNomName.trim()) {
+      setEditingNomId(null);
+      return;
+    }
+
+    if (activeNomCategory === 'productTypes') {
+      const updated = productTypesCatalog.map((i) =>
+        i.id === editingNomId
+          ? {
+              ...i,
+              name: editingNomName.trim(),
+              description: editingNomDesc.trim() || undefined,
+              iconName: editingNomIcon.trim() || undefined,
+              active: editingNomActive,
+            }
+          : i
+      );
+      saveProductTypesCatalog(updated);
+    } else if (activeNomCategory === 'paymentMethods') {
+      const updated = paymentMethodsCatalog.map((i) =>
+        i.id === editingNomId
+          ? {
+              ...i,
+              name: editingNomName.trim(),
+              description: editingNomDesc.trim() || undefined,
+              iconName: editingNomIcon.trim() || undefined,
+              active: editingNomActive,
+            }
+          : i
+      );
+      savePaymentMethodsCatalog(updated);
+    } else {
+      const updated = deliveryMethodsCatalog.map((i) =>
+        i.id === editingNomId
+          ? {
+              ...i,
+              name: editingNomName.trim(),
+              description: editingNomDesc.trim() || undefined,
+              iconName: editingNomIcon.trim() || undefined,
+              active: editingNomActive,
+            }
+          : i
+      );
+      saveDeliveryMethodsCatalog(updated);
+    }
+
+    setEditingNomId(null);
+    onShowToast('Elemento actualizado', `Se guardó "${editingNomName.trim()}"`);
+  };
+
+  const handleResetNomCategory = () => {
+    if (activeNomCategory === 'productTypes') {
+      saveProductTypesCatalog(INITIAL_PRODUCT_TYPES_CATALOG);
+      onShowToast('Nomenclador restaurado', 'Se restablecieron los tipos de publicación por defecto');
+    } else if (activeNomCategory === 'paymentMethods') {
+      savePaymentMethodsCatalog(INITIAL_PAYMENT_METHODS_CATALOG);
+      onShowToast('Nomenclador restaurado', 'Se restablecieron los tipos de pago por defecto');
+    } else {
+      saveDeliveryMethodsCatalog(INITIAL_DELIVERY_METHODS_CATALOG);
+      onShowToast('Nomenclador restaurado', 'Se restablecieron los tipos de recogida por defecto');
+    }
+  };
+
+  const currentNomCatalog =
+    activeNomCategory === 'productTypes'
+      ? productTypesCatalog
+      : activeNomCategory === 'paymentMethods'
+      ? paymentMethodsCatalog
+      : deliveryMethodsCatalog;
+
   return (
     <div className="space-y-6">
       {/* Sub-navigation tabs inside Global Configuration */}
@@ -761,6 +1087,19 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           >
             <Tag className="w-4 h-4" />
             <span>Etiquetado (Superetiquetas y Etiquetas)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('businessModel')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === 'businessModel'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Modelo de Negocio (Nomencladores)</span>
           </button>
         </div>
       </div>
@@ -1611,6 +1950,388 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             </div>
           </div>
         </div>
+      ) : activeSubTab === 'businessModel' ? (
+        /* SECTION: BUSINESS MODEL NOMENCLATORS */
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-indigo-600" />
+                <span>Nomencladores del Modelo de Negocio</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-2xl">
+                Define y personaliza dinámicamente los tipos de ofertas (productos, servicios, alquileres, combos), formas de pago admitidas y opciones de entrega o recogida en tienda. Estos nomencladores se asignan a cada producto y permiten a los clientes filtrar ofertas con precisión.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetNomCategory}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer border border-slate-200"
+              title="Restaurar este nomenclador a los valores sugeridos por defecto"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Restaurar por Defecto</span>
+            </button>
+          </div>
+
+          {/* 3 CATEGORY SELECTOR TABS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNomCategory('productTypes');
+                setEditingNomId(null);
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                activeNomCategory === 'productTypes'
+                  ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  activeNomCategory === 'productTypes'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                    Tipos de Oferta
+                  </span>
+                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                    {productTypesCatalog.length}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  Productos, Servicios, Alquileres...
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNomCategory('paymentMethods');
+                setEditingNomId(null);
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                activeNomCategory === 'paymentMethods'
+                  ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  activeNomCategory === 'paymentMethods'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                    Tipos de Pago
+                  </span>
+                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                    {paymentMethodsCatalog.length}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  Efectivo CUP, Transferencia, USD...
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNomCategory('deliveryMethods');
+                setEditingNomId(null);
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                activeNomCategory === 'deliveryMethods'
+                  ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  activeNomCategory === 'deliveryMethods'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <Truck className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                    Tipos de Recogida
+                  </span>
+                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                    {deliveryMethodsCatalog.length}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  Mensajería, Tienda física, Envíos...
+                </p>
+              </div>
+            </button>
+          </div>
+
+          {/* ADD NEW NOMENCLATOR ITEM FORM */}
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+            <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm mb-3 flex items-center gap-2">
+              <Plus className="w-4 h-4 text-indigo-600" />
+              <span>
+                Añadir Nuevo Elemento a:{' '}
+                <span className="text-indigo-600">
+                  {activeNomCategory === 'productTypes'
+                    ? 'Tipos de Oferta'
+                    : activeNomCategory === 'paymentMethods'
+                    ? 'Tipos de Pago'
+                    : 'Tipos de Recogida'}
+                </span>
+              </span>
+            </h4>
+
+            <form onSubmit={handleAddNomItem} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={newNomName}
+                  onChange={(e) => setNewNomName(e.target.value)}
+                  placeholder={
+                    activeNomCategory === 'productTypes'
+                      ? 'ej. Alquiler de Equipos'
+                      : activeNomCategory === 'paymentMethods'
+                      ? 'ej. Criptomoneda USDT'
+                      : 'ej. Envío Nacional Expreso'
+                  }
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Descripción (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newNomDesc}
+                  onChange={(e) => setNewNomDesc(e.target.value)}
+                  placeholder="Detalles sobre cómo aplica..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Ícono</label>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-indigo-600 shrink-0">
+                    <NomenclatorIcon name={newNomIcon} className="w-4 h-4" />
+                  </div>
+                  <select
+                    value={newNomIcon}
+                    onChange={(e) => setNewNomIcon(e.target.value)}
+                    className="w-full px-2 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-800 outline-none focus:border-indigo-500"
+                  >
+                    {AVAILABLE_NOMENCLATOR_ICONS.map((icon) => (
+                      <option key={icon} value={icon}>
+                        {icon}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2 flex items-end">
+                <button
+                  type="submit"
+                  className="w-full py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Añadir</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* LIST OF CURRENT NOMENCLATOR ITEMS */}
+          <div className="space-y-2">
+            <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center justify-between">
+              <span>Elementos Registrados ({currentNomCatalog.length})</span>
+              <span className="text-[11px] font-normal text-slate-400">
+                Haz clic en el estado para activar/desactivar opciones
+              </span>
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {currentNomCatalog.map((item) => {
+                const isEditing = editingNomId === item.id;
+
+                if (isEditing) {
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-indigo-900">Editar Elemento</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingNomId(null)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editingNomName}
+                          onChange={(e) => setEditingNomName(e.target.value)}
+                          placeholder="Nombre del elemento"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
+                        />
+                        <input
+                          type="text"
+                          value={editingNomDesc}
+                          onChange={(e) => setEditingNomDesc(e.target.value)}
+                          placeholder="Descripción (opcional)"
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 outline-none focus:border-indigo-600"
+                        />
+
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <div className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-indigo-600 shrink-0">
+                              <NomenclatorIcon name={editingNomIcon} className="w-3.5 h-3.5" />
+                            </div>
+                            <select
+                              value={editingNomIcon}
+                              onChange={(e) => setEditingNomIcon(e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-xl border border-slate-300 bg-white text-xs text-slate-800 outline-none"
+                            >
+                              {AVAILABLE_NOMENCLATOR_ICONS.map((icon) => (
+                                <option key={icon} value={icon}>
+                                  {icon}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={editingNomActive}
+                              onChange={(e) => setEditingNomActive(e.target.checked)}
+                              className="rounded text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span>Activo</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
+                        <button
+                          type="button"
+                          onClick={() => setEditingNomId(null)}
+                          className="px-3 py-1.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveEditNom}
+                          className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Guardar Cambios</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
+                      item.active !== false
+                        ? 'bg-white border-slate-200 hover:border-indigo-200 hover:shadow-xs'
+                        : 'bg-slate-50 border-slate-200 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          item.active !== false
+                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                            : 'bg-slate-200 text-slate-500'
+                        }`}
+                      >
+                        <NomenclatorIcon name={item.iconName} className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h5 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                            {item.name}
+                          </h5>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleNomActive(item.id)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                              item.active !== false
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                            }`}
+                            title="Alternar estado activo/inactivo"
+                          >
+                            {item.active !== false ? 'Activo' : 'Inactivo'}
+                          </button>
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-slate-500 mt-1 leading-snug">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditNom(item)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                        title="Editar elemento"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNomItem(item.id, item.name)}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                        title="Eliminar elemento"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       ) : (
         /* SECTION 2: BRAND IDENTITY, LOGOS, THEME COLORS, AND SOCIAL LINKS */
         <form
@@ -1801,7 +2522,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 />
               </div>
 
-              {/* 2. MARKETPLACE BANNER / HERO IMAGE */}
+              {/* 2. MARKETPLACE BANNER IMAGE */}
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
                 <ImageGalleryUploader
                   images={bannerUrl && bannerUrl !== 'local:banner' ? [bannerUrl] : []}

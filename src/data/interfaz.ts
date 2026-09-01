@@ -1,4 +1,4 @@
-import interfazData from '../../interfaz.json';
+import interfazData from './interfaz.json';
 
 export type InterfazType = typeof interfazData;
 

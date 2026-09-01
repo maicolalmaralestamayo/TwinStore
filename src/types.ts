@@ -85,6 +85,18 @@ export interface ProductTagSelection {
   tagName?: string;
 }
 
+// --- NOMENCLATORS (NOMENCLADORES DINÁMICOS DEL MODELO DE NEGOCIO) ---
+export interface NomenclatorItem {
+  id: string;
+  name: string;
+  description?: string;
+  iconName?: string;
+}
+
+export type ProductTypeItem = NomenclatorItem;
+export type PaymentMethodItem = NomenclatorItem;
+export type DeliveryMethodItem = NomenclatorItem;
+
 export interface Product {
   id: string;
   storeId: string;
@@ -104,6 +116,12 @@ export interface Product {
   tags: string[];
   tagSelections?: ProductTagSelection[]; // Selecciones del sistema de etiquetado de 2 niveles
   createdAt: string;
+
+  // Relaciones dinámicas con Nomencladores de Negocio:
+  productTypeId?: string; // ID del Tipo de Oferta (ej: "pt-producto", "pt-servicio", "pt-alquiler")
+  productType?: string; // Nombre del Tipo de Oferta (ej: "Productos Físicos", "Servicios Profesionales")
+  paymentMethodIds?: string[]; // IDs de Tipos de Pago aceptados para esta oferta (ej: ["pm-efectivo", "pm-transferencia"])
+  deliveryMethodIds?: string[]; // IDs de Tipos de Entrega / Recogida disponibles (ej: ["dm-mensajeria", "dm-recogida"])
 }
 
 export interface CategoryItem {
@@ -127,9 +145,10 @@ export interface FilterState {
   provinces: string[]; // empty = all provinces selected
   municipalities: string[]; // empty = all municipalities selected
   repartos: string[]; // empty = all repartos selected
-  itemTypes?: string[]; // 'product' | 'service', empty = all
-  paymentMethods?: string[]; // 'transfer' | 'cash', empty = all
-  deliveryMethods?: string[]; // 'delivery' | 'pickup', empty = all
+  productTypes?: string[]; // IDs o nombres del nomenclador de tipos de producto, empty = all
+  itemTypes?: string[]; // 'product' | 'service', empty = all (compatibilidad)
+  paymentMethods?: string[]; // IDs o nombres del nomenclador de tipos de pago, empty = all
+  deliveryMethods?: string[]; // IDs o nombres del nomenclador de tipos de recogida/entrega, empty = all
   priceCurrency: PriceFilterCurrency; // 'USD' | 'CUP'
   minPrice: number | '';
   maxPrice: number | '';
@@ -213,7 +232,7 @@ export interface MarketplaceConfig {
   logoUrl: string;
   defaultStoreLogoUrl: string; // Imagen por defecto para las tiendas que no se les declare una imagen
   defaultProductImageUrl: string; // Imagen por defecto para productos o servicios sin imagen
-  bannerUrl?: string; // Imagen principal del portal o hero
+  bannerUrl?: string; // Imagen principal del portal o banner
   bannerTitle?: string; // Título visible en el banner principal
   bannerSubtitle?: string; // Subtítulo o descripción visible en el banner principal
   primaryColor: string;
@@ -223,5 +242,8 @@ export interface MarketplaceConfig {
   geoCatalog: GeoProvince[]; // Catálogo relacional: Provincia -> Municipios -> Repartos
   departmentsCatalog?: DepartmentCategory[]; // Clasificación de productos en 2 escalones (Departamentos -> Subcategorías)
   tagsCatalog?: TagGroup[]; // Sistema de etiquetado de 2 niveles (Grupos -> Etiquetas)
+  productTypesCatalog?: ProductTypeItem[]; // Nomenclador dinámico de Tipos de Producto / Oferta (ej: Físicos, Servicios, Alquileres)
+  paymentMethodsCatalog?: PaymentMethodItem[]; // Nomenclador dinámico de Tipos de Pago (ej: Efectivo, Transferencia, Zelle)
+  deliveryMethodsCatalog?: DeliveryMethodItem[]; // Nomenclador dinámico de Tipos de Recogida / Entrega (ej: Mensajería, Recogida en Local)
 }
 

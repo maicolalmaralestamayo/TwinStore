@@ -30,9 +30,7 @@ app.get("/api/health", (req, res) => {
 // API route: Get UI Strings from interfaz.json
 app.get("/api/interfaz", (req, res) => {
   try {
-    const interfazPath = path.join(process.cwd(), "interfaz.json");
-    const fallbackPath = path.join(process.cwd(), "src", "data", "interfaz.json");
-    const targetPath = fs.existsSync(interfazPath) ? interfazPath : fallbackPath;
+    const targetPath = path.join(process.cwd(), "src", "data", "interfaz.json");
     const content = fs.readFileSync(targetPath, "utf-8");
     res.json(JSON.parse(content));
   } catch (err: any) {

@@ -7,7 +7,91 @@ import {
   GeoProvince,
   DepartmentCategory,
   TagGroup,
+  ProductTypeItem,
+  PaymentMethodItem,
+  DeliveryMethodItem,
 } from '../types';
+
+export const INITIAL_PRODUCT_TYPES_CATALOG: ProductTypeItem[] = [
+  {
+    id: 'pt-producto',
+    name: 'Productos Físicos',
+    description: 'Artículos físicos, bienes tangibles, alimentos, electrodomésticos y equipos',
+    iconName: 'ShoppingBag',
+  },
+  {
+    id: 'pt-servicio',
+    name: 'Servicios Profesionales',
+    description: 'Servicios técnicos, reparaciones, mantenimiento, consultoría y oficios',
+    iconName: 'Briefcase',
+  },
+  {
+    id: 'pt-alquiler',
+    name: 'Alquileres y Rentas',
+    description: 'Renta de viviendas, autos, equipos para eventos, herramientas y trajes',
+    iconName: 'Key',
+  },
+  {
+    id: 'pt-digital',
+    name: 'Digital y Recargas',
+    description: 'Cuentas streaming, licencias, cursos online, diseño gráfico y recargas',
+    iconName: 'Smartphone',
+  },
+];
+
+export const INITIAL_PAYMENT_METHODS_CATALOG: PaymentMethodItem[] = [
+  {
+    id: 'pm-efectivo',
+    name: 'Efectivo',
+    description: 'Pago directo en mano en CUP, USD, MLC o Euros',
+    iconName: 'Banknote',
+  },
+  {
+    id: 'pm-transferencia',
+    name: 'Transferencia Bancaria',
+    description: 'Transfermóvil / EnZona (CUP, BPA, BANDEC, Banco Metropolitano)',
+    iconName: 'CreditCard',
+  },
+  {
+    id: 'pm-moneda-ext',
+    name: 'Moneda Extranjera / Zelle',
+    description: 'Zelle, remesas directas del exterior, pagos en divisas o tarjetas MLC',
+    iconName: 'DollarSign',
+  },
+  {
+    id: 'pm-cripto',
+    name: 'Criptomonedas',
+    description: 'Pagos mediante USDT, Bitcoin, Tron u otras criptomonedas',
+    iconName: 'Coins',
+  },
+];
+
+export const INITIAL_DELIVERY_METHODS_CATALOG: DeliveryMethodItem[] = [
+  {
+    id: 'dm-mensajeria',
+    name: 'Mensajería a Domicilio',
+    description: 'Entrega directa hasta la puerta del cliente con mensajero',
+    iconName: 'Truck',
+  },
+  {
+    id: 'dm-recogida',
+    name: 'Recogida en Tienda / Local',
+    description: 'El cliente retira personalmente su compra en la sede o local de la tienda',
+    iconName: 'Store',
+  },
+  {
+    id: 'dm-punto-encuentro',
+    name: 'Punto de Encuentro',
+    description: 'Entrega acordada en un punto de referencia céntrico (parque, terminal, etc.)',
+    iconName: 'MapPin',
+  },
+  {
+    id: 'dm-envio-nacional',
+    name: 'Envío Interprovincial',
+    description: 'Envíos a otras provincias por paquetería, ómnibus o ferrocarril',
+    iconName: 'Package',
+  },
+];
 
 export const INITIAL_TAGS_CATALOG: TagGroup[] = [
   {
@@ -390,6 +474,9 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
   geoCatalog: INITIAL_GEO_CATALOG,
   departmentsCatalog: INITIAL_DEPARTMENT_CATALOG,
   tagsCatalog: INITIAL_TAGS_CATALOG,
+  productTypesCatalog: INITIAL_PRODUCT_TYPES_CATALOG,
+  paymentMethodsCatalog: INITIAL_PAYMENT_METHODS_CATALOG,
+  deliveryMethodsCatalog: INITIAL_DELIVERY_METHODS_CATALOG,
 };
 
 
@@ -1396,7 +1483,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     tags: ['batidora', 'cocina', 'electrodomesticos', 'Blanco', '3 Meses', 'Nuevo Sello'],
     createdAt: '2026-08-06'
   }
-];
+].map((p) => ({
+  ...p,
+  productTypeId: p.productTypeId || (p.isService ? 'pt-servicio' : 'pt-producto'),
+  productType: p.productType || (p.isService ? 'Servicios Profesionales' : 'Productos Físicos'),
+  paymentMethodIds: p.paymentMethodIds || ['pm-efectivo', 'pm-transferencia'],
+  deliveryMethodIds: p.deliveryMethodIds || (p.deliveryAvailable ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida']),
+}));
 
 export const PRESET_LOGOS = [
   { label: 'Tienda de Alimentos / Agro', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80' },

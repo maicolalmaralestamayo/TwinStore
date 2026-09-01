@@ -137,7 +137,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
 
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 ml-auto">
           <ShoppingBag className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-          <span>{productsCount} {interfaz.hero.productsCountLabel}</span>
+          <span>{productsCount} {interfaz.header.productsCountLabel}</span>
         </span>
       </div>
 
