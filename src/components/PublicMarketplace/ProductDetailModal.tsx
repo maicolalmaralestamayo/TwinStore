@@ -21,6 +21,8 @@ import {
   Truck,
   Tag,
   FolderTree,
+  Briefcase,
+  CreditCard,
 } from 'lucide-react';
 
 interface ProductDetailModalProps {
@@ -140,6 +142,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="space-y-4">
               {/* Subdepartment & Tags in Header */}
               <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${
+                  product.isService
+                    ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border-purple-200/70 dark:border-purple-800'
+                    : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200/70 dark:border-indigo-800'
+                }`}>
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>{product.productType || (product.isService ? 'Servicio Profesional' : 'Producto Físico')}</span>
+                </span>
                 {product.subcategory && (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-200/70 dark:border-indigo-800">
                     <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -284,6 +294,27 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="text-slate-500 dark:text-slate-400 font-medium">Tasa aplicada:</span>
                   <span className="font-mono font-bold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                     1 USD x {formatNumberWithDots(usdRate)} CUP
+                  </span>
+                </div>
+
+                {/* Delivery and payment methods */}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center gap-2 text-xs">
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold border ${
+                    store.deliveryAvailable
+                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                  }`}>
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>{store.deliveryAvailable ? 'Mensajería Disponible' : 'Recogida en Tienda'}</span>
+                  </span>
+
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold border ${
+                    store.paymentOptions?.transferAccepted
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                  }`}>
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>{store.paymentOptions?.transferAccepted ? 'Transferencia y Efectivo' : 'Solo Efectivo'}</span>
                   </span>
                 </div>
               </div>

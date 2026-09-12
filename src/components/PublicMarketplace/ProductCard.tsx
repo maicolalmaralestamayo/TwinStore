@@ -8,7 +8,6 @@ import {
 } from '../../lib/utils';
 import {
   MessageCircle,
-  Briefcase,
 } from 'lucide-react';
 import { interfaz } from '../../data/interfaz';
 
@@ -49,16 +48,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           imgClassName="group-hover:scale-105 transition-transform duration-500"
         />
 
-        {/* Badges: Tasa (1 USD x 328 CUP) + Badge Servicio */}
+        {/* Badges: Tasa (1 USD x 328 CUP) + Código único */}
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
           <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
             {interfaz.productCard.ratePrefix} {formatNumberWithDots(usdRate)} {interfaz.productCard.rateSuffix}
           </div>
 
-          {product.isService && (
-            <span className="inline-flex items-center gap-1 bg-purple-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
-              <Briefcase className="w-2.5 h-2.5 text-white" />
-              {interfaz.productCard.serviceBadge}
+          {product.code && (
+            <span className="inline-flex items-center gap-1 bg-indigo-600/95 text-white px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-xs">
+              {product.code}
             </span>
           )}
         </div>

@@ -43,6 +43,8 @@ export interface Store {
   usdToCupRate: number; // Custom USD -> CUP exchange rate for this store (e.g., 335, 340, 320)
   deliveryAvailable?: boolean; // si tiene o no la opción de mensajería (domicilio)
   paymentOptions?: StorePaymentOptions; // opciones de pago por transferencia y otras monedas
+  paymentMethodIds?: string[]; // IDs de Tipos de Pago del nomenclador asociados a esta tienda (ej: ["pm-efectivo", "pm-transferencia"])
+  deliveryMethodIds?: string[]; // IDs de Tipos de Recogida / Entrega del nomenclador asociados a esta tienda (ej: ["dm-mensajeria", "dm-recogida"])
   active: boolean;
   rating?: number;
   badge?: string; // e.g. "Envío Rápido", "Tienda Verificada"
@@ -91,6 +93,8 @@ export interface NomenclatorItem {
   name: string;
   description?: string;
   iconName?: string;
+  active?: boolean;
+  gravamen?: number; // Porcentaje de gravamen o comisión (%) aplicable a métodos de pago (ej: 0, 5, 10)
 }
 
 export type ProductTypeItem = NomenclatorItem;
@@ -99,6 +103,7 @@ export type DeliveryMethodItem = NomenclatorItem;
 
 export interface Product {
   id: string;
+  code: string; // Código único alfanumérico en toda la base de datos (ej: "PRD-001")
   storeId: string;
   title: string;
   description: string;
@@ -110,7 +115,6 @@ export interface Product {
   imageUrl: string; // Main primary image URL
   images?: string[]; // Multiple images for gallery
   isAvailable: boolean; // Activo en el marketplace (true = activo, false = desactivado)
-  isService?: boolean; // True if it's a service rather than physical product
   deliveryAvailable?: boolean; // Derivado de la tienda
   featured?: boolean;
   tags: string[];
@@ -118,10 +122,11 @@ export interface Product {
   createdAt: string;
 
   // Relaciones dinámicas con Nomencladores de Negocio:
-  productTypeId?: string; // ID del Tipo de Oferta (ej: "pt-producto", "pt-servicio", "pt-alquiler")
+  // (Solamente se relaciona con Producto el Tipo de Producto. Formas de Pago y Recogida se relacionan con la Tienda)
+  productTypeId?: string; // ID del Tipo de Oferta (ej: "pt-producto", "pt-servicio", "pt-alquiler", "pt-digital")
   productType?: string; // Nombre del Tipo de Oferta (ej: "Productos Físicos", "Servicios Profesionales")
-  paymentMethodIds?: string[]; // IDs de Tipos de Pago aceptados para esta oferta (ej: ["pm-efectivo", "pm-transferencia"])
-  deliveryMethodIds?: string[]; // IDs de Tipos de Entrega / Recogida disponibles (ej: ["dm-mensajeria", "dm-recogida"])
+  paymentMethodIds?: string[]; // Deprecated / compatibilidad: El tipo de pago se define a nivel de Tienda (Store)
+  deliveryMethodIds?: string[]; // Deprecated / compatibilidad: El tipo de recogida se define a nivel de Tienda (Store)
 }
 
 export interface CategoryItem {
@@ -137,6 +142,7 @@ export type PriceFilterCurrency = 'USD' | 'CUP';
 
 export interface FilterState {
   searchQuery: string;
+  code?: string; // Búsqueda específica por código único de producto
   storeIds: string[]; // empty = all stores selected
   categories: string[]; // empty = all categories/departments selected
   subcategories: string[]; // empty = all subcategories selected

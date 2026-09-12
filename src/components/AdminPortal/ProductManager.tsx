@@ -7,16 +7,19 @@ import {
   DepartmentCategory,
   TagGroup,
   ProductTagSelection,
+  NomenclatorItem,
 } from '../../types';
 import {
   PRESET_PRODUCT_IMAGES,
   INITIAL_DEPARTMENT_CATALOG,
   INITIAL_TAGS_CATALOG,
+  INITIAL_PRODUCT_TYPES_CATALOG,
 } from '../../data/initialData';
 import { formatCurrency, calculateCUP } from '../../lib/utils';
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
 import { SearchableSelect } from '../common/SearchableSelect';
+import { NomenclatorIcon } from '../common/NomenclatorIcon';
 import {
   Plus,
   Edit2,
@@ -44,6 +47,9 @@ interface ProductManagerProps {
   categories: CategoryItem[];
   departmentsCatalog?: DepartmentCategory[];
   tagsCatalog?: TagGroup[];
+  productTypesCatalog?: NomenclatorItem[];
+  paymentMethodsCatalog?: NomenclatorItem[];
+  deliveryMethodsCatalog?: NomenclatorItem[];
   onAddProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
@@ -58,6 +64,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   categories,
   departmentsCatalog,
   tagsCatalog,
+  productTypesCatalog,
+  paymentMethodsCatalog,
+  deliveryMethodsCatalog,
   onAddProduct,
   onUpdateProduct,
   onDeleteProduct,
@@ -82,6 +91,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   const [newImageUrl, setNewImageUrl] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
   const [isService, setIsService] = useState(false);
+  const [productTypeId, setProductTypeId] = useState<string>('pt-producto');
   const [selectedTagSelections, setSelectedTagSelections] = useState<ProductTagSelection[]>([]);
   const [selectedSupertagComboId, setSelectedSupertagComboId] = useState<string>('');
 
@@ -91,6 +101,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       : INITIAL_DEPARTMENT_CATALOG;
   const effectiveTagsCatalog =
     tagsCatalog && tagsCatalog.length > 0 ? tagsCatalog : INITIAL_TAGS_CATALOG;
+  const effectiveProductTypesCatalog =
+    productTypesCatalog && productTypesCatalog.length > 0
+      ? productTypesCatalog
+      : INITIAL_PRODUCT_TYPES_CATALOG;
   const currentDept =
     catalogToUse.find((d) => d.name === category || d.id === category) || catalogToUse[0];
   const availableSubcats = currentDept?.subcategories || [];
@@ -119,6 +133,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     setNewImageUrl('');
     setIsAvailable(true);
     setIsService(false);
+    setProductTypeId('pt-producto');
     setSelectedTagSelections([]);
     setIsModalOpen(true);
   };
@@ -138,6 +153,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     setNewImageUrl('');
     setIsAvailable(product.isAvailable ?? true);
     setIsService(product.isService || false);
+    const matchedPt =
+      effectiveProductTypesCatalog.find(
+        (pt) => pt.id === product.productTypeId || pt.name === product.productType
+      ) ||
+      (product.isService
+        ? effectiveProductTypesCatalog.find((pt) => pt.id === 'pt-servicio')
+        : effectiveProductTypesCatalog[0]);
+    setProductTypeId(matchedPt?.id || 'pt-producto');
     setSelectedTagSelections(product.tagSelections || []);
     setIsModalOpen(true);
   };
@@ -214,6 +237,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     const finalMainImage = imageUrl || images[0] || 'local:product';
     const finalGallery = images.length > 0 ? images : [finalMainImage];
 
+    const chosenPt =
+      effectiveProductTypesCatalog.find((pt) => pt.id === productTypeId) ||
+      effectiveProductTypesCatalog[0];
+    const finalIsService =
+      isService ||
+      chosenPt?.id === 'pt-servicio' ||
+      (chosenPt?.name || '').toLowerCase().includes('servicio');
+    const finalProductTypeId = chosenPt?.id || productTypeId;
+    const finalProductTypeName = chosenPt?.name;
+
     if (editingProduct) {
       onUpdateProduct({
         ...editingProduct,
@@ -226,7 +259,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         imageUrl: finalMainImage,
         images: finalGallery,
         isAvailable,
-        isService,
+        isService: finalIsService,
+        productTypeId: finalProductTypeId,
+        productType: finalProductTypeName,
         tags,
         tagSelections,
       });
@@ -242,7 +277,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         imageUrl: finalMainImage,
         images: finalGallery,
         isAvailable,
-        isService,
+        isService: finalIsService,
+        productTypeId: finalProductTypeId,
+        productType: finalProductTypeName,
         featured: true,
         tags,
         tagSelections,
@@ -544,31 +581,51 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         </div>
                       </td>
 
-                      {/* Tipo Oferta (Producto / Servicio) - Toggle Switch Interruptor */}
+                      {/* Tipo Oferta (Producto / Servicio / Nomenclador Dinámico) */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={!!p.isService}
-                              onChange={() =>
-                                onUpdateProduct({
-                                  ...p,
-                                  isService: !p.isService,
-                                })
-                              }
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                          </label>
-                          <span
-                            className={`text-xs font-bold ${
-                              p.isService ? 'text-purple-800' : 'text-indigo-800'
-                            }`}
-                          >
-                            {p.isService ? 'Servicio' : 'Producto'}
-                          </span>
-                        </div>
+                        {(() => {
+                          const matchedType = effectiveProductTypesCatalog.find(
+                            (pt) => pt.id === p.productTypeId || pt.name === p.productType
+                          ) || (p.isService ? effectiveProductTypesCatalog.find((pt) => pt.id === 'pt-servicio') : effectiveProductTypesCatalog[0]);
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <label className="relative inline-flex items-center cursor-pointer shrink-0" title="Alternar entre Producto y Servicio">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.isService}
+                                  onChange={() => {
+                                    const nextIsService = !p.isService;
+                                    const targetPt = nextIsService
+                                      ? effectiveProductTypesCatalog.find((pt) => pt.id === 'pt-servicio') || effectiveProductTypesCatalog[1]
+                                      : effectiveProductTypesCatalog.find((pt) => pt.id === 'pt-producto') || effectiveProductTypesCatalog[0];
+                                    onUpdateProduct({
+                                      ...p,
+                                      isService: nextIsService,
+                                      productTypeId: targetPt?.id,
+                                      productType: targetPt?.name,
+                                    });
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                              </label>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                                  p.isService
+                                    ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                    : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                }`}
+                              >
+                                <NomenclatorIcon
+                                  name={matchedType?.iconName || (p.isService ? 'Briefcase' : 'ShoppingBag')}
+                                  className="w-3.5 h-3.5"
+                                />
+                                <span>{matchedType?.name || (p.isService ? 'Servicio' : 'Producto')}</span>
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Acciones */}
@@ -993,9 +1050,49 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </div>
               </div>
 
-              {/* Checkbox options: Available (Activo en el marketplace) & Service */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Nomenclador de Tipo de Oferta & Opciones de Disponibilidad */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">
+                    Tipo de Oferta (Nomenclador de Negocio)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {effectiveProductTypesCatalog.map((pt) => {
+                      const isSelected = productTypeId === pt.id;
+                      return (
+                        <button
+                          key={pt.id}
+                          type="button"
+                          onClick={() => {
+                            setProductTypeId(pt.id);
+                            setIsService(
+                              pt.id === 'pt-servicio' ||
+                              (pt.name || '').toLowerCase().includes('servicio')
+                            );
+                          }}
+                          className={`flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-300'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div
+                            className={`p-1.5 rounded-lg shrink-0 ${
+                              isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            <NomenclatorIcon name={pt.iconName} className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-black truncate">{pt.name}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-900">
                       <input
@@ -1015,7 +1112,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     <input
                       type="checkbox"
                       checked={isService}
-                      onChange={(e) => setIsService(e.target.checked)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsService(checked);
+                        if (checked) {
+                          setProductTypeId('pt-servicio');
+                        } else if (productTypeId === 'pt-servicio') {
+                          setProductTypeId('pt-producto');
+                        }
+                      }}
                       className="rounded text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
                     />
                     <span>Es un Servicio Profesional</span>

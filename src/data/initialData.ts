@@ -17,25 +17,21 @@ export const INITIAL_PRODUCT_TYPES_CATALOG: ProductTypeItem[] = [
     id: 'pt-producto',
     name: 'Productos Físicos',
     description: 'Artículos físicos, bienes tangibles, alimentos, electrodomésticos y equipos',
-    iconName: 'ShoppingBag',
   },
   {
     id: 'pt-servicio',
     name: 'Servicios Profesionales',
     description: 'Servicios técnicos, reparaciones, mantenimiento, consultoría y oficios',
-    iconName: 'Briefcase',
   },
   {
     id: 'pt-alquiler',
     name: 'Alquileres y Rentas',
     description: 'Renta de viviendas, autos, equipos para eventos, herramientas y trajes',
-    iconName: 'Key',
   },
   {
     id: 'pt-digital',
     name: 'Digital y Recargas',
     description: 'Cuentas streaming, licencias, cursos online, diseño gráfico y recargas',
-    iconName: 'Smartphone',
   },
 ];
 
@@ -44,25 +40,25 @@ export const INITIAL_PAYMENT_METHODS_CATALOG: PaymentMethodItem[] = [
     id: 'pm-efectivo',
     name: 'Efectivo',
     description: 'Pago directo en mano en CUP, USD, MLC o Euros',
-    iconName: 'Banknote',
+    gravamen: 0,
   },
   {
     id: 'pm-transferencia',
     name: 'Transferencia Bancaria',
     description: 'Transfermóvil / EnZona (CUP, BPA, BANDEC, Banco Metropolitano)',
-    iconName: 'CreditCard',
+    gravamen: 5,
   },
   {
     id: 'pm-moneda-ext',
     name: 'Moneda Extranjera / Zelle',
     description: 'Zelle, remesas directas del exterior, pagos en divisas o tarjetas MLC',
-    iconName: 'DollarSign',
+    gravamen: 0,
   },
   {
     id: 'pm-cripto',
     name: 'Criptomonedas',
     description: 'Pagos mediante USDT, Bitcoin, Tron u otras criptomonedas',
-    iconName: 'Coins',
+    gravamen: 2,
   },
 ];
 
@@ -71,25 +67,21 @@ export const INITIAL_DELIVERY_METHODS_CATALOG: DeliveryMethodItem[] = [
     id: 'dm-mensajeria',
     name: 'Mensajería a Domicilio',
     description: 'Entrega directa hasta la puerta del cliente con mensajero',
-    iconName: 'Truck',
   },
   {
     id: 'dm-recogida',
     name: 'Recogida en Tienda / Local',
     description: 'El cliente retira personalmente su compra en la sede o local de la tienda',
-    iconName: 'Store',
   },
   {
     id: 'dm-punto-encuentro',
     name: 'Punto de Encuentro',
     description: 'Entrega acordada en un punto de referencia céntrico (parque, terminal, etc.)',
-    iconName: 'MapPin',
   },
   {
     id: 'dm-envio-nacional',
     name: 'Envío Interprovincial',
     description: 'Envíos a otras provincias por paquetería, ómnibus o ferrocarril',
-    iconName: 'Package',
   },
 ];
 
@@ -997,6 +989,7 @@ export const INITIAL_STORES: Store[] = [
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: 'prod-1',
+    code: 'PRD-001',
     storeId: 'store-1',
     title: 'Combo Familiar Premium #1 (Cerdo, Queso y Aceite)',
     description: 'Incluye: 10 lb de carne de cerdo limpia, 5 lb de jamón cocido, 1 barra de queso Gouda importado (3 kg), 2 botellas de aceite vegetal de 1 L y paquete de leche en polvo de 1 kg. Entrega incluida en zona céntrica.',
@@ -1005,7 +998,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Carnes y Embutidos',
     imageUrl: 'https://images.unsplash.com/photo-1506484381205-f7945653044d?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1017,6 +1011,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-2',
+    code: 'PRD-002',
     storeId: 'store-1',
     title: 'Caja de Pollo Importado (15 kg / 33 libras)',
     description: 'Caja sellada de cuartos de pollo importado de primera calidad (33 lb aprox). Ideal para consumo familiar o negocios particulares. Listo para entregar hoy en La Habana.',
@@ -1025,7 +1020,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Carnes y Embutidos',
     imageUrl: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1036,6 +1032,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-3',
+    code: 'PRD-003',
     storeId: 'store-2',
     title: 'Ventilador Recargable 16" con Panel Solar + Bombillos LED',
     description: 'Ventilador de 16 pulgadas con batería de litio integrada de 12,000 mAh. Incluye panel solar impermeable, 2 bombillos LED externos y puerto USB para cargar teléfonos celulares. Autonomía de 8 a 12 horas.',
@@ -1044,7 +1041,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Climatización y Ventiladores',
     imageUrl: 'https://images.unsplash.com/photo-1558611848-73f7eb4001a1?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1058,6 +1056,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-4',
+    code: 'PRD-004',
     storeId: 'store-2',
     title: 'Inversor de Corriente 1000W Onda Pura + Cargador Inteligente',
     description: 'Inversor inteligente para encender televisor, ventiladores, laptop e iluminación durante cortes de energía. Compatible con baterías de 12V. Protección contra sobrecarga y cortocircuito.',
@@ -1066,7 +1065,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Bombas de Agua e Inversores',
     imageUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1079,6 +1079,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-5',
+    code: 'PRD-005',
     storeId: 'store-2',
     title: 'Samsung Galaxy A55 5G (8GB RAM / 256GB / Sellado)',
     description: 'Teléfono nuevo sellado con garantía de la tienda. Pantalla Super AMOLED 120Hz, cámara de 50MP y batería de 5000 mAh. Liberado para todas las redes en Cuba (Cubacel 4G/LTE).',
@@ -1087,7 +1088,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Teléfonos Inteligentes',
     imageUrl: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1100,6 +1102,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-6',
+    code: 'PRD-006',
     storeId: 'store-3',
     title: 'Batería de Litio para Moto Eléctrica 72V 45Ah (Garantía 1 Año)',
     description: 'Batería de litio de alta calidad con celdas importadas. Brinda hasta 90 km de autonomía reales por carga. Incluye cargador rápido inteligente y cajuela de aluminio.',
@@ -1108,7 +1111,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Baterías de Litio / Gel',
     imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: false,
     featured: true,
     tagSelections: [
@@ -1121,6 +1125,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-7',
+    code: 'PRD-007',
     storeId: 'store-3',
     title: 'Servicio de Reparación y Mantenimiento de Motos Eléctricas',
     description: 'Diagnóstico electrónico, cambio de rodamientos, reparación de centralita (controlador), frenos y mantenimiento integral de su moto eléctrica en Santa Clara. Atendemos a domicilio.',
@@ -1129,7 +1134,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Mantenimiento y Taller',
     imageUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: true,
+    productTypeId: 'pt-servicio',
+    productType: 'Servicios Profesionales',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1140,6 +1146,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-8',
+    code: 'PRD-008',
     storeId: 'store-4',
     title: 'Tenis Deportivo Nike Air Max 270 (Tallas 38 a 44)',
     description: 'Calzado 100% original con amortiguación de aire visible. Ideal para caminar largas distancias y deportes. Consultar color y número exacto por WhatsApp.',
@@ -1148,7 +1155,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Calzado Deportivo',
     imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1162,6 +1170,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-9',
+    code: 'PRD-009',
     storeId: 'store-4',
     title: 'Kit de Belleza y Queratina Brasileña Profesional (1 Litro)',
     description: 'Tratamiento alisador profesional anti-frizz libre de formol + shampoo sin sal + mascarilla hidratante. Rinde para más de 12 aplicaciones.',
@@ -1170,7 +1179,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Capilar y Queratinas',
     imageUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1182,6 +1192,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-10',
+    code: 'PRD-010',
     storeId: 'store-5',
     title: 'Turbina de Agua 1/2 HP de Cobre (Silenciosa y Potente)',
     description: 'Bomba de agua eléctrica 110V/220V con bobinado 100% de cobre. Sube agua con excelente presión hasta 3er piso sin problemas. Garantía de 6 meses.',
@@ -1190,7 +1201,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Plomería y Tuberías',
     imageUrl: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1203,6 +1215,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-11',
+    code: 'PRD-011',
     storeId: 'store-5',
     title: 'Rollo de Cable Eléctrico #10 y #12 de Cobre (100 metros)',
     description: 'Rollo de cable eléctrico AWG marca importada para instalaciones residenciales. Aislamiento termo-resistente de alta seguridad. Consultar calibre por WhatsApp.',
@@ -1211,7 +1224,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Electricidad e Iluminación',
     imageUrl: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1223,6 +1237,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-12',
+    code: 'PRD-012',
     storeId: 'store-1',
     title: 'Olla Reina Eléctrica Multifunción 6 Litros (Acero Inoxidable)',
     description: 'Olla a presión eléctrica programable de 6 litros. Cocina frijoles, carne de cerdo, arroz y guisos en tiempo récord ahorrando corriente. Fácil limpieza.',
@@ -1231,7 +1246,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Cocina y Olla Reina',
     imageUrl: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1244,6 +1260,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-13',
+    code: 'PRD-013',
     storeId: 'store-6',
     title: 'Televisor Smart LED 43" 4K UHD con Control de Voz y Wi-Fi',
     description: 'Televisor inteligente de 43 pulgadas con entrada HDMI, USB y sistema para instalar aplicaciones de streaming.',
@@ -1252,7 +1269,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Climatización y Ventiladores',
     imageUrl: 'https://images.unsplash.com/photo-1593784991095-a205069470b6?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1265,6 +1283,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-14',
+    code: 'PRD-014',
     storeId: 'store-8',
     title: 'Bicicleta Eléctrica Plegable 36V 250W con Pedaleo Asistido',
     description: 'Ideal para la ciudad, autonomía de 45 km por carga, velocidad máxima 30 km/h y batería removible.',
@@ -1273,7 +1292,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Baterías de Litio / Gel',
     imageUrl: 'https://images.unsplash.com/photo-1571068316344-75bc76f77890?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: false,
     featured: true,
     tagSelections: [
@@ -1286,6 +1306,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-15',
+    code: 'PRD-015',
     storeId: 'store-7',
     title: 'Combo AgroEspecial (15 lb Carne Cerdo + 10 lb Frijol Negro + 2L Aceite)',
     description: 'Súper combo fresco del campo: banda de cerdo magra de 15 lb, frijol negro limpio y 2 litros de aceite vegetal.',
@@ -1294,7 +1315,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Carnes y Embutidos',
     imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1305,6 +1327,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-16',
+    code: 'PRD-016',
     storeId: 'store-12',
     title: 'Servicio de Instalación de Tanques de Agua y Presurizadores',
     description: 'Servicio técnico a domicilio para montaje de tanques elevados, redes PEX, cobre y tuberías hidráulicas.',
@@ -1313,7 +1336,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Reparaciones del Hogar',
     imageUrl: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: true,
+    productTypeId: 'pt-servicio',
+    productType: 'Servicios Profesionales',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1324,6 +1348,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-17',
+    code: 'PRD-017',
     storeId: 'store-11',
     title: 'Servicio de Mantenimiento y Reparación de PC y Laptops a Domicilio',
     description: 'Diagnóstico técnico, limpieza de componentes, cambio de pasta térmica, instalación de SSD y formateo con respaldo de información.',
@@ -1332,7 +1357,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Mantenimiento y Taller',
     imageUrl: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: true,
+    productTypeId: 'pt-servicio',
+    productType: 'Servicios Profesionales',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1343,6 +1369,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-18',
+    code: 'PRD-018',
     storeId: 'store-10',
     title: 'Servicio de Transportación y Mudanzas en La Habana y Provincias',
     description: 'Flete en camioneta cerrada con personal capacitado para carga y descarga de electrodomésticos, muebles y paquetería.',
@@ -1351,7 +1378,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Transportación y Envíos',
     imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: true,
+    productTypeId: 'pt-servicio',
+    productType: 'Servicios Profesionales',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1362,6 +1390,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-19',
+    code: 'PRD-019',
     storeId: 'store-8',
     title: 'Moto Eléctrica Águila 72V 35Ah Batería Litio con Alarma Digital',
     description: 'Moto eléctrica de alta autonomía (hasta 90 km por carga), motor brushless de 2000W, frenos de disco y pantalla digital.',
@@ -1370,7 +1399,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Baterías de Litio / Gel',
     imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1384,6 +1414,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-20',
+    code: 'PRD-020',
     storeId: 'store-4',
     title: 'Combo Higiene y Limpieza Profunda del Hogar (4 Productos 1L)',
     description: 'Pack de detergente líquido concentrado, cloro perfumado, desengrasante multiusos y suavizante de telas.',
@@ -1392,7 +1423,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Medicamentos e Higiene',
     imageUrl: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1403,6 +1435,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-21',
+    code: 'PRD-021',
     storeId: 'store-12',
     title: 'Servicio de Mantenimiento y Carga de Gas para Split / Aire Acondicionado',
     description: 'Limpieza con hidrolavadora de consola y condensador, revisión eléctrica, sellado de fugas y recarga de refrigerante R410/R22.',
@@ -1411,7 +1444,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Reparaciones del Hogar',
     imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: true,
+    productTypeId: 'pt-servicio',
+    productType: 'Servicios Profesionales',
     deliveryAvailable: true,
     featured: true,
     tagSelections: [
@@ -1422,6 +1456,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-22',
+    code: 'PRD-022',
     storeId: 'store-9',
     title: 'Juego de Muebles para Sala 3 Piezas Tapizado en Tejido Anti-Manchas',
     description: 'Incluye sofá de 3 plazas y 2 sillones individuales con espuma de alta densidad y estructura de madera preciosa tratada.',
@@ -1430,7 +1465,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Muebles y Colchones',
     imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1443,6 +1479,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-23',
+    code: 'PRD-023',
     storeId: 'store-13',
     title: 'Freidora de Aire Digital 5.5L de Alta Potencia 1800W',
     description: 'Cocina sin aceite con panel táctil y 8 programas preestablecidos de cocción rápida.',
@@ -1451,7 +1488,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Cocina y Olla Reina',
     imageUrl: 'https://images.unsplash.com/photo-1585515320310-259814833e62?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1464,6 +1502,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 'prod-24',
+    code: 'PRD-024',
     storeId: 'store-13',
     title: 'Batidora de Mano Multinivel con Varilla de Acero Inoxidable',
     description: 'Incluye vaso medidor, picadora y batidor de varillas para repostería y salsas.',
@@ -1472,7 +1511,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     subcategory: 'Cocina y Olla Reina',
     imageUrl: 'https://images.unsplash.com/photo-1578643463396-0997cb5328c1?auto=format&fit=crop&w=700&q=80',
     isAvailable: true,
-    isService: false,
+    productTypeId: 'pt-producto',
+    productType: 'Productos Físicos',
     deliveryAvailable: true,
     featured: false,
     tagSelections: [
@@ -1483,13 +1523,18 @@ export const INITIAL_PRODUCTS: Product[] = [
     tags: ['batidora', 'cocina', 'electrodomesticos', 'Blanco', '3 Meses', 'Nuevo Sello'],
     createdAt: '2026-08-06'
   }
-].map((p) => ({
-  ...p,
-  productTypeId: p.productTypeId || (p.isService ? 'pt-servicio' : 'pt-producto'),
-  productType: p.productType || (p.isService ? 'Servicios Profesionales' : 'Productos Físicos'),
-  paymentMethodIds: p.paymentMethodIds || ['pm-efectivo', 'pm-transferencia'],
-  deliveryMethodIds: p.deliveryMethodIds || (p.deliveryAvailable ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida']),
-}));
+].map((p: any, idx: number): Product => {
+  const { isService, ...rest } = p;
+  const isServ = isService || p.productTypeId === 'pt-servicio' || (p.productType || '').toLowerCase().includes('servicio');
+  return {
+    ...rest,
+    code: p.code || `PRD-${String(idx + 1).padStart(3, '0')}`,
+    productTypeId: p.productTypeId || (isServ ? 'pt-servicio' : 'pt-producto'),
+    productType: p.productType || (isServ ? 'Servicios Profesionales' : 'Productos Físicos'),
+    paymentMethodIds: p.paymentMethodIds || ['pm-efectivo', 'pm-transferencia'],
+    deliveryMethodIds: p.deliveryMethodIds || (p.deliveryAvailable ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida']),
+  };
+});
 
 export const PRESET_LOGOS = [
   { label: 'Tienda de Alimentos / Agro', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80' },

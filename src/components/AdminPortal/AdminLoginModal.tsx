@@ -31,11 +31,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Email verification flow states for registration
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [userCodeInput, setUserCodeInput] = useState('');
-
   // Mandatory 90-day password change on login
   const [isPasswordExpiredFlow, setIsPasswordExpiredFlow] = useState(false);
   const [newExpiredPassword, setNewExpiredPassword] = useState('');
@@ -48,7 +43,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   // Real-time password validation for expired password update
   const expiredValidation = validateCeoPassword(newExpiredPassword);
 
-  const handleStartEmailRegister = (e: React.FormEvent) => {
+  const handleRegisterCeo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes('@')) {
       setError(interfaz.admin.auth.invalidEmailError);
@@ -60,29 +55,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       return;
     }
 
-    // Generate 6-digit code sent to email
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-    setIsVerifyingEmail(true);
-    setError('');
-    onShowToast(interfaz.toasts.codeSent, `Tu código de verificación es: ${code}`, 'info');
-  };
-
-  const handleVerifyEmailCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (userCodeInput.trim() !== generatedCode) {
-      setError(interfaz.admin.auth.codeMismatchError);
-      return;
-    }
-
-    // Register as the unique CEO of the marketplace
+    // Register directly as the unique CEO of the marketplace without email verification
     localStorage.setItem('ADMIN_NAME', email.split('@')[0]);
     localStorage.setItem('ADMIN_EMAIL', email);
     localStorage.setItem('ADMIN_AUTH_METHOD', 'email');
     localStorage.setItem('ADMIN_EMAIL_VERIFIED', 'true');
     saveCeoPassword(password);
 
-    onShowToast('¡Verificación Exitosa!', 'Te has registrado como el Único CEO del Marketplace', 'success');
+    onShowToast('¡Registro Exitoso!', 'Te has registrado como el Único CEO del Marketplace', 'success');
     onLoginSuccess();
   };
 
@@ -156,7 +136,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         </p>
 
         {/* Tabs for Login / Register */}
-        {!isVerifyingEmail && !isPasswordExpiredFlow && (
+        {!isPasswordExpiredFlow && (
           <div className="flex border-b border-slate-200 mb-5">
             <button
               onClick={() => { setActiveTab('login'); setError(''); }}
@@ -280,62 +260,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </form>
         )}
 
-        {/* EMAIL VERIFICATION STEP FOR REGISTRATION */}
-        {isVerifyingEmail && !isPasswordExpiredFlow && (
-          <form onSubmit={handleVerifyEmailCode} className="space-y-4">
-            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center space-y-2">
-              <Mail className="w-8 h-8 text-emerald-600 mx-auto" />
-              <h4 className="font-extrabold text-slate-900 text-sm">
-                {interfaz.admin.auth.verifyEmailTitle}
-              </h4>
-              <p className="text-xs text-slate-600">
-                {interfaz.admin.auth.verifyEmailDesc} <strong className="text-emerald-800">{email}</strong>:
-              </p>
-              <div className="bg-white py-2 px-4 rounded-xl border border-emerald-300 inline-block text-xl font-mono font-black text-emerald-600 tracking-widest my-1 shadow-xs">
-                {generatedCode}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {interfaz.admin.auth.enterVerificationCode}
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                value={userCodeInput}
-                onChange={(e) => setUserCodeInput(e.target.value)}
-                placeholder="Código de 6 dígitos..."
-                className="w-full text-center text-lg tracking-widest font-mono py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 outline-none font-bold"
-                required
-                autoFocus
-              />
-            </div>
-
-            {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsVerifyingEmail(false)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
-              >
-                {interfaz.admin.auth.backBtn}
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md inline-flex items-center justify-center gap-1 cursor-pointer"
-              >
-                <span>{interfaz.admin.auth.verifyAndCreateBtn}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </form>
-        )}
-
         {/* REGISTRATION FORM FOR CEO */}
-        {!isVerifyingEmail && !isPasswordExpiredFlow && activeTab === 'register' && (
-          <form onSubmit={handleStartEmailRegister} className="space-y-4">
+        {!isPasswordExpiredFlow && activeTab === 'register' && (
+          <form onSubmit={handleRegisterCeo} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
                 {interfaz.admin.auth.emailLabel}
@@ -414,7 +341,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         )}
 
         {/* LOGIN FORM FOR CEO */}
-        {!isVerifyingEmail && !isPasswordExpiredFlow && activeTab === 'login' && (
+        {!isPasswordExpiredFlow && activeTab === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1">

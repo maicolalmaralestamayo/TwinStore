@@ -93,7 +93,8 @@ app.get("/api/products", async (req, res) => {
     if (!result[0] || !result[0].values) {
       return res.json([]);
     }
-    const products = result[0].values.map(rowToProduct);
+    const columns = result[0].columns;
+    const products = result[0].values.map(row => rowToProduct(row, columns));
     res.json(products);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -108,6 +109,17 @@ app.post("/api/products", async (req, res) => {
       return res.status(400).json({ error: "Product object with valid id is required" });
     }
     const db = await getDb();
+    const candidateCode = (product.code || '').trim().toUpperCase();
+    if (candidateCode) {
+      const checkRes = db.exec("SELECT id FROM products WHERE UPPER(code) = $code AND id != $id", {
+        "$code": candidateCode,
+        "$id": product.id
+      });
+      if (checkRes[0]?.values && checkRes[0].values.length > 0) {
+        return res.status(400).json({ error: `El código "${candidateCode}" ya está en uso por otro producto. Debe ser único.` });
+      }
+      product.code = candidateCode;
+    }
     saveProductToDb(db, product);
     persistDb();
     res.json({ success: true, product });

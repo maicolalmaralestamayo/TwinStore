@@ -86,11 +86,14 @@ function initTables(db: Database) {
       active INTEGER NOT NULL DEFAULT 1,
       rating REAL DEFAULT 5.0,
       badge TEXT,
+      paymentMethodIds TEXT,
+      deliveryMethodIds TEXT,
       createdAt TEXT
     );
 
     CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
+      code TEXT,
       storeId TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
@@ -137,6 +140,9 @@ function initTables(db: Database) {
   `);
 
   // Safe migration for existing SQLite files
+  try { db.run("ALTER TABLE stores ADD COLUMN paymentMethodIds TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE stores ADD COLUMN deliveryMethodIds TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN code TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN productTypeId TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN productType TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN paymentMethodIds TEXT;"); } catch (e) {}
@@ -144,6 +150,19 @@ function initTables(db: Database) {
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN productTypesCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN paymentMethodsCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN deliveryMethodsCatalog TEXT;"); } catch (e) {}
+  try { db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_code ON products(code);"); } catch (e) {}
+
+  // Backfill any products that have null or empty codes
+  try {
+    const missingRes = db.exec("SELECT id FROM products WHERE code IS NULL OR code = ''");
+    if (missingRes[0]?.values && missingRes[0].values.length > 0) {
+      missingRes[0].values.forEach((row, idx) => {
+        const prodId = row[0];
+        const newCode = `PRD-${String(idx + 1).padStart(3, '0')}`;
+        db.run("UPDATE products SET code = $code WHERE id = $id", { "$code": newCode, "$id": prodId });
+      });
+    }
+  } catch (e) {}
 }
 
 function seedIfEmpty(db: Database) {
@@ -170,6 +189,13 @@ function seedIfEmpty(db: Database) {
 
 // Helper SQL Mappers
 export function saveStoreToDb(db: Database, store: Store) {
+  const defaultPaymentIds = store.paymentOptions?.transferAccepted
+    ? ['pm-efectivo', 'pm-transferencia']
+    : ['pm-efectivo'];
+  const defaultDeliveryIds = store.deliveryAvailable
+    ? ['dm-mensajeria', 'dm-recogida']
+    : ['dm-recogida'];
+
   const sql = `
     INSERT OR REPLACE INTO stores (
       id, name, logoUrl, images, slogan, description, whatsappPhone, location,
@@ -178,7 +204,7 @@ export function saveStoreToDb(db: Database, store: Store) {
       address_municipality, address_province, address_googleMapsUrl,
       usdToCupRate, deliveryAvailable, paymentOptions_transferAccepted,
       paymentOptions_transferFeePercentage, paymentOptions_acceptedCurrencies,
-      paymentOptions_notes, active, rating, badge, createdAt
+      paymentOptions_notes, active, rating, badge, paymentMethodIds, deliveryMethodIds, createdAt
     ) VALUES (
       $id, $name, $logoUrl, $images, $slogan, $description, $whatsappPhone, $location,
       $address_street, $address_number, $address_building, $address_apartment,
@@ -186,7 +212,7 @@ export function saveStoreToDb(db: Database, store: Store) {
       $address_municipality, $address_province, $address_googleMapsUrl,
       $usdToCupRate, $deliveryAvailable, $paymentOptions_transferAccepted,
       $paymentOptions_transferFeePercentage, $paymentOptions_acceptedCurrencies,
-      $paymentOptions_notes, $active, $rating, $badge, $createdAt
+      $paymentOptions_notes, $active, $rating, $badge, $paymentMethodIds, $deliveryMethodIds, $createdAt
     )
   `;
 
@@ -218,6 +244,8 @@ export function saveStoreToDb(db: Database, store: Store) {
     '$active': store.active ? 1 : 0,
     '$rating': store.rating || 5,
     '$badge': store.badge || '',
+    '$paymentMethodIds': JSON.stringify(store.paymentMethodIds || defaultPaymentIds),
+    '$deliveryMethodIds': JSON.stringify(store.deliveryMethodIds || defaultDeliveryIds),
     '$createdAt': store.createdAt || new Date().toISOString()
   };
 
@@ -232,7 +260,7 @@ export function rowToStore(row: any[]): Store {
     address_municipality, address_province, address_googleMapsUrl,
     usdToCupRate, deliveryAvailable, paymentOptions_transferAccepted,
     paymentOptions_transferFeePercentage, paymentOptions_acceptedCurrencies,
-    paymentOptions_notes, active, rating, badge, createdAt
+    paymentOptions_notes, active, rating, badge, paymentMethodIdsStr, deliveryMethodIdsStr, createdAt
   ] = row;
 
   let acceptedCurrencies: string[] = ['USD', 'CUP'];
@@ -246,6 +274,29 @@ export function rowToStore(row: any[]): Store {
   try {
     if (imagesStr) {
       images = JSON.parse(imagesStr);
+    }
+  } catch (e) {}
+
+  const isDeliveryAvailable = Boolean(deliveryAvailable);
+  const isTransferAccepted = Boolean(paymentOptions_transferAccepted);
+
+  let paymentMethodIds: string[] = isTransferAccepted ? ['pm-efectivo', 'pm-transferencia'] : ['pm-efectivo'];
+  try {
+    if (paymentMethodIdsStr) {
+      const parsed = JSON.parse(paymentMethodIdsStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        paymentMethodIds = parsed;
+      }
+    }
+  } catch (e) {}
+
+  let deliveryMethodIds: string[] = isDeliveryAvailable ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida'];
+  try {
+    if (deliveryMethodIdsStr) {
+      const parsed = JSON.parse(deliveryMethodIdsStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        deliveryMethodIds = parsed;
+      }
     }
   } catch (e) {}
 
@@ -271,13 +322,15 @@ export function rowToStore(row: any[]): Store {
       googleMapsUrl: String(address_googleMapsUrl || ''),
     },
     usdToCupRate: Number(usdToCupRate) || 330,
-    deliveryAvailable: Boolean(deliveryAvailable),
+    deliveryAvailable: isDeliveryAvailable,
     paymentOptions: {
-      transferAccepted: Boolean(paymentOptions_transferAccepted),
+      transferAccepted: isTransferAccepted,
       transferFeePercentage: Number(paymentOptions_transferFeePercentage) || 0,
       acceptedCurrencies,
       notes: String(paymentOptions_notes || ''),
     },
+    paymentMethodIds,
+    deliveryMethodIds,
     active: Boolean(active),
     rating: Number(rating) || 5,
     badge: String(badge || ''),
@@ -286,20 +339,34 @@ export function rowToStore(row: any[]): Store {
 }
 
 export function saveProductToDb(db: Database, product: Product) {
+  let productCode = (product.code || '').trim().toUpperCase();
+  if (!productCode) {
+    try {
+      const countRes = db.exec("SELECT COUNT(*) FROM products");
+      const count = (countRes[0]?.values[0]?.[0] as number) || 0;
+      productCode = `PRD-${String(count + 1).padStart(3, '0')}`;
+    } catch (e) {
+      productCode = `PRD-${Date.now().toString().slice(-4)}`;
+    }
+  }
+
   const sql = `
     INSERT OR REPLACE INTO products (
-      id, storeId, title, description, priceUSD, category, subcategory,
+      id, code, storeId, title, description, priceUSD, category, subcategory,
       imageUrl, images, isAvailable, isService, deliveryAvailable, featured,
       tags, tagSelections, productTypeId, productType, paymentMethodIds, deliveryMethodIds, createdAt
     ) VALUES (
-      $id, $storeId, $title, $description, $priceUSD, $category, $subcategory,
+      $id, $code, $storeId, $title, $description, $priceUSD, $category, $subcategory,
       $imageUrl, $images, $isAvailable, $isService, $deliveryAvailable, $featured,
       $tags, $tagSelections, $productTypeId, $productType, $paymentMethodIds, $deliveryMethodIds, $createdAt
     )
   `;
 
+  const isServ = product.productTypeId === 'pt-servicio' || (product.productType || '').toLowerCase().includes('servicio');
+
   const params = {
     '$id': product.id,
+    '$code': productCode,
     '$storeId': product.storeId,
     '$title': product.title,
     '$description': product.description || '',
@@ -308,14 +375,14 @@ export function saveProductToDb(db: Database, product: Product) {
     '$subcategory': product.subcategory || '',
     '$imageUrl': product.imageUrl || '',
     '$images': JSON.stringify(product.images || []),
-    '$isAvailable': product.isAvailable ? 1 : 0,
-    '$isService': product.isService ? 1 : 0,
+    '$isAvailable': product.isAvailable !== false ? 1 : 0,
+    '$isService': isServ ? 1 : 0,
     '$deliveryAvailable': product.deliveryAvailable ? 1 : 0,
     '$featured': product.featured ? 1 : 0,
     '$tags': JSON.stringify(product.tags || []),
     '$tagSelections': JSON.stringify(product.tagSelections || []),
-    '$productTypeId': product.productTypeId || '',
-    '$productType': product.productType || '',
+    '$productTypeId': product.productTypeId || (isServ ? 'pt-servicio' : 'pt-producto'),
+    '$productType': product.productType || (isServ ? 'Servicios Profesionales' : 'Productos Físicos'),
     '$paymentMethodIds': JSON.stringify(product.paymentMethodIds || []),
     '$deliveryMethodIds': JSON.stringify(product.deliveryMethodIds || []),
     '$createdAt': product.createdAt || new Date().toISOString()
@@ -324,12 +391,36 @@ export function saveProductToDb(db: Database, product: Product) {
   db.run(sql, params);
 }
 
-export function rowToProduct(row: any[]): Product {
-  const [
-    id, storeId, title, description, priceUSD, category, subcategory,
-    imageUrl, imagesStr, isAvailable, isService, deliveryAvailable, featured,
-    tagsStr, tagSelectionsStr, productTypeId, productType, paymentMethodIdsStr, deliveryMethodIdsStr, createdAt
-  ] = row;
+export function rowToProduct(row: any[], columns?: string[]): Product {
+  const getCol = (name: string, fallbackIdx: number) => {
+    if (columns && Array.isArray(columns) && columns.length > 0) {
+      const idx = columns.indexOf(name);
+      if (idx !== -1) return row[idx];
+    }
+    return row[fallbackIdx];
+  };
+
+  const id = getCol('id', 0);
+  const codeVal = getCol('code', -1);
+  const storeId = getCol('storeId', 1);
+  const title = getCol('title', 2);
+  const description = getCol('description', 3);
+  const priceUSD = getCol('priceUSD', 4);
+  const category = getCol('category', 5);
+  const subcategory = getCol('subcategory', 6);
+  const imageUrl = getCol('imageUrl', 7);
+  const imagesStr = getCol('images', 8);
+  const isAvailable = getCol('isAvailable', 9);
+  const isService = getCol('isService', 10);
+  const deliveryAvailable = getCol('deliveryAvailable', 11);
+  const featured = getCol('featured', 12);
+  const tagsStr = getCol('tags', 13);
+  const tagSelectionsStr = getCol('tagSelections', 14);
+  const productTypeId = getCol('productTypeId', 15);
+  const productType = getCol('productType', 16);
+  const paymentMethodIdsStr = getCol('paymentMethodIds', 17);
+  const deliveryMethodIdsStr = getCol('deliveryMethodIds', 18);
+  const createdAt = getCol('createdAt', 19);
 
   let tags: string[] = [];
   try {
@@ -356,11 +447,14 @@ export function rowToProduct(row: any[]): Product {
     if (imagesStr) images = JSON.parse(imagesStr);
   } catch (e) {}
 
-  const isServiceBool = Boolean(isService);
+  const isServ = Boolean(isService) || String(productTypeId) === 'pt-servicio';
   const deliveryAvailableBool = Boolean(deliveryAvailable);
+
+  const finalCode = String(codeVal || (id ? `PRD-${String(id).replace(/\D/g, '').padStart(3, '0') || '001'}` : 'PRD-001'));
 
   return {
     id: String(id),
+    code: finalCode,
     storeId: String(storeId),
     title: String(title || ''),
     description: String(description || ''),
@@ -370,13 +464,12 @@ export function rowToProduct(row: any[]): Product {
     imageUrl: String(imageUrl || ''),
     images: Array.isArray(images) && images.length > 0 ? images : (imageUrl ? [String(imageUrl)] : []),
     isAvailable: Boolean(isAvailable),
-    isService: isServiceBool,
     deliveryAvailable: deliveryAvailableBool,
     featured: Boolean(featured),
     tags,
     tagSelections,
-    productTypeId: String(productTypeId || (isServiceBool ? 'pt-servicio' : 'pt-producto')),
-    productType: String(productType || (isServiceBool ? 'Servicios Profesionales' : 'Productos Físicos')),
+    productTypeId: String(productTypeId || (isServ ? 'pt-servicio' : 'pt-producto')),
+    productType: String(productType || (isServ ? 'Servicios Profesionales' : 'Productos Físicos')),
     paymentMethodIds: Array.isArray(paymentMethodIds) && paymentMethodIds.length > 0 ? paymentMethodIds : ['pm-efectivo', 'pm-transferencia'],
     deliveryMethodIds: Array.isArray(deliveryMethodIds) && deliveryMethodIds.length > 0 ? deliveryMethodIds : (deliveryAvailableBool ? ['dm-mensajeria', 'dm-recogida'] : ['dm-recogida']),
     createdAt: String(createdAt || ''),

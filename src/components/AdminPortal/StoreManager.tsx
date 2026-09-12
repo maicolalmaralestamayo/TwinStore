@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Store, StoreAddress, StorePaymentOptions, MarketplaceConfig } from '../../types';
+import {
+  Store,
+  StoreAddress,
+  StorePaymentOptions,
+  MarketplaceConfig,
+  PaymentMethodItem,
+  DeliveryMethodItem,
+} from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
-import { INITIAL_GEO_CATALOG } from '../../data/initialData';
+import {
+  INITIAL_GEO_CATALOG,
+  INITIAL_PAYMENT_METHODS_CATALOG,
+  INITIAL_DELIVERY_METHODS_CATALOG,
+} from '../../data/initialData';
+import { NomenclatorIcon } from '../common/NomenclatorIcon';
 import {
   Plus,
   Edit2,
@@ -43,6 +55,14 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   onShowToast,
 }) => {
   const geoCatalog = marketplaceConfig?.geoCatalog || INITIAL_GEO_CATALOG;
+  const paymentMethodsCatalog =
+    marketplaceConfig?.paymentMethodsCatalog && marketplaceConfig.paymentMethodsCatalog.length > 0
+      ? marketplaceConfig.paymentMethodsCatalog
+      : INITIAL_PAYMENT_METHODS_CATALOG;
+  const deliveryMethodsCatalog =
+    marketplaceConfig?.deliveryMethodsCatalog && marketplaceConfig.deliveryMethodsCatalog.length > 0
+      ? marketplaceConfig.deliveryMethodsCatalog
+      : INITIAL_DELIVERY_METHODS_CATALOG;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
@@ -74,10 +94,32 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [province, setProvince] = useState('La Habana');
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
 
-  // Form State - Delivery & Payment Options
+  // Form State - Dynamic Delivery & Payment Nomenclators
+  const [deliveryMethodIds, setDeliveryMethodIds] = useState<string[]>(['dm-mensajeria', 'dm-recogida']);
+  const [paymentMethodIds, setPaymentMethodIds] = useState<string[]>(['pm-efectivo', 'pm-transferencia']);
   const [deliveryAvailable, setDeliveryAvailable] = useState(true);
   const [transferAccepted, setTransferAccepted] = useState(true);
   const [transferFeePercentage, setTransferFeePercentage] = useState<number>(10);
+
+  const toggleDeliveryMethod = (id: string) => {
+    setDeliveryMethodIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      setDeliveryAvailable(
+        next.includes('dm-mensajeria') || next.some((item) => item.toLowerCase().includes('mensajeria'))
+      );
+      return next;
+    });
+  };
+
+  const togglePaymentMethod = (id: string) => {
+    setPaymentMethodIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      setTransferAccepted(
+        next.includes('pm-transferencia') || next.some((item) => item.toLowerCase().includes('transfer'))
+      );
+      return next;
+    });
+  };
 
   // Reset page on filter search
   useEffect(() => {
@@ -153,7 +195,9 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setNeighborhood('Zamora');
     setGoogleMapsUrl('');
 
+    setDeliveryMethodIds(['dm-mensajeria', 'dm-recogida']);
     setDeliveryAvailable(true);
+    setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
     setTransferAccepted(true);
     setTransferFeePercentage(10);
 
@@ -197,12 +241,31 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setNeighborhood(repName);
     setGoogleMapsUrl(addr.googleMapsUrl || '');
 
+    const defaultDeliv =
+      store.deliveryMethodIds && store.deliveryMethodIds.length > 0
+        ? store.deliveryMethodIds
+        : store.deliveryAvailable !== false
+        ? ['dm-mensajeria', 'dm-recogida']
+        : ['dm-recogida'];
+    setDeliveryMethodIds(defaultDeliv);
     setDeliveryAvailable(
-      store.deliveryAvailable !== undefined ? store.deliveryAvailable : true
+      store.deliveryAvailable !== undefined
+        ? store.deliveryAvailable
+        : defaultDeliv.includes('dm-mensajeria')
     );
+
     const pay = store.paymentOptions || ({} as StorePaymentOptions);
+    const defaultPay =
+      store.paymentMethodIds && store.paymentMethodIds.length > 0
+        ? store.paymentMethodIds
+        : pay.transferAccepted !== false
+        ? ['pm-efectivo', 'pm-transferencia']
+        : ['pm-efectivo'];
+    setPaymentMethodIds(defaultPay);
     setTransferAccepted(
-      pay.transferAccepted !== undefined ? pay.transferAccepted : true
+      pay.transferAccepted !== undefined
+        ? pay.transferAccepted
+        : defaultPay.includes('pm-transferencia')
     );
     setTransferFeePercentage(pay.transferFeePercentage || 0);
 
@@ -309,6 +372,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         usdToCupRate: Number(usdToCupRate) || 675,
         deliveryAvailable,
         paymentOptions: normalizedPayment,
+        paymentMethodIds,
+        deliveryMethodIds,
         badge: editingStore.badge || 'Verificada',
         active,
       });
@@ -326,6 +391,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         usdToCupRate: Number(usdToCupRate) || 675,
         deliveryAvailable,
         paymentOptions: normalizedPayment,
+        paymentMethodIds,
+        deliveryMethodIds,
         badge: 'Verificada',
         active,
         rating: 4.8,
@@ -397,6 +464,54 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       address: updatedAddr,
     });
     onShowToast('Ubicación actualizada', `"${store.name}" ahora está en ${newLocation}`);
+  };
+
+  const handleToggleStoreDeliveryMethod = (store: Store, methodId: string) => {
+    const current =
+      store.deliveryMethodIds && store.deliveryMethodIds.length > 0
+        ? store.deliveryMethodIds
+        : store.deliveryAvailable
+        ? ['dm-mensajeria', 'dm-recogida']
+        : ['dm-recogida'];
+    const updated = current.includes(methodId)
+      ? current.filter((id) => id !== methodId)
+      : [...current, methodId];
+    const hasCourier =
+      updated.includes('dm-mensajeria') ||
+      updated.some((id) => id.toLowerCase().includes('mensajeria'));
+    onUpdateStore({
+      ...store,
+      deliveryMethodIds: updated,
+      deliveryAvailable: hasCourier,
+    });
+  };
+
+  const handleToggleStorePaymentMethod = (store: Store, methodId: string) => {
+    const current =
+      store.paymentMethodIds && store.paymentMethodIds.length > 0
+        ? store.paymentMethodIds
+        : store.paymentOptions?.transferAccepted
+        ? ['pm-efectivo', 'pm-transferencia']
+        : ['pm-efectivo'];
+    const updated = current.includes(methodId)
+      ? current.filter((id) => id !== methodId)
+      : [...current, methodId];
+    const hasTransfer =
+      updated.includes('pm-transferencia') ||
+      updated.some((id) => id.toLowerCase().includes('transfer'));
+    const pay = store.paymentOptions || {
+      acceptedCurrencies: ['USD', 'CUP'],
+      transferFeePercentage: 10,
+      transferAccepted: true,
+    };
+    onUpdateStore({
+      ...store,
+      paymentMethodIds: updated,
+      paymentOptions: {
+        ...pay,
+        transferAccepted: hasTransfer,
+      },
+    });
   };
 
   const filteredStores = useMemo(() => {
@@ -499,8 +614,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                 <th className="py-3.5 px-4">Tienda</th>
                 <th className="py-3.5 px-4">Ubicación</th>
                 <th className="py-3.5 px-4">Tasa</th>
-                <th className="py-3.5 px-4">Envío</th>
-                <th className="py-3.5 px-4">Pago</th>
+                <th className="py-3.5 px-4">Recogida y Entrega</th>
+                <th className="py-3.5 px-4">Métodos de Pago</th>
                 <th className="py-3.5 px-4">Estado</th>
                 <th className="py-3.5 px-4 text-right">Acciones</th>
               </tr>
@@ -627,66 +742,75 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                         </div>
                       </td>
 
-                      {/* Mensajería - Toggle Switch Interruptor */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={!!store.deliveryAvailable}
-                              onChange={() =>
-                                onUpdateStore({
-                                  ...store,
-                                  deliveryAvailable: !store.deliveryAvailable,
-                                })
-                              }
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                          <span
-                            className={`text-xs font-bold flex items-center gap-1 ${
-                              store.deliveryAvailable ? 'text-blue-700' : 'text-gray-400'
-                            }`}
-                          >
-                            <Truck className="w-3.5 h-3.5 shrink-0" />
-                            <span>{store.deliveryAvailable ? 'Disponible' : 'No disp.'}</span>
-                          </span>
+                      {/* Recogida y Entrega - Nomenclador Dinámico con Badges interactivos */}
+                      <td className="py-3 px-4 min-w-[190px]">
+                        <div className="flex flex-wrap gap-1.5 max-w-xs">
+                          {deliveryMethodsCatalog.map((dm) => {
+                            const storeDelivIds =
+                              store.deliveryMethodIds && store.deliveryMethodIds.length > 0
+                                ? store.deliveryMethodIds
+                                : store.deliveryAvailable
+                                ? ['dm-mensajeria', 'dm-recogida']
+                                : ['dm-recogida'];
+                            const isSelected = storeDelivIds.includes(dm.id);
+
+                            return (
+                              <button
+                                key={dm.id}
+                                type="button"
+                                onClick={() => handleToggleStoreDeliveryMethod(store, dm.id)}
+                                title={`${isSelected ? 'Desactivar' : 'Activar'} ${dm.name}: ${dm.description || ''}`}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100 shadow-2xs'
+                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
+                                }`}
+                              >
+                                <NomenclatorIcon iconName={dm.iconName} className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[100px]">{dm.name}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </td>
 
-                      {/* Pago Transferencia - Toggle Switch Interruptor */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={isTransferAccepted}
-                              onChange={() => {
-                                const currentPay = store.paymentOptions || {
-                                  acceptedCurrencies: ['USD', 'CUP'],
-                                  transferFeePercentage: 0,
-                                };
-                                onUpdateStore({
-                                  ...store,
-                                  paymentOptions: {
-                                    ...currentPay,
-                                    transferAccepted: !isTransferAccepted,
-                                  },
-                                });
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                          </label>
-                          <span
-                            className={`text-xs font-bold flex items-center gap-1 ${
-                              isTransferAccepted ? 'text-purple-700' : 'text-gray-400'
-                            }`}
-                          >
-                            <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                            <span>{isTransferAccepted ? 'Acepta' : 'No acepta'}</span>
-                          </span>
+                      {/* Métodos de Pago - Nomenclador Dinámico con Badges interactivos */}
+                      <td className="py-3 px-4 min-w-[210px]">
+                        <div className="flex flex-wrap gap-1.5 max-w-xs">
+                          {paymentMethodsCatalog.map((pm) => {
+                            const storePayIds =
+                              store.paymentMethodIds && store.paymentMethodIds.length > 0
+                                ? store.paymentMethodIds
+                                : store.paymentOptions?.transferAccepted
+                                ? ['pm-efectivo', 'pm-transferencia']
+                                : ['pm-efectivo'];
+                            const isSelected = storePayIds.includes(pm.id);
+                            const isTransfer =
+                              pm.id === 'pm-transferencia' || pm.id.toLowerCase().includes('transfer');
+                            const fee = store.paymentOptions?.transferFeePercentage || 0;
+
+                            return (
+                              <button
+                                key={pm.id}
+                                type="button"
+                                onClick={() => handleToggleStorePaymentMethod(store, pm.id)}
+                                title={`${isSelected ? 'Desactivar' : 'Activar'} ${pm.name}: ${pm.description || ''}`}
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? isTransfer
+                                      ? 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 shadow-2xs'
+                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 shadow-2xs'
+                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
+                                }`}
+                              >
+                                <NomenclatorIcon iconName={pm.iconName} className="w-3 h-3 shrink-0" />
+                                <span className="truncate max-w-[90px]">{pm.name}</span>
+                                {isSelected && isTransfer && fee > 0 && (
+                                  <span className="text-[10px] font-mono text-purple-600">({fee}%)</span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </td>
 
@@ -1095,86 +1219,146 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                 </div>
               )}
 
-              {/* TAB 3: PAYMENTS & DELIVERY */}
+              {/* TAB 3: PAYMENTS & DELIVERY (NOMENCLADORES DINÁMICOS) */}
               {activeTab === 'payment' && (
-                <div className="space-y-5">
-                  {/* Delivery toggle */}
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-blue-100 text-blue-700">
-                          <Truck className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900">
-                            Mensajería
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            ¿Ofrece entrega a domicilio?
-                          </p>
-                        </div>
-                      </div>
+                <div className="space-y-6">
+                  {/* Recogida y Entrega - Nomenclador */}
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-blue-600" />
+                        <span>Métodos de Recogida y Entrega</span>
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Selecciona los tipos de entrega y recogida que ofrece esta tienda física u online.
+                      </p>
+                    </div>
 
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={deliveryAvailable}
-                          onChange={(e) => setDeliveryAvailable(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {deliveryMethodsCatalog.map((dm) => {
+                        const isChecked = deliveryMethodIds.includes(dm.id);
+
+                        return (
+                          <div
+                            key={dm.id}
+                            onClick={() => toggleDeliveryMethod(dm.id)}
+                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                              isChecked
+                                ? 'bg-blue-50/70 border-blue-300 shadow-xs'
+                                : 'bg-gray-50/70 border-gray-200 hover:bg-gray-100/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`p-2.5 rounded-xl ${
+                                  isChecked ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                                }`}
+                              >
+                                <NomenclatorIcon iconName={dm.iconName} className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-bold text-gray-900">{dm.name}</h5>
+                                {dm.description && (
+                                  <p className="text-[11px] text-gray-500 line-clamp-1">{dm.description}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <label className="relative inline-flex items-center cursor-pointer pointer-events-none">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Transfer methods */}
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-gray-200 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-purple-100 text-purple-700">
-                          <CreditCard className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-gray-900">
-                            Transferencia
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            ¿Acepta pago por transferencia bancaria / digital?
-                          </p>
-                        </div>
-                      </div>
-
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={transferAccepted}
-                          onChange={(e) => setTransferAccepted(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
+                  {/* Métodos de Pago - Nomenclador */}
+                  <div className="space-y-3 pt-4 border-t border-gray-200/80">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-purple-600" />
+                        <span>Métodos de Pago Aceptados</span>
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Configura las formas de pago que la tienda admite en sus ventas y pedidos.
+                      </p>
                     </div>
 
-                    {transferAccepted && (
-                      <div className="pt-2 border-t border-gray-200/60">
-                        <label className="block text-xs font-bold uppercase text-gray-700 mb-1">
-                          Comisión (%)
-                        </label>
-                        <div className="flex items-center gap-2 max-w-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {paymentMethodsCatalog.map((pm) => {
+                        const isChecked = paymentMethodIds.includes(pm.id);
+
+                        return (
+                          <div
+                            key={pm.id}
+                            onClick={() => togglePaymentMethod(pm.id)}
+                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                              isChecked
+                                ? 'bg-purple-50/70 border-purple-300 shadow-xs'
+                                : 'bg-gray-50/70 border-gray-200 hover:bg-gray-100/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`p-2.5 rounded-xl ${
+                                  isChecked ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'
+                                }`}
+                              >
+                                <NomenclatorIcon iconName={pm.iconName} className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h5 className="text-sm font-bold text-gray-900">{pm.name}</h5>
+                                {pm.description && (
+                                  <p className="text-[11px] text-gray-500 line-clamp-1">{pm.description}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <label className="relative inline-flex items-center cursor-pointer pointer-events-none">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Comisión por transferencia si aplica */}
+                    {paymentMethodIds.some(
+                      (id) => id === 'pm-transferencia' || id.toLowerCase().includes('transfer')
+                    ) && (
+                      <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3">
+                        <div>
+                          <label className="block text-xs font-bold uppercase text-purple-900 mb-0.5">
+                            Recargo / Comisión por Transferencia (%)
+                          </label>
+                          <p className="text-xs text-purple-700">
+                            Porcentaje adicional que aplica la tienda en pagos electrónicos (ej: EnZona, Transfermóvil).
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
                           <input
                             type="number"
                             min="0"
                             max="50"
                             step="0.5"
                             value={transferFeePercentage}
-                            onChange={(e) =>
-                              setTransferFeePercentage(Number(e.target.value))
-                            }
-                            className="w-24 px-3 py-2 rounded-xl border border-gray-300 text-sm font-bold text-gray-900 focus:border-emerald-500 outline-none"
+                            onChange={(e) => setTransferFeePercentage(Number(e.target.value))}
+                            className="w-20 px-3 py-2 rounded-xl border border-purple-300 bg-white text-center text-sm font-black text-purple-900 focus:border-purple-600 outline-none"
                           />
-                          <span className="text-xs font-bold text-gray-600">
-                            % de recargo
-                          </span>
+                          <span className="text-xs font-bold text-purple-900">%</span>
                         </div>
                       </div>
                     )}
