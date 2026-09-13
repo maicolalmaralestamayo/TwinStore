@@ -1,17 +1,24 @@
-import React from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   CategoryItem,
   FilterState,
   PriceFilterCurrency,
   Store,
+  Product,
   DepartmentCategory,
   TagGroup,
   GeoProvince,
+  NomenclatorItem,
+  PaymentMethodItem,
+  DeliveryMethodItem,
 } from '../../types';
 import {
   INITIAL_DEPARTMENT_CATALOG,
   INITIAL_TAGS_CATALOG,
   INITIAL_GEO_CATALOG,
+  INITIAL_PRODUCT_TYPES_CATALOG,
+  INITIAL_PAYMENT_METHODS_CATALOG,
+  INITIAL_DELIVERY_METHODS_CATALOG,
 } from '../../data/initialData';
 import {
   RotateCcw,
@@ -26,16 +33,26 @@ import {
   ChevronDown,
   ChevronUp,
   Briefcase,
+  Search,
+  Hash,
+  X,
+  Eye,
+  ShoppingBag,
 } from 'lucide-react';
 import { SearchableMultiSelect } from '../common/SearchableMultiSelect';
 import { SearchableSelect } from '../common/SearchableSelect';
 import { interfaz } from '../../data/interfaz';
 
 interface AdvancedSearchProps {
+  products?: Product[];
+  onSelectProduct?: (product: Product) => void;
   categories?: CategoryItem[];
   departmentsCatalog?: DepartmentCategory[];
   tagsCatalog?: TagGroup[];
   geoCatalog?: GeoProvince[];
+  offerTypesCatalog?: NomenclatorItem[];
+  paymentMethodsCatalog?: PaymentMethodItem[];
+  deliveryMethodsCatalog?: DeliveryMethodItem[];
   stores: Store[];
   filters: FilterState;
   onFilterChange: (newFilters: FilterState) => void;
@@ -46,9 +63,14 @@ interface AdvancedSearchProps {
 }
 
 export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
+  products = [],
+  onSelectProduct,
   departmentsCatalog,
   tagsCatalog,
   geoCatalog,
+  offerTypesCatalog,
+  paymentMethodsCatalog,
+  deliveryMethodsCatalog,
   stores,
   filters,
   onFilterChange,
@@ -67,6 +89,18 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     tagsCatalog && tagsCatalog.length > 0 ? tagsCatalog : INITIAL_TAGS_CATALOG;
   const effectiveGeoCatalog =
     geoCatalog && geoCatalog.length > 0 ? geoCatalog : INITIAL_GEO_CATALOG;
+  const effectiveOfferTypes =
+    offerTypesCatalog && offerTypesCatalog.length > 0
+      ? offerTypesCatalog
+      : INITIAL_PRODUCT_TYPES_CATALOG;
+  const effectivePaymentMethods =
+    paymentMethodsCatalog && paymentMethodsCatalog.length > 0
+      ? paymentMethodsCatalog
+      : INITIAL_PAYMENT_METHODS_CATALOG;
+  const effectiveDeliveryMethods =
+    deliveryMethodsCatalog && deliveryMethodsCatalog.length > 0
+      ? deliveryMethodsCatalog
+      : INITIAL_DELIVERY_METHODS_CATALOG;
 
   // --- DEPENDENCY & DISABLING LOGIC ---
 
@@ -159,24 +193,46 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         return false;
       }
     }
-    // 4. Payment method filter (Transferencia / Efectivo)
+    // 4. Payment method filter (support catalog IDs and legacy values)
     if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-      const wantsTransfer = filters.paymentMethods.includes('transfer');
-      const wantsCash = filters.paymentMethods.includes('cash');
-      if (wantsTransfer && !wantsCash && !s.paymentOptions?.transferAccepted) {
-        return false;
-      }
+      const storePayIds: string[] = s.paymentMethodIds && s.paymentMethodIds.length > 0
+        ? s.paymentMethodIds
+        : s.paymentOptions?.transferAccepted
+        ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
+        : ['pm-efectivo', 'cash'];
+
+      const matchesPayment = filters.paymentMethods.some((selected) => {
+        if (selected === 'transfer' || selected === 'pm-transferencia') {
+          return storePayIds.includes('pm-transferencia') || storePayIds.includes('transfer') || Boolean(s.paymentOptions?.transferAccepted);
+        }
+        if (selected === 'cash' || selected === 'pm-efectivo') {
+          return storePayIds.includes('pm-efectivo') || storePayIds.includes('cash');
+        }
+        return storePayIds.includes(selected);
+      });
+      if (!matchesPayment) return false;
     } else if (filters.transferOnly && !s.paymentOptions?.transferAccepted) {
       return false;
     }
 
-    // 5. Delivery method filter (Mensajería / Recogida)
+    // 5. Delivery method filter (support catalog IDs and legacy values)
     if (filters.deliveryMethods && filters.deliveryMethods.length > 0) {
-      const wantsDelivery = filters.deliveryMethods.includes('delivery');
-      const wantsPickup = filters.deliveryMethods.includes('pickup');
-      if (wantsDelivery && !wantsPickup && !s.deliveryAvailable) {
-        return false;
-      }
+      const storeDeliveryIds: string[] = s.deliveryMethodIds && s.deliveryMethodIds.length > 0
+        ? s.deliveryMethodIds
+        : s.deliveryAvailable
+        ? ['dm-mensajeria', 'delivery']
+        : ['dm-recogida', 'pickup'];
+
+      const matchesDelivery = filters.deliveryMethods.some((selected) => {
+        if (selected === 'delivery' || selected === 'dm-mensajeria') {
+          return storeDeliveryIds.includes('dm-mensajeria') || storeDeliveryIds.includes('delivery') || Boolean(s.deliveryAvailable);
+        }
+        if (selected === 'pickup' || selected === 'dm-recogida') {
+          return storeDeliveryIds.includes('dm-recogida') || storeDeliveryIds.includes('pickup') || !s.deliveryAvailable;
+        }
+        return storeDeliveryIds.includes(selected);
+      });
+      if (!matchesDelivery) return false;
     } else if (filters.deliveryOnly && !s.deliveryAvailable) {
       return false;
     }
@@ -233,47 +289,31 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     }))
   );
 
-  // OFFER TYPE (Productos / Servicios)
-  const itemTypeOptions = [
-    {
-      value: 'product',
-      label: t.options.product || 'Productos',
-      sublabel: t.options.productSublabel || 'Artículos físicos y bienes',
-    },
-    {
-      value: 'service',
-      label: t.options.service || 'Servicios',
-      sublabel: t.options.serviceSublabel || 'Servicios profesionales y prestaciones',
-    },
-  ];
+  // OFFER TYPE (Nomenclador Dinámico de Tipos de Oferta)
+  const itemTypeOptions = effectiveOfferTypes.map((ot) => ({
+    value: ot.id,
+    label: ot.name,
+    sublabel: ot.description || 'Tipo de oferta en el catálogo',
+  }));
 
-  // TIPO DE PAGO (Transferencia / Efectivo)
-  const paymentMethodOptions = [
-    {
-      value: 'transfer',
-      label: t.options.payTransfer || 'Transferencia',
-      sublabel: t.options.transferSublabel || 'Pago por transferencia bancaria o entre tarjetas',
-    },
-    {
-      value: 'cash',
-      label: t.options.payCash || 'Efectivo',
-      sublabel: t.options.cashSublabel || 'Pago en efectivo directo',
-    },
-  ];
+  // TIPO DE PAGO (Nomenclador Dinámico con Gravamen)
+  const paymentMethodOptions = effectivePaymentMethods.map((pm) => {
+    const gravamenText = pm.gravamen && pm.gravamen > 0 ? ` (+${pm.gravamen}%)` : '';
+    return {
+      value: pm.id,
+      label: `${pm.name}${gravamenText}`,
+      sublabel: pm.gravamen && pm.gravamen > 0
+        ? `Gravamen del ${pm.gravamen}% • ${pm.description || 'Método de pago'}`
+        : pm.description || 'Método de pago sin recargo',
+    };
+  });
 
-  // MENSAJERÍA (Mensajería / Recogida)
-  const deliveryMethodOptions = [
-    {
-      value: 'delivery',
-      label: t.options.deliveryCourier || 'Mensajería',
-      sublabel: t.options.courierSublabel || 'Tiendas con servicio de mensajería',
-    },
-    {
-      value: 'pickup',
-      label: t.options.deliveryPickup || 'Recogida',
-      sublabel: t.options.pickupSublabel || 'Tiendas con recogida en local',
-    },
-  ];
+  // MENSAJERÍA / RECOGIDA (Nomenclador Dinámico)
+  const deliveryMethodOptions = effectiveDeliveryMethods.map((dm) => ({
+    value: dm.id,
+    label: dm.name,
+    sublabel: dm.description || 'Modalidad de entrega/recogida',
+  }));
 
   // Filter Update Logic with cascading prune and sync
   const handleUpdate = <K extends keyof FilterState>(
@@ -437,6 +477,109 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   };
 
   // Count active filters
+  // --- LIVE SEARCH HOOKS & LOGIC FOR CODE & DESCRIPTION ---
+  const [isCodeFocused, setIsCodeFocused] = useState(false);
+  const [isDescFocused, setIsDescFocused] = useState(false);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
+  const descContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (codeContainerRef.current && !codeContainerRef.current.contains(e.target as Node)) {
+        setIsCodeFocused(false);
+      }
+      if (descContainerRef.current && !descContainerRef.current.contains(e.target as Node)) {
+        setIsDescFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const codeQuery = (filters.code || '').trim().toLowerCase();
+  const matchingByCode = useMemo(() => {
+    if (!codeQuery || !products) return [];
+    return products.filter((p) => {
+      if (p.isAvailable === false) return false;
+      return p.code ? p.code.toLowerCase().includes(codeQuery) : false;
+    });
+  }, [products, codeQuery]);
+
+  const descQuery = (filters.searchQuery || '').trim().toLowerCase();
+  const matchingByDesc = useMemo(() => {
+    if (!descQuery || !products) return [];
+    return products.filter((p) => {
+      if (p.isAvailable === false) return false;
+      return (p.description || '').toLowerCase().includes(descQuery);
+    });
+  }, [products, descQuery]);
+
+  const isServiceItem = (p: Product) => {
+    return (
+      p.productTypeId === 'pt-servicio' ||
+      (p.productType || '').toLowerCase().includes('servicio') ||
+      p.category === 'Servicios Profesionales'
+    );
+  };
+
+  const getStoreName = (storeId: string) => {
+    const s = stores.find((st) => st.id === storeId);
+    return s?.name || 'Tienda';
+  };
+
+  const renderDescSnippet = (desc: string, query: string) => {
+    if (!desc || !query) return desc;
+    const lowerDesc = desc.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const matchIndex = lowerDesc.indexOf(lowerQuery);
+    if (matchIndex === -1) {
+      return desc.length > 70 ? desc.slice(0, 70) + '...' : desc;
+    }
+
+    const start = Math.max(0, matchIndex - 25);
+    const end = Math.min(desc.length, matchIndex + query.length + 35);
+    const prefix = start > 0 ? '...' : '';
+    const suffix = end < desc.length ? '...' : '';
+
+    const before = desc.substring(start, matchIndex);
+    const match = desc.substring(matchIndex, matchIndex + query.length);
+    const after = desc.substring(matchIndex + query.length, end);
+
+    return (
+      <span className="text-[11px] text-slate-600 dark:text-slate-300">
+        {prefix}
+        {before}
+        <span className="bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold px-1 rounded mx-0.5 border border-amber-300 dark:border-amber-700">
+          {match}
+        </span>
+        {after}
+        {suffix}
+      </span>
+    );
+  };
+
+  const renderCodeMatch = (codeStr: string, query: string) => {
+    if (!codeStr || !query) return codeStr;
+    const lowerCode = codeStr.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const matchIndex = lowerCode.indexOf(lowerQuery);
+    if (matchIndex === -1) return codeStr;
+
+    const before = codeStr.substring(0, matchIndex);
+    const match = codeStr.substring(matchIndex, matchIndex + query.length);
+    const after = codeStr.substring(matchIndex + query.length);
+
+    return (
+      <span>
+        {before}
+        <span className="bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100 font-extrabold px-0.5 rounded underline decoration-amber-500">
+          {match}
+        </span>
+        {after}
+      </span>
+    );
+  };
+
   const activeFiltersCount =
     (filters.storeIds?.length || 0) +
     (filters.categories?.length || 0) +
@@ -451,7 +594,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     (filters.deliveryMethods?.length || 0) +
     (filters.minPrice !== '' ? 1 : 0) +
     (filters.maxPrice !== '' ? 1 : 0) +
-    (filters.searchQuery ? 1 : 0);
+    (filters.searchQuery ? 1 : 0) +
+    (filters.code ? 1 : 0);
 
   const hasActiveFilters = activeFiltersCount > 0;
 
@@ -527,6 +671,315 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       {/* Expandable Body with Filter Groups */}
       {isExpanded && (
         <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-6 animate-in fade-in duration-200 rounded-b-2xl">
+          
+          {/* ========================================================================= */}
+          {/* BÚSQUEDA RÁPIDA: PALABRA CLAVE EN DESCRIPCIÓN Y CÓDIGO ÚNICO              */}
+          {/* ========================================================================= */}
+          <div className="bg-white dark:bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-2xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* FILTRO 1: BÚSQUEDA EXCLUSIVA POR DESCRIPCIÓN */}
+              <div className="relative" ref={descContainerRef}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>Buscar solamente por descripción</span>
+                  </label>
+                  {descQuery.length > 0 && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
+                        matchingByDesc.length > 0
+                          ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                          : 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                      }`}
+                    >
+                      {matchingByDesc.length} disponible{matchingByDesc.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={filters.searchQuery || ''}
+                    onFocus={() => setIsDescFocused(true)}
+                    onChange={(e) => {
+                      handleUpdate('searchQuery', e.target.value);
+                      setIsDescFocused(true);
+                    }}
+                    placeholder={t.searchPlaceholder || 'Buscar solamente por descripción...'}
+                    className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none transition-all shadow-2xs"
+                  />
+                  {filters.searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdate('searchQuery', '');
+                        setIsDescFocused(false);
+                      }}
+                      title="Limpiar búsqueda por descripción"
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Suggestions Dropdown for Description */}
+                {isDescFocused && descQuery.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-slate-800 rounded-xl border border-indigo-200 dark:border-slate-700 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Coincidencias en descripción ({matchingByDesc.length})</span>
+                      </span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded text-[10px]">
+                        Disponibles
+                      </span>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60 p-1">
+                      {matchingByDesc.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                          No se encontraron productos o servicios disponibles con <strong className="text-slate-700 dark:text-slate-200">"{filters.searchQuery}"</strong> en su descripción.
+                        </div>
+                      ) : (
+                        matchingByDesc.slice(0, 10).map((p) => {
+                          const isServ = isServiceItem(p);
+                          const storeName = getStoreName(p.storeId);
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setIsDescFocused(false);
+                              }}
+                              className="p-2.5 rounded-lg hover:bg-indigo-50/70 dark:hover:bg-slate-700/60 transition-colors cursor-pointer flex items-center justify-between gap-3 group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                {p.imageUrl ? (
+                                  <img
+                                    src={p.imageUrl}
+                                    alt={p.title}
+                                    className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-slate-800"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-400">
+                                    {isServ ? <Briefcase className="w-4 h-4 text-sky-500" /> : <ShoppingBag className="w-4 h-4 text-emerald-500" />}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono font-bold text-[10px] text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/80 px-1.5 py-0.5 rounded">
+                                      {p.code}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                        isServ
+                                          ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                      }`}
+                                    >
+                                      {isServ ? 'Servicio' : 'Producto'}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                                      {storeName}
+                                    </span>
+                                  </div>
+                                  <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mt-0.5">
+                                    {p.title}
+                                  </div>
+                                  <div className="mt-1">
+                                    {renderDescSnippet(p.description, descQuery)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-black text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">
+                                  ${p.priceUSD} USD
+                                </span>
+                                {onSelectProduct && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSelectProduct(p);
+                                      setIsDescFocused(false);
+                                    }}
+                                    title="Ver detalles completos"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 transition-all cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                    {matchingByDesc.length > 10 && (
+                      <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 text-center text-[10px] text-slate-500">
+                        Mostrando 10 de {matchingByDesc.length} coincidencias disponibles.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* FILTRO 2: BÚSQUEDA EXCLUSIVA POR CÓDIGO ÚNICO */}
+              <div className="relative" ref={codeContainerRef}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>{t.labels?.productCode || 'Buscar por Código Único'}</span>
+                  </label>
+                  {codeQuery.length > 0 && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
+                        matchingByCode.length > 0
+                          ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                          : 'bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800'
+                      }`}
+                    >
+                      {matchingByCode.length} disponible{matchingByCode.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none">
+                    <Hash className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={filters.code || ''}
+                    onFocus={() => setIsCodeFocused(true)}
+                    onChange={(e) => {
+                      handleUpdate('code', e.target.value);
+                      setIsCodeFocused(true);
+                    }}
+                    placeholder="Ej. PRD-001, SRV-002..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-mono font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none uppercase transition-all shadow-2xs"
+                  />
+                  {filters.code && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdate('code', '');
+                        setIsCodeFocused(false);
+                      }}
+                      title="Limpiar código"
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Live Suggestions Dropdown for Code */}
+                {isCodeFocused && codeQuery.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-slate-800 rounded-xl border border-indigo-200 dark:border-slate-700 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <Hash className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Coincidencias en código "{filters.code}" ({matchingByCode.length})</span>
+                      </span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded text-[10px]">
+                        Disponibles
+                      </span>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/60 p-1">
+                      {matchingByCode.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                          No se encontraron productos o servicios disponibles con el código <strong className="font-mono text-slate-700 dark:text-slate-200">"{filters.code}"</strong>.
+                        </div>
+                      ) : (
+                        matchingByCode.slice(0, 10).map((p) => {
+                          const isServ = isServiceItem(p);
+                          const storeName = getStoreName(p.storeId);
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                handleUpdate('code', p.code);
+                                setIsCodeFocused(false);
+                              }}
+                              className="p-2.5 rounded-lg hover:bg-indigo-50/70 dark:hover:bg-slate-700/60 transition-colors cursor-pointer flex items-center justify-between gap-3 group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                {p.imageUrl ? (
+                                  <img
+                                    src={p.imageUrl}
+                                    alt={p.title}
+                                    className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0 bg-slate-100 dark:bg-slate-800"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-400">
+                                    {isServ ? <Briefcase className="w-4 h-4 text-sky-500" /> : <ShoppingBag className="w-4 h-4 text-emerald-500" />}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono font-black text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                      {renderCodeMatch(p.code, codeQuery)}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                        isServ
+                                          ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300'
+                                          : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                      }`}
+                                    >
+                                      {isServ ? 'Servicio' : 'Producto'}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                                      {storeName}
+                                    </span>
+                                  </div>
+                                  <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mt-0.5">
+                                    {p.title}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="font-black text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">
+                                  ${p.priceUSD} USD
+                                </span>
+                                {onSelectProduct && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onSelectProduct(p);
+                                      setIsCodeFocused(false);
+                                    }}
+                                    title="Ver detalles completos"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-600 transition-all cursor-pointer"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                    {matchingByCode.length > 10 && (
+                      <div className="p-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-700 text-center text-[10px] text-slate-500">
+                        Mostrando 10 de {matchingByCode.length} coincidencias disponibles.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           
           {/* ========================================================================= */}
           {/* GRUPO 1: UBICACIÓN Y TIENDAS (PROVINCIAS, MUNICIPIOS, REPARTOS, TIENDAS) */}

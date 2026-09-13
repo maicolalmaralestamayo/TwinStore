@@ -480,29 +480,41 @@ export default function App() {
       const store = stores.find((s) => s.id === p.storeId);
       if (store && !store.active) return false;
 
-      // 1b. Offer Type (Servicio vs Producto)
-      if (filters.itemTypes && filters.itemTypes.length > 0) {
-        const wantsProducts = filters.itemTypes.includes('product');
-        const wantsServices = filters.itemTypes.includes('service');
-        if (wantsProducts && !wantsServices && p.isService) {
+      // 1b. Offer Type (Nomenclador Dinámico de Tipos de Oferta)
+      const pTypeId = p.productTypeId || (p.isService ? 'pt-servicio' : 'pt-producto');
+      const isServ =
+        pTypeId === 'pt-servicio' ||
+        (p.productType || '').toLowerCase().includes('servicio') ||
+        Boolean((p as any).isService);
+
+      if (filters.productTypes && filters.productTypes.length > 0) {
+        if (!filters.productTypes.includes(pTypeId) && !filters.productTypes.includes(p.productType || '')) {
           return false;
         }
-        if (wantsServices && !wantsProducts && !p.isService) {
-          return false;
-        }
+      } else if (filters.itemTypes && filters.itemTypes.length > 0) {
+        const matchesType = filters.itemTypes.some((selected) => {
+          if (selected === 'product' || selected === 'pt-producto') return !isServ;
+          if (selected === 'service' || selected === 'pt-servicio') return isServ;
+          return selected === pTypeId || selected === p.productType;
+        });
+        if (!matchesType) return false;
       } else if (filters.serviceOnly) {
-        if (!p.isService) return false;
+        if (!isServ) return false;
       }
 
-      // 2. Search query filter
+      // 2. Search query filter (Búsqueda estrictamente por descripción)
       if (filters.searchQuery?.trim()) {
-        const q = filters.searchQuery.toLowerCase();
-        const matchesTitle = p.title.toLowerCase().includes(q);
-        const matchesDesc = p.description.toLowerCase().includes(q);
-        const matchesStore = store?.name.toLowerCase().includes(q) || false;
-        const matchesLocation = store?.location.toLowerCase().includes(q) || false;
-        const matchesTags = p.tags.some((t) => t.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesDesc && !matchesStore && !matchesLocation && !matchesTags) {
+        const q = filters.searchQuery.toLowerCase().trim();
+        const matchesDesc = (p.description || '').toLowerCase().includes(q);
+        if (!matchesDesc) {
+          return false;
+        }
+      }
+
+      // 2b. Specific Product Code filter (Búsqueda por código de producto o servicio)
+      if (filters.code?.trim()) {
+        const codeQuery = filters.code.toLowerCase().trim();
+        if (!p.code || !p.code.toLowerCase().includes(codeQuery)) {
           return false;
         }
       }
@@ -557,24 +569,50 @@ export default function App() {
         return false;
       }
 
-      // 7. Delivery filter
+      // 7. Delivery filter (Nomenclador Dinámico)
       if (filters.deliveryMethods && filters.deliveryMethods.length > 0) {
-        const wantsDelivery = filters.deliveryMethods.includes('delivery');
-        const wantsPickup = filters.deliveryMethods.includes('pickup');
-        if (wantsDelivery && !wantsPickup && (!store?.deliveryAvailable && !p.deliveryAvailable)) {
-          return false;
-        }
+        const storeDeliveryIds: string[] = store?.deliveryMethodIds && store.deliveryMethodIds.length > 0
+          ? store.deliveryMethodIds
+          : store?.deliveryAvailable
+          ? ['dm-mensajeria', 'delivery']
+          : ['dm-recogida', 'pickup'];
+        const prodDeliveryIds: string[] = p.deliveryMethodIds || [];
+        const allDeliveryIds = [...storeDeliveryIds, ...prodDeliveryIds];
+
+        const matchesDelivery = filters.deliveryMethods.some((selected) => {
+          if (selected === 'delivery' || selected === 'dm-mensajeria') {
+            return allDeliveryIds.includes('dm-mensajeria') || allDeliveryIds.includes('delivery') || Boolean(store?.deliveryAvailable) || Boolean(p.deliveryAvailable);
+          }
+          if (selected === 'pickup' || selected === 'dm-recogida') {
+            return allDeliveryIds.includes('dm-recogida') || allDeliveryIds.includes('pickup') || !store?.deliveryAvailable;
+          }
+          return allDeliveryIds.includes(selected);
+        });
+        if (!matchesDelivery) return false;
       } else if (filters.deliveryOnly && (!store?.deliveryAvailable && !p.deliveryAvailable)) {
         return false;
       }
 
-      // 7b. Transfer / Payment filter
+      // 7b. Transfer / Payment filter (Nomenclador Dinámico)
       if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-        const wantsTransfer = filters.paymentMethods.includes('transfer');
-        const wantsCash = filters.paymentMethods.includes('cash');
-        if (wantsTransfer && !wantsCash && !store?.paymentOptions?.transferAccepted) {
-          return false;
-        }
+        const storePayIds: string[] = store?.paymentMethodIds && store.paymentMethodIds.length > 0
+          ? store.paymentMethodIds
+          : store?.paymentOptions?.transferAccepted
+          ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
+          : ['pm-efectivo', 'cash'];
+        const prodPayIds: string[] = p.paymentMethodIds || [];
+        const allPayIds = [...storePayIds, ...prodPayIds];
+
+        const matchesPayment = filters.paymentMethods.some((selected) => {
+          if (selected === 'transfer' || selected === 'pm-transferencia') {
+            return allPayIds.includes('pm-transferencia') || allPayIds.includes('transfer') || Boolean(store?.paymentOptions?.transferAccepted);
+          }
+          if (selected === 'cash' || selected === 'pm-efectivo') {
+            return allPayIds.includes('pm-efectivo') || allPayIds.includes('cash');
+          }
+          return allPayIds.includes(selected);
+        });
+        if (!matchesPayment) return false;
       } else if (filters.transferOnly && !store?.paymentOptions?.transferAccepted) {
         return false;
       }
@@ -726,22 +764,46 @@ export default function App() {
           if (!matchesRep) return false;
         }
 
+        // Delivery filter (Nomenclador Dinámico)
         if (storeFilters.deliveryMethods && storeFilters.deliveryMethods.length > 0) {
-          const wantsDelivery = storeFilters.deliveryMethods.includes('delivery');
-          const wantsPickup = storeFilters.deliveryMethods.includes('pickup');
-          if (wantsDelivery && !wantsPickup && !s.deliveryAvailable) {
-            return false;
-          }
+          const storeDeliveryIds: string[] = s.deliveryMethodIds && s.deliveryMethodIds.length > 0
+            ? s.deliveryMethodIds
+            : s.deliveryAvailable
+            ? ['dm-mensajeria', 'delivery']
+            : ['dm-recogida', 'pickup'];
+
+          const matchesDelivery = storeFilters.deliveryMethods.some((selected) => {
+            if (selected === 'delivery' || selected === 'dm-mensajeria') {
+              return storeDeliveryIds.includes('dm-mensajeria') || storeDeliveryIds.includes('delivery') || Boolean(s.deliveryAvailable);
+            }
+            if (selected === 'pickup' || selected === 'dm-recogida') {
+              return storeDeliveryIds.includes('dm-recogida') || storeDeliveryIds.includes('pickup') || !s.deliveryAvailable;
+            }
+            return storeDeliveryIds.includes(selected);
+          });
+          if (!matchesDelivery) return false;
         } else if (storeFilters.deliveryOnly && !s.deliveryAvailable) {
           return false;
         }
 
+        // Payment filter (Nomenclador Dinámico)
         if (storeFilters.paymentMethods && storeFilters.paymentMethods.length > 0) {
-          const wantsTransfer = storeFilters.paymentMethods.includes('transfer');
-          const wantsCash = storeFilters.paymentMethods.includes('cash');
-          if (wantsTransfer && !wantsCash && !s.paymentOptions?.transferAccepted) {
-            return false;
-          }
+          const storePayIds: string[] = s.paymentMethodIds && s.paymentMethodIds.length > 0
+            ? s.paymentMethodIds
+            : s.paymentOptions?.transferAccepted
+            ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
+            : ['pm-efectivo', 'cash'];
+
+          const matchesPayment = storeFilters.paymentMethods.some((selected) => {
+            if (selected === 'transfer' || selected === 'pm-transferencia') {
+              return storePayIds.includes('pm-transferencia') || storePayIds.includes('transfer') || Boolean(s.paymentOptions?.transferAccepted);
+            }
+            if (selected === 'cash' || selected === 'pm-efectivo') {
+              return storePayIds.includes('pm-efectivo') || storePayIds.includes('cash');
+            }
+            return storePayIds.includes(selected);
+          });
+          if (!matchesPayment) return false;
         } else if (storeFilters.transferOnly && !s.paymentOptions?.transferAccepted) {
           return false;
         }
@@ -936,10 +998,15 @@ export default function App() {
               <>
                 {/* Advanced Search & Filter (Strictly the requested 12 fields) */}
                 <AdvancedSearch
+                  products={products}
+                  onSelectProduct={setSelectedProduct}
                   categories={INITIAL_CATEGORIES}
                   departmentsCatalog={marketplaceConfig.departmentsCatalog}
                   tagsCatalog={marketplaceConfig.tagsCatalog}
                   geoCatalog={marketplaceConfig.geoCatalog}
+                  offerTypesCatalog={marketplaceConfig.offerTypesCatalog}
+                  paymentMethodsCatalog={marketplaceConfig.paymentMethodsCatalog}
+                  deliveryMethodsCatalog={marketplaceConfig.deliveryMethodsCatalog}
                   stores={stores}
                   filters={filters}
                   onFilterChange={handleFilterChange}
@@ -1051,6 +1118,8 @@ export default function App() {
                 {/* Store Filter Bar */}
                 <StoreFilterBar
                   geoCatalog={marketplaceConfig.geoCatalog}
+                  paymentMethodsCatalog={marketplaceConfig.paymentMethodsCatalog}
+                  deliveryMethodsCatalog={marketplaceConfig.deliveryMethodsCatalog}
                   filters={storeFilters}
                   onFilterChange={handleStoreFilterChange}
                   onReset={() => handleStoreFilterChange(DEFAULT_STORE_FILTERS)}
@@ -1287,6 +1356,8 @@ export default function App() {
         onClose={() => setSelectedProduct(null)}
         onFilterByStore={(storeId) => setFilters({ ...filters, storeId })}
         onShowToast={showToast}
+        marketplaceConfig={marketplaceConfig}
+        products={products}
       />
 
       <StoreDirectoryModal

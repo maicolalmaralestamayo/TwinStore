@@ -34,7 +34,7 @@
     "results": "resultados"
   },
   "filters": {
-    "searchPlaceholder": "Buscar productos, servicios, marcas o tiendas...",
+    "searchPlaceholder": "Buscar solamente por descripción...",
     "searchStoresPlaceholder": "Buscar tienda por nombre, eslogan, municipio o reparto...",
     "expandFilters": "Filtros Avanzados",
     "collapseFilters": "Ocultar Filtros",
@@ -98,7 +98,7 @@
       "priceCurrency": "Moneda de Referencia",
       "onlyDelivery": "Solo con mensajería",
       "onlyInStock": "Solo en existencia",
-      "onlyServices": "Solo servicios profesionales",
+      "onlyServices": "Solo servicios",
       "acceptsTransfer": "Acepta transferencia",
       "sortBy": "Ordenar por:",
       "rateRange": "Rango de tasa CUP",

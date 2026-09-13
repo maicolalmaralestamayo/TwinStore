@@ -147,6 +147,7 @@ export function exportProductsCsv(products: Product[]) {
   const headers = [
     'id',
     'storeId',
+    'code',
     'title',
     'description',
     'priceUSD',
@@ -158,7 +159,6 @@ export function exportProductsCsv(products: Product[]) {
     'deliveryMethodIds',
     'imageUrl',
     'isAvailable',
-    'isService',
     'deliveryAvailable',
     'featured',
     'tags',
@@ -167,6 +167,7 @@ export function exportProductsCsv(products: Product[]) {
   const rows = products.map((p) => [
     p.id,
     p.storeId,
+    p.code || '',
     p.title,
     p.description || '',
     p.priceUSD,
@@ -178,7 +179,6 @@ export function exportProductsCsv(products: Product[]) {
     Array.isArray(p.deliveryMethodIds) ? p.deliveryMethodIds.join(';') : '',
     p.imageUrl || '',
     p.isAvailable,
-    p.isService || false,
     p.deliveryAvailable,
     p.featured || false,
     Array.isArray(p.tags) ? p.tags.join(';') : '',
@@ -400,6 +400,7 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
     const products: Product[] = [];
     const idIdx = header.indexOf('id');
     const storeIdIdx = header.indexOf('storeid');
+    const codeIdx = header.indexOf('code');
     const titleIdx = header.indexOf('title');
     const descIdx = header.indexOf('description');
     const priceIdx = header.indexOf('priceusd');
@@ -411,7 +412,6 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
     const delivMethodsIdx = header.indexOf('deliverymethodids');
     const imgIdx = header.indexOf('imageurl');
     const isAvailIdx = header.indexOf('isavailable');
-    const isServIdx = header.indexOf('isservice');
     const delivAvailIdx = header.indexOf('deliveryavailable');
     const featIdx = header.indexOf('featured');
     const tagsIdx = header.indexOf('tags');
@@ -424,12 +424,14 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
 
       const pType = prodTypeIdx !== -1 ? r[prodTypeIdx] : '';
       const pTypeId = prodTypeIdIdx !== -1 ? r[prodTypeIdIdx] : '';
+      const codeVal = codeIdx !== -1 && r[codeIdx] ? r[codeIdx] : `PRD-${Date.now().toString().slice(-4)}${i}`;
       const payIds = payMethodsIdx !== -1 && r[payMethodsIdx] ? r[payMethodsIdx].split(/;|,/).map((s) => s.trim()).filter(Boolean) : [];
       const delivIds = delivMethodsIdx !== -1 && r[delivMethodsIdx] ? r[delivMethodsIdx].split(/;|,/).map((s) => s.trim()).filter(Boolean) : [];
 
       products.push({
         id: (idIdx !== -1 ? r[idIdx] : r[0]) || `prod_csv_${Date.now()}_${i}`,
         storeId: (storeIdIdx !== -1 ? r[storeIdIdx] : r[1]) || 'store-1',
+        code: codeVal,
         title,
         description: (descIdx !== -1 ? r[descIdx] : r[3]) || '',
         priceUSD: Number(priceIdx !== -1 ? r[priceIdx] : r[4]) || 0,
@@ -441,7 +443,6 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
         deliveryMethodIds: delivIds.length > 0 ? delivIds : undefined,
         imageUrl: (imgIdx !== -1 ? r[imgIdx] : r[7]) || '',
         isAvailable: (isAvailIdx !== -1 ? r[isAvailIdx] : r[8]) !== 'false' && (isAvailIdx !== -1 ? r[isAvailIdx] : r[8]) !== '0',
-        isService: (isServIdx !== -1 ? r[isServIdx] : r[9]) === 'true' || (isServIdx !== -1 ? r[isServIdx] : r[9]) === '1',
         deliveryAvailable: (delivAvailIdx !== -1 ? r[delivAvailIdx] : r[10]) === 'true' || (delivAvailIdx !== -1 ? r[delivAvailIdx] : r[10]) === '1',
         featured: (featIdx !== -1 ? r[featIdx] : r[11]) === 'true' || (featIdx !== -1 ? r[featIdx] : r[11]) === '1',
         tags: (tagsIdx !== -1 ? r[tagsIdx] : r[12]) ? (tagsIdx !== -1 ? r[tagsIdx] : r[12]).split(/;|,/).map((t) => t.trim()).filter(Boolean) : [],

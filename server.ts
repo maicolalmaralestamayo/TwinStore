@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import {
   getDb,
@@ -200,139 +199,7 @@ app.post("/api/db/restore", async (req, res) => {
   }
 });
 
-// API route: AI Assistant to enhance Cuban marketplace product titles, descriptions & tags
-app.post("/api/ai/enhance-product", async (req, res) => {
-  try {
-    const { title, description, category, priceUSD, storeName } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    // Check if API key is present
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      // Graceful fallback if user has not set GEMINI_API_KEY yet in AI Studio settings
-      return res.json({
-        success: true,
-        enhancedTitle: title ? `${title.trim()} | Calidad y Entrega Segura` : "Producto de Calidad en Cuba",
-        enhancedDescription: description
-          ? `${description.trim()}\n\n✅ Excelente calidad para el hogar o negocio.\n✅ Contacte al vendedor por WhatsApp para coordinar entrega o recogida en ${storeName || "La Habana/Cuba"}.\n✅ Garantía de seriedad y trato directo.`
-          : `Excelente producto en la categoría ${category || "General"}. Disponible para entrega inmediata o coordinación por WhatsApp en ${storeName || "Cuba"}. Trato directo sin intermediarios.`,
-        suggestedTags: ["cuba", "disponible", "whatsapp", category?.toLowerCase() || "oferta", "calidad"].filter(Boolean),
-        note: "Sugerencia generada localmente (Configure GEMINI_API_KEY en Secretos para IA avanzada)."
-      });
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `
-Eres un experto redactor de comercio y ventas en el mercado de Cuba ("MercadoCuba").
-Necesitamos optimizar un producto o servicio que se ofrecerá en un marketplace donde las ventas se concretan por WhatsApp directamente entre cliente y vendedor.
-
-Datos actuales del producto:
-- Título: "${title || "Sin título"}"
-- Descripción actual: "${description || "Sin descripción"}"
-- Categoría: "${category || "Varios"}"
-- Precio estimado en USD: $${priceUSD || 0}
-- Tienda/Proveedor: "${storeName || "Tienda en Cuba"}"
-
-Instrucciones:
-1. "enhancedTitle": Crea un título atractivo, claro y corto (máximo 60 caracteres), propio de comercio cubano.
-2. "enhancedDescription": Crea una descripción comercial persuasiva y clara en español (máximo 120 palabras), destacando utilidad, estado y que la compra se acuerda en WhatsApp con el vendedor sin comisiones ni esperas.
-3. "suggestedTags": Devuelve un array con 4 a 6 etiquetas (tags) breves en minúsculas relevantes para el motor de búsqueda.
-
-Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:
-{
-  "enhancedTitle": "...",
-  "enhancedDescription": "...",
-  "suggestedTags": ["tag1", "tag2", "tag3", "tag4"]
-}
-`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
-
-    return res.json({
-      success: true,
-      enhancedTitle: parsed.enhancedTitle || title,
-      enhancedDescription: parsed.enhancedDescription || description,
-      suggestedTags: parsed.suggestedTags || ["cuba", "oferta", "whatsapp", "calidad"],
-      note: "Generado con Inteligencia Artificial Gemini."
-    });
-  } catch (error: any) {
-    console.error("Error in /api/ai/enhance-product:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Error al generar recomendación con IA",
-      details: error?.message
-    });
-  }
-});
-
-// API route: AI Assistant to suggest WhatsApp responses for Cuban store owners
-app.post("/api/ai/whatsapp-reply", async (req, res) => {
-  try {
-    const { storeName, productName, priceUSD, priceCUP, customerMessage } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-      return res.json({
-        success: true,
-        suggestions: [
-          `¡Hola! Sí, tenemos disponible el ${productName}. El precio es $${priceUSD} USD o ${priceCUP} CUP al cambio de hoy. ¿En qué zona de Cuba se encuentra para la entrega?`,
-          `¡Buenas! Con gusto le atiendo desde ${storeName}. El ${productName} está disponible. Aceptamos efectivo en USD, MLC o CUP (${priceCUP} CUP). ¿Desea coordinar envío o recogida?`,
-          `¡Hola! Gracias por contactarnos por MercadoCuba. Nos queda en existencia el ${productName}. Dígame si necesita algún detalle adicional o foto real.`
-        ]
-      });
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `
-Eres un asistente para vendedores en Cuba que usan WhatsApp para cerrar ventas en "MercadoCuba".
-Un cliente te ha escrito o está preguntando por un producto.
-
-Datos de la tienda: ${storeName || "Mi Tienda en Cuba"}
-Producto: ${productName || "Producto"}
-Precio: $${priceUSD} USD / ${priceCUP} CUP
-
-Genera 3 opciones cortas, amables y profesionales de respuesta para enviar por WhatsApp al cliente en Cuba.
-Responde ÚNICAMENTE en formato JSON con un array de strings:
-{
-  "suggestions": [
-    "Opción 1...",
-    "Opción 2...",
-    "Opción 3..."
-  ]
-}
-`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
-
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
-
-    return res.json({
-      success: true,
-      suggestions: parsed.suggestions || []
-    });
-  } catch (error: any) {
-    console.error("Error in /api/ai/whatsapp-reply:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Error al generar respuestas con IA"
-    });
-  }
-});
 
 // Vite middleware for development or static serving for production
 async function setupServer() {

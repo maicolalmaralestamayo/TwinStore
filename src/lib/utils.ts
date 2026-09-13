@@ -242,17 +242,17 @@ export function exportStoresToCsv(stores: Store[]): void {
  * Export Products list to CSV
  */
 export function exportProductsToCsv(products: Product[]): void {
-  const headers = ['id', 'storeId', 'title', 'description', 'priceUSD', 'category', 'subcategory', 'isAvailable', 'isService'];
+  const headers = ['id', 'storeId', 'code', 'title', 'description', 'priceUSD', 'category', 'subcategory', 'isAvailable'];
   const rows = products.map((p) => [
     p.id,
     p.storeId,
+    `"${(p.code || '').replace(/"/g, '""')}"`,
     `"${(p.title || '').replace(/"/g, '""')}"`,
     `"${(p.description || '').replace(/"/g, '""')}"`,
     p.priceUSD || 0,
     `"${(p.category || '').replace(/"/g, '""')}"`,
     `"${(p.subcategory || '').replace(/"/g, '""')}"`,
     p.isAvailable ? 'true' : 'false',
-    p.isService ? 'true' : 'false',
   ]);
 
   const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -332,6 +332,7 @@ export function parseAndImportCsvContent(
         products.push({
           id: row[0] || `prod_csv_${Date.now()}_${i}`,
           storeId: row[1] || 'store_1',
+          code: `PRD-${Date.now().toString().slice(-4)}${i}`,
           title: row[2],
           description: row[3] || '',
           priceUSD: Number(row[4]) || 10,
@@ -339,7 +340,6 @@ export function parseAndImportCsvContent(
           subcategory: row[6] || '',
           imageUrl: 'local:product',
           isAvailable: row[7] !== 'false' && row[7] !== '0',
-          isService: row[8] === 'true' || row[8] === '1',
           tags: ['csv', 'importado'],
           createdAt: new Date().toISOString(),
         });

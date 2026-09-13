@@ -20,7 +20,6 @@ import {
 } from '../../data/initialData';
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
-import { NomenclatorIcon, AVAILABLE_NOMENCLATOR_ICONS } from '../common/NomenclatorIcon';
 import {
   Globe,
   Image as ImageIcon,
@@ -106,15 +105,15 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   // New item inputs for Nomenclator
   const [newNomName, setNewNomName] = useState('');
   const [newNomDesc, setNewNomDesc] = useState('');
-  const [newNomIcon, setNewNomIcon] = useState('ShoppingBag');
   const [newNomActive, setNewNomActive] = useState(true);
+  const [newNomGravamen, setNewNomGravamen] = useState<number | ''>(0);
 
   // Editing item states for Nomenclator
   const [editingNomId, setEditingNomId] = useState<string | null>(null);
   const [editingNomName, setEditingNomName] = useState('');
   const [editingNomDesc, setEditingNomDesc] = useState('');
-  const [editingNomIcon, setEditingNomIcon] = useState('');
   const [editingNomActive, setEditingNomActive] = useState(true);
+  const [editingNomGravamen, setEditingNomGravamen] = useState<number | ''>(0);
 
   // Taxonomy catalog state (2 escalones: Departamentos -> Subcategorías)
   const [departmentsCatalog, setDepartmentsCatalog] = useState<DepartmentCategory[]>(
@@ -892,8 +891,11 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       id: `${prefix}-${Date.now()}`,
       name: newNomName.trim(),
       description: newNomDesc.trim() || undefined,
-      iconName: newNomIcon.trim() || undefined,
       active: newNomActive,
+      gravamen:
+        activeNomCategory === 'paymentMethods'
+          ? (newNomGravamen === '' ? 0 : Number(newNomGravamen))
+          : undefined,
     };
 
     if (activeNomCategory === 'productTypes') {
@@ -912,8 +914,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
 
     setNewNomName('');
     setNewNomDesc('');
-    setNewNomIcon('ShoppingBag');
     setNewNomActive(true);
+    setNewNomGravamen(0);
   };
 
   const handleDeleteNomItem = (id: string, name: string) => {
@@ -957,8 +959,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     setEditingNomId(item.id);
     setEditingNomName(item.name);
     setEditingNomDesc(item.description || '');
-    setEditingNomIcon(item.iconName || 'ShoppingBag');
     setEditingNomActive(item.active !== false);
+    setEditingNomGravamen(item.gravamen !== undefined ? item.gravamen : 0);
   };
 
   const handleSaveEditNom = () => {
@@ -974,7 +976,6 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
               ...i,
               name: editingNomName.trim(),
               description: editingNomDesc.trim() || undefined,
-              iconName: editingNomIcon.trim() || undefined,
               active: editingNomActive,
             }
           : i
@@ -987,8 +988,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
               ...i,
               name: editingNomName.trim(),
               description: editingNomDesc.trim() || undefined,
-              iconName: editingNomIcon.trim() || undefined,
               active: editingNomActive,
+              gravamen: editingNomGravamen === '' ? 0 : Number(editingNomGravamen),
             }
           : i
       );
@@ -1000,7 +1001,6 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
               ...i,
               name: editingNomName.trim(),
               description: editingNomDesc.trim() || undefined,
-              iconName: editingNomIcon.trim() || undefined,
               active: editingNomActive,
             }
           : i
@@ -1975,7 +1975,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             </button>
           </div>
 
-          {/* 3 CATEGORY SELECTOR TABS */}
+          {/* 3 CATEGORY SELECTOR TABS (WITHOUT ICONS) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               type="button"
@@ -1983,34 +1983,23 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 setActiveNomCategory('productTypes');
                 setEditingNomId(null);
               }}
-              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                 activeNomCategory === 'productTypes'
                   ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
                   : 'bg-white hover:bg-slate-50 border-slate-200'
               }`}
             >
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  activeNomCategory === 'productTypes'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                <ShoppingBag className="w-5 h-5" />
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                  Tipos de Oferta
+                </span>
+                <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {productTypesCatalog.length}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
-                    Tipos de Oferta
-                  </span>
-                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                    {productTypesCatalog.length}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  Productos, Servicios, Alquileres...
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-500 mt-1 truncate">
+                Productos, Servicios, Alquileres...
+              </p>
             </button>
 
             <button
@@ -2019,34 +2008,23 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 setActiveNomCategory('paymentMethods');
                 setEditingNomId(null);
               }}
-              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                 activeNomCategory === 'paymentMethods'
                   ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
                   : 'bg-white hover:bg-slate-50 border-slate-200'
               }`}
             >
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  activeNomCategory === 'paymentMethods'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                <CreditCard className="w-5 h-5" />
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                  Tipos de Pago
+                </span>
+                <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {paymentMethodsCatalog.length}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
-                    Tipos de Pago
-                  </span>
-                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                    {paymentMethodsCatalog.length}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  Efectivo CUP, Transferencia, USD...
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-500 mt-1 truncate">
+                Efectivo CUP, Transferencia, USD, Cripto...
+              </p>
             </button>
 
             <button
@@ -2055,34 +2033,23 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 setActiveNomCategory('deliveryMethods');
                 setEditingNomId(null);
               }}
-              className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                 activeNomCategory === 'deliveryMethods'
                   ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
                   : 'bg-white hover:bg-slate-50 border-slate-200'
               }`}
             >
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  activeNomCategory === 'deliveryMethods'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-600'
-                }`}
-              >
-                <Truck className="w-5 h-5" />
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                  Tipos de Recogida
+                </span>
+                <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {deliveryMethodsCatalog.length}
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
-                    Tipos de Recogida
-                  </span>
-                  <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                    {deliveryMethodsCatalog.length}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  Mensajería, Tienda física, Envíos...
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-500 mt-1 truncate">
+                Mensajería, Tienda física, Envíos...
+              </p>
             </button>
           </div>
 
@@ -2103,7 +2070,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             </h4>
 
             <form onSubmit={handleAddNomItem} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-4">
+              <div className={activeNomCategory === 'paymentMethods' ? 'sm:col-span-4' : 'sm:col-span-5'}>
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">Nombre *</label>
                 <input
                   type="text"
@@ -2121,7 +2088,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 />
               </div>
 
-              <div className="sm:col-span-4">
+              <div className={activeNomCategory === 'paymentMethods' ? 'sm:col-span-4' : 'sm:col-span-5'}>
                 <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   Descripción (Opcional)
                 </label>
@@ -2134,25 +2101,21 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">Ícono</label>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-indigo-600 shrink-0">
-                    <NomenclatorIcon name={newNomIcon} className="w-4 h-4" />
-                  </div>
-                  <select
-                    value={newNomIcon}
-                    onChange={(e) => setNewNomIcon(e.target.value)}
-                    className="w-full px-2 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-800 outline-none focus:border-indigo-500"
-                  >
-                    {AVAILABLE_NOMENCLATOR_ICONS.map((icon) => (
-                      <option key={icon} value={icon}>
-                        {icon}
-                      </option>
-                    ))}
-                  </select>
+              {activeNomCategory === 'paymentMethods' && (
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Gravamen (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={newNomGravamen}
+                    onChange={(e) => setNewNomGravamen(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500"
+                  />
                 </div>
-              </div>
+              )}
 
               <div className="sm:col-span-2 flex items-end">
                 <button
@@ -2212,23 +2175,25 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                           className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 outline-none focus:border-indigo-600"
                         />
 
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1.5 flex-1">
-                            <div className="w-7 h-7 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-indigo-600 shrink-0">
-                              <NomenclatorIcon name={editingNomIcon} className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {activeNomCategory === 'paymentMethods' && (
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-xs font-bold text-slate-700 shrink-0">
+                                Gravamen (%):
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={editingNomGravamen}
+                                onChange={(e) =>
+                                  setEditingNomGravamen(e.target.value === '' ? '' : Number(e.target.value))
+                                }
+                                className="w-20 px-2 py-1 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-600"
+                              />
                             </div>
-                            <select
-                              value={editingNomIcon}
-                              onChange={(e) => setEditingNomIcon(e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-xl border border-slate-300 bg-white text-xs text-slate-800 outline-none"
-                            >
-                              {AVAILABLE_NOMENCLATOR_ICONS.map((icon) => (
-                                <option key={icon} value={icon}>
-                                  {icon}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          )}
 
                           <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 cursor-pointer shrink-0">
                             <input
@@ -2272,40 +2237,34 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                         : 'bg-slate-50 border-slate-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          item.active !== false
-                            ? 'bg-indigo-50 text-indigo-600 border border-indigo-100'
-                            : 'bg-slate-200 text-slate-500'
-                        }`}
-                      >
-                        <NomenclatorIcon name={item.iconName} className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h5 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                            {item.name}
-                          </h5>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleNomActive(item.id)}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
-                              item.active !== false
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                            }`}
-                            title="Alternar estado activo/inactivo"
-                          >
-                            {item.active !== false ? 'Activo' : 'Inactivo'}
-                          </button>
-                        </div>
-                        {item.description && (
-                          <p className="text-xs text-slate-500 mt-1 leading-snug">
-                            {item.description}
-                          </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                          {item.name}
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleNomActive(item.id)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                            item.active !== false
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                          }`}
+                          title="Alternar estado activo/inactivo"
+                        >
+                          {item.active !== false ? 'Activo' : 'Inactivo'}
+                        </button>
+                        {activeNomCategory === 'paymentMethods' && (
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            Gravamen: {item.gravamen || 0}%
+                          </span>
                         )}
                       </div>
+                      {item.description && (
+                        <p className="text-xs text-slate-500 mt-1 leading-snug">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">

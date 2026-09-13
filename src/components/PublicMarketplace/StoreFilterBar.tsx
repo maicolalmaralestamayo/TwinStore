@@ -1,6 +1,10 @@
 import React from 'react';
-import { StoreFilterState, GeoProvince } from '../../types';
-import { INITIAL_GEO_CATALOG } from '../../data/initialData';
+import { StoreFilterState, GeoProvince, PaymentMethodItem, DeliveryMethodItem } from '../../types';
+import {
+  INITIAL_GEO_CATALOG,
+  INITIAL_PAYMENT_METHODS_CATALOG,
+  INITIAL_DELIVERY_METHODS_CATALOG,
+} from '../../data/initialData';
 import {
   MapPin,
   Truck,
@@ -16,6 +20,8 @@ import { interfaz } from '../../data/interfaz';
 
 interface StoreFilterBarProps {
   geoCatalog?: GeoProvince[];
+  paymentMethodsCatalog?: PaymentMethodItem[];
+  deliveryMethodsCatalog?: DeliveryMethodItem[];
   filters: StoreFilterState;
   onFilterChange: (filters: StoreFilterState) => void;
   onReset: () => void;
@@ -26,6 +32,8 @@ interface StoreFilterBarProps {
 
 export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
   geoCatalog,
+  paymentMethodsCatalog,
+  deliveryMethodsCatalog,
   filters,
   onFilterChange,
   onReset,
@@ -36,6 +44,14 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
   const t = interfaz.filters;
   const effectiveGeoCatalog =
     geoCatalog && geoCatalog.length > 0 ? geoCatalog : INITIAL_GEO_CATALOG;
+  const effectivePaymentMethods =
+    paymentMethodsCatalog && paymentMethodsCatalog.length > 0
+      ? paymentMethodsCatalog
+      : INITIAL_PAYMENT_METHODS_CATALOG;
+  const effectiveDeliveryMethods =
+    deliveryMethodsCatalog && deliveryMethodsCatalog.length > 0
+      ? deliveryMethodsCatalog
+      : INITIAL_DELIVERY_METHODS_CATALOG;
 
   // --- DEPENDENCY & DISABLING LOGIC ---
   const isRepartoSelected = Boolean(filters.repartos && filters.repartos.length > 0);
@@ -84,33 +100,24 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
     }))
   );
 
-  // TIPO DE PAGO (Transferencia / Efectivo)
-  const paymentMethodOptions = [
-    {
-      value: 'transfer',
-      label: t.options.payTransfer || 'Transferencia',
-      sublabel: t.options.transferSublabel || 'Pago por transferencia bancaria o entre tarjetas',
-    },
-    {
-      value: 'cash',
-      label: t.options.payCash || 'Efectivo',
-      sublabel: t.options.cashSublabel || 'Pago en efectivo directo',
-    },
-  ];
+  // TIPO DE PAGO (Nomenclador Dinámico con Gravamen)
+  const paymentMethodOptions = effectivePaymentMethods.map((pm) => {
+    const gravamenText = pm.gravamen && pm.gravamen > 0 ? ` (+${pm.gravamen}%)` : '';
+    return {
+      value: pm.id,
+      label: `${pm.name}${gravamenText}`,
+      sublabel: pm.gravamen && pm.gravamen > 0
+        ? `Gravamen del ${pm.gravamen}% • ${pm.description || 'Método de pago'}`
+        : pm.description || 'Método de pago sin recargo',
+    };
+  });
 
-  // MENSAJERÍA (Mensajería / Recogida)
-  const deliveryMethodOptions = [
-    {
-      value: 'delivery',
-      label: t.options.deliveryCourier || 'Mensajería',
-      sublabel: t.options.courierSublabel || 'Tiendas con servicio de mensajería',
-    },
-    {
-      value: 'pickup',
-      label: t.options.deliveryPickup || 'Recogida',
-      sublabel: t.options.pickupSublabel || 'Tiendas sin servicio de mensajería (solo recogida)',
-    },
-  ];
+  // MENSAJERÍA / RECOGIDA (Nomenclador Dinámico)
+  const deliveryMethodOptions = effectiveDeliveryMethods.map((dm) => ({
+    value: dm.id,
+    label: dm.name,
+    sublabel: dm.description || 'Modalidad de entrega/recogida',
+  }));
 
   const handleUpdate = <K extends keyof StoreFilterState>(
     key: K,

@@ -13,7 +13,6 @@ import {
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
 } from '../../data/initialData';
-import { NomenclatorIcon } from '../common/NomenclatorIcon';
 import {
   Plus,
   Edit2,
@@ -760,14 +759,13 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                                 type="button"
                                 onClick={() => handleToggleStoreDeliveryMethod(store, dm.id)}
                                 title={`${isSelected ? 'Desactivar' : 'Activar'} ${dm.name}: ${dm.description || ''}`}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
                                   isSelected
                                     ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100 shadow-2xs'
                                     : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
                                 }`}
                               >
-                                <NomenclatorIcon iconName={dm.iconName} className="w-3 h-3 shrink-0" />
-                                <span className="truncate max-w-[100px]">{dm.name}</span>
+                                <span className="truncate max-w-[110px]">{dm.name}</span>
                               </button>
                             );
                           })}
@@ -795,7 +793,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                                 type="button"
                                 onClick={() => handleToggleStorePaymentMethod(store, pm.id)}
                                 title={`${isSelected ? 'Desactivar' : 'Activar'} ${pm.name}: ${pm.description || ''}`}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                                className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
                                   isSelected
                                     ? isTransfer
                                       ? 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 shadow-2xs'
@@ -803,8 +801,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                                     : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
                                 }`}
                               >
-                                <NomenclatorIcon iconName={pm.iconName} className="w-3 h-3 shrink-0" />
-                                <span className="truncate max-w-[90px]">{pm.name}</span>
+                                <span className="truncate max-w-[100px]">{pm.name}</span>
                                 {isSelected && isTransfer && fee > 0 && (
                                   <span className="text-[10px] font-mono text-purple-600">({fee}%)</span>
                                 )}
@@ -1249,13 +1246,6 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div
-                                className={`p-2.5 rounded-xl ${
-                                  isChecked ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-                                }`}
-                              >
-                                <NomenclatorIcon iconName={dm.iconName} className="w-4 h-4" />
-                              </div>
                               <div>
                                 <h5 className="text-sm font-bold text-gray-900">{dm.name}</h5>
                                 {dm.description && (
@@ -1306,13 +1296,6 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div
-                                className={`p-2.5 rounded-xl ${
-                                  isChecked ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'
-                                }`}
-                              >
-                                <NomenclatorIcon iconName={pm.iconName} className="w-4 h-4" />
-                              </div>
                               <div>
                                 <h5 className="text-sm font-bold text-gray-900">{pm.name}</h5>
                                 {pm.description && (
