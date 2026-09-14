@@ -262,12 +262,12 @@ export const StoreDirectoryModal: React.FC<StoreDirectoryModalProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleWhatsAppContact(store, e)}
-                        className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                        className="py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer whitespace-nowrap"
                         title="Contactar al proveedor por WhatsApp"
                         aria-label="Contactar al proveedor por WhatsApp"
                       >
-                        <MessageCircle className="w-3.5 h-3.5 fill-current" />
-                        <span>WhatsApp</span>
+                        <MessageCircle className="w-3.5 h-3.5 fill-current shrink-0" />
+                        <span>Contactar por WhatsApp</span>
                       </button>
                     </div>
                   </div>

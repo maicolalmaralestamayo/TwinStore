@@ -35,6 +35,7 @@ import { ProductCard } from './components/PublicMarketplace/ProductCard';
 import { StoreCard } from './components/PublicMarketplace/StoreCard';
 import { StoreFilterBar } from './components/PublicMarketplace/StoreFilterBar';
 import { ProductDetailModal } from './components/PublicMarketplace/ProductDetailModal';
+import { StoreDetailModal } from './components/PublicMarketplace/StoreDetailModal';
 import { StoreDirectoryModal } from './components/PublicMarketplace/StoreDirectoryModal';
 import { AdminLoginModal } from './components/AdminPortal/AdminLoginModal';
 import { AdminDashboard } from './components/AdminPortal/AdminDashboard';
@@ -194,6 +195,7 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isStoresModalOpen, setIsStoresModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [storeFilters, setStoreFilters] = useState<StoreFilterState>(DEFAULT_STORE_FILTERS);
   const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
@@ -379,8 +381,17 @@ export default function App() {
 
   // --- Store Handlers ---
   const handleAddStore = (newStoreData: Omit<Store, 'id' | 'createdAt'>) => {
+    const defaultLogo = marketplaceConfig.defaultStoreLogoUrl || 'local:store';
+    const finalLogo = newStoreData.logoUrl?.trim() || defaultLogo;
+    const finalImages =
+      newStoreData.images && newStoreData.images.length > 0
+        ? newStoreData.images
+        : [finalLogo];
+
     const newStore: Store = {
       ...newStoreData,
+      logoUrl: finalLogo,
+      images: finalImages,
       id: `store-${Date.now()}`,
       createdAt: new Date().toISOString().slice(0, 10),
     };
@@ -422,12 +433,17 @@ export default function App() {
 
   // --- Product Handlers ---
   const handleAddProduct = (newProdData: Omit<Product, 'id' | 'createdAt'>) => {
+    const defaultProductImage = marketplaceConfig.defaultProductImageUrl || 'local:product';
+    const finalImg = newProdData.imageUrl?.trim() || defaultProductImage;
+    const finalImages =
+      newProdData.images && newProdData.images.length > 0
+        ? newProdData.images
+        : [finalImg];
+
     const newProd: Product = {
       ...newProdData,
-      imageUrl:
-        newProdData.imageUrl?.trim() ||
-        marketplaceConfig.defaultProductImageUrl ||
-        'local:product',
+      imageUrl: finalImg,
+      images: finalImages,
       id: `prod-${Date.now()}`,
       createdAt: new Date().toISOString().slice(0, 10),
     };
@@ -1147,7 +1163,7 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                       {paginatedStores.map((store) => {
                         const storeProductsCount = products.filter(
                           (p) => p.storeId === store.id && p.isAvailable !== false
@@ -1157,6 +1173,7 @@ export default function App() {
                             key={store.id}
                             store={store}
                             productsCount={storeProductsCount}
+                            onSelectStore={(st) => setSelectedStore(st)}
                             onViewStoreProducts={handleViewStoreProductsFromCard}
                           />
                         );
@@ -1260,7 +1277,6 @@ export default function App() {
               className="w-6 h-6 rounded-lg object-cover bg-white shrink-0 border border-slate-700"
             />
             <span className="font-bold text-white">{marketplaceConfig.name}</span>
-            <span>• {marketplaceConfig.slogan || 'El Marketplace de Cuba'}</span>
           </div>
 
           {/* Social Links */}
@@ -1334,18 +1350,6 @@ export default function App() {
               </a>
             )}
           </div>
-
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-2">
-              <span className="text-green-400 font-bold">● Servidor Activo</span>
-            </span>
-            <button
-              onClick={() => handleSwitchView(activeView === 'admin' ? 'public' : 'admin')}
-              className="text-indigo-400 hover:text-indigo-300 hover:underline font-bold transition-colors"
-            >
-              {activeView === 'admin' ? 'Ver Marketplace Público' : 'Acceso Administrador'}
-            </button>
-          </div>
         </div>
       </footer>
 
@@ -1358,6 +1362,15 @@ export default function App() {
         onShowToast={showToast}
         marketplaceConfig={marketplaceConfig}
         products={products}
+      />
+
+      <StoreDetailModal
+        isOpen={selectedStore !== null}
+        store={selectedStore}
+        onClose={() => setSelectedStore(null)}
+        marketplaceConfig={marketplaceConfig}
+        products={products}
+        onViewStoreProducts={handleViewStoreProductsFromCard}
       />
 
       <StoreDirectoryModal

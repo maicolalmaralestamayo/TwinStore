@@ -176,7 +176,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setActiveTab('general');
     setName('');
     setSlogan('');
-    setLogoUrl('');
+    const defaultStoreLogo = marketplaceConfig?.defaultStoreLogoUrl || 'local:store';
+    setLogoUrl(defaultStoreLogo);
     setImages([]);
     setNewImageUrl('');
     setWhatsappPhone('+5354292049');
@@ -208,7 +209,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setActiveTab('general');
     setName(store.name || '');
     setSlogan(store.slogan || '');
-    const mainLogo = store.logoUrl || '';
+    const defaultStoreLogo = marketplaceConfig?.defaultStoreLogoUrl || 'local:store';
+    const mainLogo = store.logoUrl || defaultStoreLogo;
     const initialImgs = store.images && store.images.length > 0 ? store.images : (mainLogo ? [mainLogo] : []);
     setLogoUrl(mainLogo);
     setImages(initialImgs);
@@ -354,8 +356,12 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       notes: '',
     };
 
-    const finalMainLogo = logoUrl || images[0] || '';
-    const finalGallery = images.length > 0 ? images : (finalMainLogo ? [finalMainLogo] : []);
+    const defaultStoreLogo = marketplaceConfig?.defaultStoreLogoUrl || 'local:store';
+    const finalMainLogo =
+      (logoUrl && logoUrl.trim() !== '')
+        ? logoUrl.trim()
+        : images[0] || defaultStoreLogo;
+    const finalGallery = images.length > 0 ? images : [finalMainLogo];
 
     if (editingStore) {
       onUpdateStore({
@@ -942,7 +948,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                1. General
+                General
               </button>
               <button
                 type="button"
@@ -953,7 +959,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                2. Dirección
+                Dirección
               </button>
               <button
                 type="button"
@@ -964,7 +970,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                3. Pagos y Mensajería
+                Pagos y Mensajería
               </button>
             </div>
 

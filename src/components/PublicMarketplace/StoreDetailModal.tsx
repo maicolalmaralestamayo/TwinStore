@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Store, Product, MarketplaceConfig } from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
 import {
   formatNumberWithDots,
   formatNormalizedAddressText,
   getStoreGoogleMapsUrl,
-  getStoreLogoUrl,
   displayCubanPhone,
   generateStoreWhatsAppUrl,
 } from '../../lib/utils';
@@ -19,10 +18,14 @@ import {
   Navigation,
   BadgeCheck,
   Coins,
-  Percent,
   Layers,
   Phone,
   Package,
+  Banknote,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Check,
 } from 'lucide-react';
 import {
   INITIAL_PAYMENT_METHODS_CATALOG,
@@ -35,6 +38,7 @@ interface StoreDetailModalProps {
   onClose: () => void;
   marketplaceConfig?: MarketplaceConfig;
   products?: Product[];
+  onViewStoreProducts?: (storeId: string) => void;
 }
 
 export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({
@@ -43,8 +47,34 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({
   onClose,
   marketplaceConfig,
   products = [],
+  onViewStoreProducts,
 }) => {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [store?.id]);
+
   if (!isOpen || !store) return null;
+
+  // Gallery resolution
+  const gallery =
+    store.images && store.images.length > 0
+      ? store.images
+      : [store.logoUrl || marketplaceConfig?.defaultStoreLogoUrl || 'local:store'];
+
+  const activeImage = gallery[activeImageIndex] || gallery[0];
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev === 0 ? gallery.length - 1 : prev - 1));
+  };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev === gallery.length - 1 ? 0 : prev + 1));
+  };
 
   const paymentMethodsCatalog =
     marketplaceConfig?.paymentMethodsCatalog || INITIAL_PAYMENT_METHODS_CATALOG;
@@ -66,6 +96,33 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({
   const normalizedAddress = formatNormalizedAddressText(store);
   const mapsUrl = getStoreGoogleMapsUrl(store);
 
+  // Delivery flags
+  const hasPickup =
+    !store.deliveryMethodIds ||
+    store.deliveryMethodIds.length === 0 ||
+    store.deliveryMethodIds.includes('dm-recogida');
+  const hasCourier =
+    store.deliveryAvailable ||
+    (store.deliveryMethodIds && store.deliveryMethodIds.includes('dm-mensajeria'));
+  const hasNational =
+    store.deliveryMethodIds && store.deliveryMethodIds.includes('dm-envio-nacional');
+
+  // Payment flags
+  const hasCash =
+    !store.paymentMethodIds ||
+    store.paymentMethodIds.length === 0 ||
+    store.paymentMethodIds.includes('pm-efectivo');
+  const hasTransfer =
+    store.paymentOptions?.transferAccepted ||
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-transferencia'));
+  const transferFee = store.paymentOptions?.transferFeePercentage;
+  const hasZelle =
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-zelle')) ||
+    store.paymentOptions?.acceptedCurrencies?.includes('Zelle');
+  const hasMlc =
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-mlc')) ||
+    store.paymentOptions?.acceptedCurrencies?.includes('MLC');
+
   const handleWhatsApp = () => {
     const url = generateStoreWhatsAppUrl(store);
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -77,284 +134,401 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({
     }
   };
 
+  const handleCopyAddress = () => {
+    if (normalizedAddress) {
+      navigator.clipboard.writeText(normalizedAddress);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    }
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5"
       onClick={onClose}
     >
       <div
-        className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col"
+        className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 relative shrink-0 border-b border-slate-700">
+        {/* ========================================================================= */}
+        {/* Header Sticky                                                             */}
+        {/* ========================================================================= */}
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-0.5">
+              Detalles de la Tienda
+            </span>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
+              {store.name}
+            </h2>
+          </div>
+
           <button
             type="button"
             onClick={onClose}
-            title="Cerrar modal de tienda"
-            aria-label="Cerrar modal de tienda"
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            title="Cerrar detalles"
+            aria-label="Cerrar detalles"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
-
-          <div className="flex items-start gap-4 pr-10">
-            <ThemeImage
-              src={getStoreLogoUrl(store)}
-              alt={store.name}
-              fallbackType="store"
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover bg-white dark:bg-slate-800 border-2 border-white/20 shadow-md shrink-0"
-            />
-            <div className="min-w-0 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-xl sm:text-2xl font-black text-white truncate">
-                  {store.name}
-                </h3>
-                {store.badge && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-500/30 text-indigo-200 px-2.5 py-0.5 rounded-full border border-indigo-400/30">
-                    <BadgeCheck className="w-3 h-3 text-indigo-400" />
-                    <span>{store.badge}</span>
-                  </span>
-                )}
-              </div>
-
-              {store.slogan && (
-                <p className="text-xs sm:text-sm text-indigo-200 italic font-medium line-clamp-2">
-                  “{store.slogan}”
-                </p>
-              )}
-
-              <div className="flex items-center gap-2 text-xs text-slate-300 flex-wrap pt-1">
-                {store.whatsappPhone && (
-                  <span className="flex items-center gap-1 font-mono font-semibold">
-                    <Phone className="w-3 h-3 text-emerald-400" />
-                    <span>{displayCubanPhone(store.whatsappPhone)}</span>
-                  </span>
-                )}
-                {storeProductsCount > 0 && (
-                  <span className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full font-bold">
-                    <Package className="w-3 h-3 text-amber-400" />
-                    <span>{storeProductsCount} publicaciones activas</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Scrollable Store Content */}
-        <div className="overflow-y-auto p-5 sm:p-6 space-y-5 text-slate-800 dark:text-slate-200">
-          
-          {/* Descripción de la tienda */}
-          {store.description && (
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider block mb-1.5 flex items-center gap-1.5">
-                <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Acerca de la tienda</span>
-              </span>
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                {store.description}
-              </p>
-            </div>
-          )}
-
-          {/* Galería de fotos de la tienda si tiene */}
-          {store.images && store.images.length > 0 && (
-            <div>
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider block mb-2">
-                Fotos del establecimiento ({store.images.length})
-              </span>
-              <div className="flex gap-2.5 overflow-x-auto pb-2">
-                {store.images.map((img, idx) => (
-                  <img
-                    key={idx}
-                    src={img}
-                    alt={`${store.name} foto ${idx + 1}`}
-                    className="w-28 h-20 sm:w-36 sm:h-24 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Dirección Desglosada */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Ubicación y Dirección</span>
-              </span>
-              {mapsUrl && (
-                <button
-                  type="button"
-                  onClick={handleMaps}
-                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>Ver en Google Maps</span>
-                </button>
-              )}
-            </div>
-
-            <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">
-              {normalizedAddress || store.location}
-            </p>
-
-            {store.address && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/80 text-xs">
-                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Reparto</span>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200">{store.address.neighborhood || 'N/D'}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Municipio</span>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200">{store.address.municipality || 'N/D'}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block">Provincia</span>
-                  <span className="font-extrabold text-slate-800 dark:text-slate-200">{store.address.province || 'N/D'}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Tasa de Cambio y Métodos de Pago */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Tasa de cambio */}
-            <div className="bg-indigo-50/70 dark:bg-slate-800/80 p-4 rounded-2xl border border-indigo-100 dark:border-slate-700">
-              <span className="text-[11px] font-extrabold uppercase text-indigo-700 dark:text-indigo-400 tracking-wider flex items-center gap-1.5 mb-1.5">
-                <Coins className="w-3.5 h-3.5" />
-                <span>Tasa de Cambio Oficial de la Tienda</span>
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl sm:text-2xl font-black font-mono text-slate-900 dark:text-white">
-                  1 USD = {formatNumberWithDots(usdRate)} CUP
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                Aplica a todas las publicaciones y conversiones de esta tienda.
-              </p>
-            </div>
-
-            {/* Opciones de mensajería */}
-            <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] font-extrabold uppercase text-slate-600 dark:text-slate-400 tracking-wider flex items-center gap-1.5 mb-1.5">
-                <Truck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Mensajería y Envíos</span>
-              </span>
-              <div className="space-y-1.5">
-                {storeDeliveryMethods.length > 0 ? (
-                  storeDeliveryMethods.map((dm) => (
-                    <div key={dm?.id} className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                      <span>{dm?.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    {store.deliveryAvailable ? '✓ Mensajería a domicilio disponible' : '• Solo recogida en tienda física'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Formas de Pago y Gravamen */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-            <span className="text-[11px] font-extrabold uppercase text-slate-500 dark:text-slate-400 tracking-wider flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Tipos de Pago y Gravámenes</span>
+        {/* ========================================================================= */}
+        {/* Cuerpo Desplazable con el mismo orden e información estructurada           */}
+        {/* ========================================================================= */}
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-5 text-slate-800 dark:text-slate-100">
+          {/* Galería de Imágenes de la Tienda */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+              Imágenes del Comercio / Establecimiento
             </span>
+            <div className="relative w-full h-64 sm:h-80 bg-slate-100 dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center group shadow-2xs">
+              <ThemeImage
+                src={activeImage}
+                alt={store.name}
+                fallbackType="store"
+                className="w-full h-full"
+                imgClassName="w-full h-full object-cover select-none"
+              />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {storePaymentMethods.length > 0 ? (
-                storePaymentMethods.map((pm) => {
-                  const gravamen =
-                    pm?.id === 'pm-transferencia' && store.paymentOptions?.transferFeePercentage !== undefined
-                      ? store.paymentOptions.transferFeePercentage
-                      : pm?.gravamen ?? 0;
-                  return (
-                    <div
-                      key={pm?.id}
-                      className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 block truncate">
-                          {pm?.name}
-                        </span>
-                        {pm?.description && (
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                            {pm.description}
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={`text-xs font-black font-mono px-2 py-0.5 rounded-md shrink-0 ${
-                          gravamen > 0
-                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                        }`}
-                      >
-                        {gravamen > 0 ? `+${gravamen}% Gravamen` : '0% Gravamen'}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : (
+              {gallery.length > 1 && (
                 <>
-                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">Efectivo</span>
-                    <span className="text-xs font-black font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                      0% Gravamen
-                    </span>
+                  <button
+                    type="button"
+                    onClick={prevImage}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all cursor-pointer opacity-90 group-hover:opacity-100"
+                    title="Imagen anterior"
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={nextImage}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all cursor-pointer opacity-90 group-hover:opacity-100"
+                    title="Imagen siguiente"
+                    aria-label="Imagen siguiente"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-2.5 right-2.5 bg-black/70 text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs select-none">
+                    {activeImageIndex + 1} / {gallery.length}
                   </div>
-                  {store.paymentOptions?.transferAccepted && (
-                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">Transferencia Bancaria</span>
-                      <span className="text-xs font-black font-mono px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                        {store.paymentOptions.transferFeePercentage || 5}% Gravamen
-                      </span>
-                    </div>
-                  )}
                 </>
               )}
             </div>
 
-            {/* Monedas Aceptadas */}
-            {store.paymentOptions?.acceptedCurrencies && store.paymentOptions.acceptedCurrencies.length > 0 && (
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2 flex-wrap text-xs">
-                <span className="text-slate-500 dark:text-slate-400 font-bold text-[11px]">Monedas aceptadas:</span>
-                {store.paymentOptions.acceptedCurrencies.map((curr) => (
-                  <span
-                    key={curr}
-                    className="font-mono font-black text-[11px] bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800"
+            {/* Carrusel de Miniaturas */}
+            {gallery.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-2">
+                {gallery.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`w-14 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                      idx === activeImageIndex
+                        ? 'border-indigo-600 ring-2 ring-indigo-500/20 scale-105'
+                        : 'border-slate-200 dark:border-slate-700 opacity-60 hover:opacity-100'
+                    }`}
                   >
-                    {curr}
-                  </span>
+                    <ThemeImage
+                      src={img}
+                      fallbackType="store"
+                      className="w-full h-full"
+                      imgClassName="w-full h-full object-cover"
+                    />
+                  </button>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Identificación del Comercio y Sello */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                {store.name}
+              </h3>
+              {store.badge ? (
+                <span className="inline-flex items-center gap-1 bg-indigo-600 text-white px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs">
+                  <BadgeCheck className="w-3.5 h-3.5" />
+                  <span>{store.badge}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs">
+                  <BadgeCheck className="w-3.5 h-3.5" />
+                  <span>Tienda Verificada</span>
+                </span>
+              )}
+            </div>
+            {store.slogan && (
+              <p className="text-xs sm:text-sm font-semibold text-indigo-700 dark:text-indigo-400 italic">
+                “{store.slogan}”
+              </p>
+            )}
+          </div>
+
+          {/* Descripción */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Descripción y Presentación
+            </span>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60">
+              {store.description || 'Sin descripción detallada por el momento.'}
+            </p>
+          </div>
+
+          {/* Tasa de Cambio Oficial de la Tienda */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Tasa de Cambio Oficial de la Tienda
+            </span>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    Tasa Oficial para Operaciones en CUP
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Fijada por el comercio para compras equivalentes
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                  1 USD = {formatNumberWithDots(usdRate)} CUP
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Métodos de Recogida y Mensajería */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Métodos de Recogida y Mensajería
+            </span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+              <div className="flex flex-wrap gap-2">
+                {hasPickup && (
+                  <span className="inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <StoreIcon className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <span>Recogida en tienda</span>
+                  </span>
+                )}
+                {hasCourier && (
+                  <span className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <Truck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>Mensajería a domicilio disponible</span>
+                  </span>
+                )}
+                {hasNational && (
+                  <span className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Envío interprovincial</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Coordina las opciones de entrega y el costo del servicio directamente por WhatsApp con el comercio.
+              </p>
+            </div>
+          </div>
+
+          {/* Formas de Pago, Gravamen y Monedas Aceptadas */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Formas de Pago y Gravamen
+            </span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {hasCash && (
+                  <span className="inline-flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <Banknote className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span>Efectivo (0% gravamen)</span>
+                  </span>
+                )}
+                {hasTransfer && (
+                  <span className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Transferencia {transferFee ? `(Gravamen: +${transferFee}%)` : '(Sin gravamen adicional)'}</span>
+                  </span>
+                )}
+                {hasZelle && (
+                  <span className="inline-flex items-center gap-1.5 bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <span>Zelle</span>
+                  </span>
+                )}
+                {hasMlc && (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
+                    <span>MLC</span>
+                  </span>
+                )}
+              </div>
+
+              {store.paymentOptions?.acceptedCurrencies && store.paymentOptions.acceptedCurrencies.length > 0 && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Monedas aceptadas:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {store.paymentOptions.acceptedCurrencies.map((cur) => (
+                      <span
+                        key={cur}
+                        className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold"
+                      >
+                        {cur}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {store.paymentOptions?.notes && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                  Nota del comercio: {store.paymentOptions.notes}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Ubicación y Dirección Desglosada */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Ubicación y Dirección Desglosada
+            </span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 block">
+                    {normalizedAddress || store.location || 'Dirección no especificada'}
+                  </span>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    {store.address?.neighborhood && (
+                      <span>
+                        Reparto: <strong>{store.address.neighborhood}</strong>
+                      </span>
+                    )}
+                    {store.address?.municipality && (
+                      <span>
+                        Municipio: <strong>{store.address.municipality}</strong>
+                      </span>
+                    )}
+                    {store.address?.province && (
+                      <span>
+                        Provincia: <strong>{store.address.province}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+                {mapsUrl && (
+                  <button
+                    type="button"
+                    onClick={handleMaps}
+                    className="flex-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold py-2 px-3 rounded-xl border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Ver en Google Maps</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCopyAddress}
+                  className="flex-1 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer"
+                >
+                  {copiedAddress ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Copiada</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Copiar Dirección</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Contacto y Catálogo */}
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+              Contacto y Publicaciones
+            </span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    {displayCubanPhone(store.whatsappPhone)}
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Línea oficial de WhatsApp
+                  </span>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold px-3 py-1.5 rounded-xl font-mono">
+                <Package className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>{storeProductsCount} publicaciones</span>
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Footer actions */}
-        <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            Cerrar
-          </button>
-
+        {/* ========================================================================= */}
+        {/* Footer Sticky                                                             */}
+        {/* ========================================================================= */}
+        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md space-y-2.5 shrink-0">
+          {/* Botón Principal de Contactar */}
           <button
             type="button"
             onClick={handleWhatsApp}
-            className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl flex items-center justify-center gap-2 text-xs transition-colors shadow-sm cursor-pointer"
+            title={`Contactar a ${store.name} por WhatsApp`}
+            aria-label={`Contactar a ${store.name} por WhatsApp`}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3 px-5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md text-sm cursor-pointer"
           >
-            <MessageCircle className="w-4 h-4 fill-current" />
-            <span>Contactar a {store.name}</span>
+            <MessageCircle className="w-5 h-5 fill-current" />
+            <span>Contactar por WhatsApp</span>
           </button>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {onViewStoreProducts && storeProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onViewStoreProducts(store.id);
+                }}
+                className="w-full bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-indigo-200 dark:border-indigo-800 text-xs cursor-pointer shadow-2xs"
+              >
+                <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Ver catálogo ({storeProductsCount} publicaciones)</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={`w-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 dark:border-slate-700 text-xs cursor-pointer ${
+                !onViewStoreProducts || storeProductsCount === 0 ? 'sm:col-span-2' : ''
+              }`}
+            >
+              <span>Cerrar</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

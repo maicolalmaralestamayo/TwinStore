@@ -1060,7 +1060,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             }`}
           >
             <MapPin className="w-4 h-4" />
-            <span>Geografía (3 Escalones)</span>
+            <span>Geografía</span>
           </button>
 
           <button

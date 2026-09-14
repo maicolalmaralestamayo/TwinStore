@@ -123,10 +123,12 @@ export const ImageGalleryUploader: React.FC<ImageGalleryUploaderProps> = ({
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <img
+                <ThemeImage
                   src={img}
                   alt={`Imagen ${idx + 1}`}
-                  className="w-full h-full object-cover"
+                  fallbackType={fallbackType}
+                  className="w-full h-full"
+                  imgClassName="w-full h-full object-cover"
                 />
 
                 {/* Clickable Star Icon for Principal */}

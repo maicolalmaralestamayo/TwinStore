@@ -174,7 +174,7 @@
     "rateSuffix": "CUP",
     "rateUnit": "1 USD x",
     "serviceBadge": "Servicio",
-    "contactButton": "Contactar",
+    "contactButton": "Contactar por WhatsApp",
     "contactAria": "Contactar por WhatsApp",
     "contactAriaLabel": "Contactar por WhatsApp para",
     "currencyUsd": "USD",
@@ -195,7 +195,7 @@
     "payTransfer": "Transferencia",
     "productsAndServicesCount": "publicaciones",
     "viewProductsButton": "Ver productos",
-    "contactButton": "Contactar",
+    "contactButton": "Contactar por WhatsApp",
     "verifiedBadge": "Verificada",
     "inactiveBadge": "Inactiva",
     "locationTitle": "Ubicación",
@@ -275,11 +275,11 @@
     },
     "config": {
       "subtabs": {
-        "identity": "1. Identidad y Marca",
-        "geography": "2. Geografía y Repartos",
-        "taxonomy": "3. Departamentos",
-        "tags": "4. Superetiquetas y Tags",
-        "businessModel": "5. Modelo de Negocio"
+        "identity": "Identidad y Marca",
+        "geography": "Geografía y Repartos",
+        "taxonomy": "Departamentos",
+        "tags": "Superetiquetas y Tags",
+        "businessModel": "Modelo de Negocio"
       },
       "identitySection": {
         "title": "Identidad y Marca del Marketplace",
@@ -321,10 +321,10 @@
       },
       "geoSection": {
         "title": "Geografía y Divisiones Territoriales",
-        "subtitle": "Estructura de 3 niveles: Provincias -> Municipios -> Repartos / Barrios.",
-        "provincesColumn": "1. Provincias",
-        "municipalitiesColumn": "2. Municipios",
-        "repartosColumn": "3. Repartos / Barrios",
+        "subtitle": "Estructura territorial: Provincias -> Municipios -> Repartos / Barrios.",
+        "provincesColumn": "Provincias",
+        "municipalitiesColumn": "Municipios",
+        "repartosColumn": "Repartos / Barrios",
         "addProvinceBtn": "Agregar Provincia",
         "addMunicipalityBtn": "Agregar Municipio",
         "addRepartoBtn": "Agregar Reparto",
@@ -344,9 +344,9 @@
       },
       "taxonomySection": {
         "title": "Departamentos y Subcategorías",
-        "subtitle": "Estructura de 2 niveles: Departamentos -> Subcategorías para organizar los productos.",
-        "departmentsColumn": "1. Departamentos",
-        "subcategoriesColumn": "2. Subcategorías",
+        "subtitle": "Estructura taxonómica: Departamentos -> Subcategorías para organizar los productos.",
+        "departmentsColumn": "Departamentos",
+        "subcategoriesColumn": "Subcategorías",
         "addDepartmentBtn": "Agregar Departamento",
         "addSubcategoryBtn": "Agregar Subcategoría",
         "deptPlaceholder": "Nombre del departamento...",
@@ -362,9 +362,9 @@
       },
       "tagsSection": {
         "title": "Superetiquetas y Etiquetas",
-        "subtitle": "Estructura de 2 niveles: Superetiquetas (grupos) -> Etiquetas individuales.",
-        "groupsColumn": "1. Superetiquetas (Grupos)",
-        "tagsColumn": "2. Etiquetas",
+        "subtitle": "Estructura de etiquetas: Superetiquetas (grupos) -> Etiquetas individuales.",
+        "groupsColumn": "Superetiquetas (Grupos)",
+        "tagsColumn": "Etiquetas",
         "addGroupBtn": "Agregar Superetiqueta",
         "addTagBtn": "Agregar Etiqueta",
         "groupPlaceholder": "Nombre del grupo...",
@@ -380,10 +380,10 @@
       },
       "businessModelSection": {
         "title": "Modelo de Negocio (Nomencladores Configurables)",
-        "subtitle": "Configura los 3 nomencladores dinámicos del marketplace: Tipos de Oferta / Productos, Métodos de Pago y Tipos de Entrega / Recogida.",
-        "productTypesColumn": "1. Tipos de Producto / Servicio",
-        "paymentMethodsColumn": "2. Tipos de Pago",
-        "deliveryMethodsColumn": "3. Tipos de Recogida / Entrega",
+        "subtitle": "Configura los nomencladores dinámicos del marketplace: Tipos de Oferta / Productos, Métodos de Pago y Tipos de Entrega / Recogida.",
+        "productTypesColumn": "Tipos de Producto / Servicio",
+        "paymentMethodsColumn": "Tipos de Pago",
+        "deliveryMethodsColumn": "Tipos de Recogida / Entrega",
         "addProductTypeBtn": "Agregar Tipo de Producto",
         "addPaymentMethodBtn": "Agregar Tipo de Pago",
         "addDeliveryMethodBtn": "Agregar Tipo de Recogida",
@@ -438,9 +438,9 @@
         "editTitle": "Editar Tienda",
         "subtitle": "Ficha pública y datos de contacto",
         "tabs": {
-          "general": "1. General",
-          "address": "2. Dirección",
-          "payment": "3. Pagos y Mensajería"
+          "general": "General",
+          "address": "Dirección",
+          "payment": "Pagos y Mensajería"
         },
         "general": {
           "name": "Nombre",
@@ -565,7 +565,7 @@
       "title": "Gestión de Respaldos y Copias de Seguridad (.JSON y .CSV)",
       "subtitle": "Descarga o carga copias de seguridad de todas las tablas del marketplace (Tiendas, Productos, Geografía, Departamentos, Superetiquetas/Etiquetas, Nomencladores de Negocio y Configuraciones) en formato JSON unificado o archivos CSV individuales.",
       "exportSection": {
-        "title": "1. Descargar Respaldos por Tabla o Total",
+        "title": "Descargar Respaldos por Tabla o Total",
         "fullBackupTitle": "Respaldo Total del Sistema (.JSON)",
         "fullBackupDesc": "Exporta un solo archivo con todas las tablas de datos: Tiendas, Productos, Geografía, Departamentos, Etiquetas, Nomencladores y Configuraciones.",
         "fullBackupBtn": "Descargar Respaldo Total (.JSON)",
@@ -582,9 +582,9 @@
         "recordsLabel": "registros"
       },
       "importSection": {
-        "title": "2. Cargar Respaldos e Importar Datos",
+        "title": "Cargar Respaldos e Importar Datos",
         "jsonTitle": "Cargar Respaldo JSON",
-        "jsonDesc": "Selecciona un archivo .JSON para restaurar las 6 tablas del marketplace simultáneamente.",
+        "jsonDesc": "Selecciona un archivo .JSON para restaurar todas las tablas del marketplace simultáneamente.",
         "jsonBtn": "Subir Archivo JSON",
         "csvTitle": "Cargar desde Archivo CSV",
         "csvDesc": "Detecta de forma inteligente si el CSV contiene Tiendas, Productos, Geografía, Departamentos, Etiquetas o Configuración.",

@@ -141,18 +141,15 @@ export const Header: React.FC<HeaderProps> = ({
             <span>{activeProducts.length}</span>
           </div>
 
-          {/* Directory of Active Stores and Providers Button */}
-          <button
-            type="button"
-            onClick={onOpenStoresModal}
-            title={`Ver directorio de ${activeStores.length} ${interfaz.header.inStoresLabel}`}
-            aria-label={`Ver directorio de ${activeStores.length} ${interfaz.header.inStoresLabel}`}
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700 shadow-2xs cursor-pointer"
+          {/* Directory of Active Stores and Providers Badge - Static display tag */}
+          <div
+            title={`${activeStores.length} ${interfaz.header.inStoresLabel}`}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs select-none"
           >
             <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.storesBadge}</span>
             <span>{activeStores.length}</span>
-          </button>
+          </div>
 
           {/* Theme Selector (Claro / Oscuro / Sistema) */}
           <ThemeSelector

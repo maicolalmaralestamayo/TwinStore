@@ -10,7 +10,36 @@ import {
   ProductTypeItem,
   PaymentMethodItem,
   DeliveryMethodItem,
+  CurrencyItem,
+  StoreExchangeRate,
 } from '../types';
+
+export const INITIAL_CURRENCIES_CATALOG: CurrencyItem[] = [
+  {
+    id: 'curr-usd',
+    code: 'USD',
+    name: 'Dólar Estadounidense',
+    symbol: '$',
+    description: 'Moneda de referencia comercial internacional',
+    active: true,
+  },
+  {
+    id: 'curr-cup',
+    code: 'CUP',
+    name: 'Peso Cubano',
+    symbol: 'CUP',
+    description: 'Moneda nacional de curso legal en Cuba',
+    active: true,
+  },
+  {
+    id: 'curr-eur',
+    code: 'EUR',
+    name: 'Euro',
+    symbol: '€',
+    description: 'Moneda oficial de la Unión Europea',
+    active: true,
+  },
+];
 
 export const INITIAL_PRODUCT_TYPES_CATALOG: ProductTypeItem[] = [
   {
@@ -469,6 +498,14 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
   productTypesCatalog: INITIAL_PRODUCT_TYPES_CATALOG,
   paymentMethodsCatalog: INITIAL_PAYMENT_METHODS_CATALOG,
   deliveryMethodsCatalog: INITIAL_DELIVERY_METHODS_CATALOG,
+  currenciesCatalog: INITIAL_CURRENCIES_CATALOG,
+  baseCurrency: 'USD',
+  secondaryCurrency: 'CUP',
+  globalExchangeRate: 330,
+  globalExchangeRates: [
+    { id: 'rate-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 330 },
+    { id: 'rate-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
+  ],
 };
 
 
@@ -984,7 +1021,19 @@ export const INITIAL_STORES: Store[] = [
     badge: 'Inactiva',
     createdAt: '2026-08-01'
   }
-];
+].map((s: any): Store => ({
+  ...s,
+  baseCurrency: s.baseCurrency || 'USD',
+  secondaryCurrency: s.secondaryCurrency !== undefined ? s.secondaryCurrency : 'CUP',
+  exchangeRates: s.exchangeRates || (s.secondaryCurrency !== undefined || true ? [
+    {
+      id: `rate-${s.id}-base-sec`,
+      fromCurrency: s.baseCurrency || 'USD',
+      toCurrency: s.secondaryCurrency !== undefined ? s.secondaryCurrency : 'CUP',
+      rate: s.usdToCupRate || 335,
+    },
+  ] : []),
+}));
 
 export const INITIAL_PRODUCTS: Product[] = [
   {

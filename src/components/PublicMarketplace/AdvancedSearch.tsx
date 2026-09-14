@@ -112,22 +112,30 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   });
 
   // 1. Geography & Stores hierarchy:
-  // ONLY if Store is directly selected -> disables Reparto, Municipality, Province
+  // Order: Provincia -> Municipio -> Reparto -> Tienda
+  // When accessed left-to-right: each filter is selected sequentially.
+  // When accessed out-of-order: unselected filters to the left are blocked (disabled),
+  // while the selected filter and filters to its right remain enabled.
+  const isProvinceSelected = Boolean(filters.provinces && filters.provinces.length > 0);
+  const isMunicipalitySelected = Boolean(filters.municipalities && filters.municipalities.length > 0);
+  const isRepartoSelected = Boolean(filters.repartos && filters.repartos.length > 0);
   const isStoreSelected = Boolean(filters.storeIds && filters.storeIds.length > 0);
 
-  const isProvinceDisabled = isStoreSelected;
-  const isMunicipalityDisabled = isStoreSelected;
-  const isRepartoDisabled = isStoreSelected;
+  const isProvinceDisabled = !isProvinceSelected && (isMunicipalitySelected || isRepartoSelected || isStoreSelected);
+  const isMunicipalityDisabled = !isMunicipalitySelected && (isRepartoSelected || isStoreSelected);
+  const isRepartoDisabled = !isRepartoSelected && isStoreSelected;
 
   // 2. Departments & Subdepartments:
-  // If Subdepartment is directly selected -> disables Department
+  // If Subdepartment is directly selected without Department -> disables Department
+  const isCategorySelected = Boolean(filters.categories && filters.categories.length > 0);
   const isSubcategorySelected = Boolean(filters.subcategories && filters.subcategories.length > 0);
-  const isDepartmentDisabled = isSubcategorySelected;
+  const isDepartmentDisabled = !isCategorySelected && isSubcategorySelected;
 
   // 3. Supertags & Tags:
-  // If Tag is directly selected -> disables Supertag
+  // If Tag is directly selected without Supertag -> disables Supertag
+  const isTagGroupSelected = Boolean(filters.tagGroups && filters.tagGroups.length > 0);
   const isTagSelected = Boolean(filters.tagValues && filters.tagValues.length > 0);
-  const isSupertagDisabled = isTagSelected;
+  const isSupertagDisabled = !isTagGroupSelected && isTagSelected;
 
   // --- ESCALONADO / CASCADING OPTIONS ---
 
@@ -470,10 +478,26 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     }
   };
 
-  // Helper to generate disabled reason notice
-  const getGeoDisabledReason = () => {
-    if (isStoreSelected) return t.disabledNotices.byStore || '(Bloqueado por tienda o proveedor)';
-    return '';
+  // Helpers to generate disabled reason notices for out-of-order selections
+  const getProvinceDisabledReason = () => {
+    if (!isProvinceDisabled) return '';
+    if (isStoreSelected) return '(Bloqueado por tienda)';
+    if (isRepartoSelected) return '(Bloqueado por reparto)';
+    if (isMunicipalitySelected) return '(Bloqueado por municipio)';
+    return '(Bloqueado)';
+  };
+
+  const getMunicipalityDisabledReason = () => {
+    if (!isMunicipalityDisabled) return '';
+    if (isStoreSelected) return '(Bloqueado por tienda)';
+    if (isRepartoSelected) return '(Bloqueado por reparto)';
+    return '(Bloqueado)';
+  };
+
+  const getRepartoDisabledReason = () => {
+    if (!isRepartoDisabled) return '';
+    if (isStoreSelected) return '(Bloqueado por tienda)';
+    return '(Bloqueado)';
   };
 
   // Count active filters
@@ -1008,8 +1032,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     <span>{t.labels.province || 'Provincias'}</span>
                   </span>
                   {isProvinceDisabled && (
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
-                      {getGeoDisabledReason()}
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getProvinceDisabledReason()}>
+                      {getProvinceDisabledReason()}
                     </span>
                   )}
                 </label>
@@ -1017,7 +1041,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   options={provinceOptions}
                   values={filters.provinces || []}
                   onChange={(values) => handleUpdate('provinces', values)}
-                  placeholder={isProvinceDisabled ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)') : (t.placeholders.allProvinces || 'Todas las provincias')}
+                  placeholder={isProvinceDisabled ? 'Bloqueado (filtro a la derecha activo)' : (t.placeholders.allProvinces || 'Todas las provincias')}
                   allLabel={t.placeholders.allProvinces || 'Todas las provincias'}
                   searchPlaceholder={t.placeholders.selectProvince || 'Buscar provincia...'}
                   disabled={isProvinceDisabled}
@@ -1032,8 +1056,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     <span>{t.labels.municipality || 'Municipios'}</span>
                   </span>
                   {isMunicipalityDisabled && (
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
-                      {getGeoDisabledReason()}
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getMunicipalityDisabledReason()}>
+                      {getMunicipalityDisabledReason()}
                     </span>
                   )}
                 </label>
@@ -1043,14 +1067,14 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   onChange={(values) => handleUpdate('municipalities', values)}
                   placeholder={
                     isMunicipalityDisabled
-                      ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)')
+                      ? 'Bloqueado (filtro a la derecha activo)'
                       : municipalityOptions.length === 0
                       ? (t.placeholders.noMunicipalities || 'Sin municipios disponibles')
                       : (t.placeholders.allMunicipalities || 'Todos los municipios')
                   }
                   allLabel={t.placeholders.allMunicipalities || 'Todos los municipios'}
                   searchPlaceholder={t.placeholders.selectMunicipality || 'Buscar municipio...'}
-                  disabled={isMunicipalityDisabled || municipalityOptions.length === 0}
+                  disabled={isMunicipalityDisabled || (!isMunicipalityDisabled && municipalityOptions.length === 0)}
                 />
               </div>
 
@@ -1062,8 +1086,8 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                     <span>{t.labels.neighborhood || 'Repartos / Localidades'}</span>
                   </span>
                   {isRepartoDisabled && (
-                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getGeoDisabledReason()}>
-                      {getGeoDisabledReason()}
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[170px]" title={getRepartoDisabledReason()}>
+                      {getRepartoDisabledReason()}
                     </span>
                   )}
                 </label>
@@ -1073,14 +1097,14 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   onChange={(values) => handleUpdate('repartos', values)}
                   placeholder={
                     isRepartoDisabled
-                      ? (t.disabledNotices.byStore || 'Deshabilitado (filtro tienda activo)')
+                      ? 'Bloqueado (filtro a la derecha activo)'
                       : repartoOptions.length === 0
                       ? (t.placeholders.noRepartos || 'Sin repartos disponibles')
                       : (t.placeholders.allNeighborhoods || 'Todos los repartos')
                   }
                   allLabel={t.placeholders.allNeighborhoods || 'Todos los repartos'}
                   searchPlaceholder={t.placeholders.selectNeighborhood || 'Buscar reparto...'}
-                  disabled={isRepartoDisabled || repartoOptions.length === 0}
+                  disabled={isRepartoDisabled || (!isRepartoDisabled && repartoOptions.length === 0)}
                 />
               </div>
 

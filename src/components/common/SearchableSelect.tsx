@@ -58,13 +58,10 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
     };
   }, [isOpen]);
 
-  // Focus search input on open
+  // Reset search input on open (without auto-focusing to avoid triggering mobile keyboards)
   useEffect(() => {
     if (isOpen) {
       setSearchTerm('');
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
     }
   }, [isOpen]);
 

@@ -11,8 +11,10 @@ import {
   MapPin,
   MessageCircle,
   Truck,
-  BadgeCheck,
-  Package,
+  Coins,
+  Store as StoreIcon,
+  Banknote,
+  CreditCard,
 } from 'lucide-react';
 import { interfaz } from '../../data/interfaz';
 
@@ -47,12 +49,37 @@ export const StoreCard: React.FC<StoreCardProps> = ({
   const normalizedAddress = formatNormalizedAddressText(store);
   const mainImage = store.images && store.images.length > 0 ? store.images[0] : getStoreLogoUrl(store);
 
+  // Delivery flags
+  const hasPickup =
+    !store.deliveryMethodIds ||
+    store.deliveryMethodIds.length === 0 ||
+    store.deliveryMethodIds.includes('dm-recogida');
+  const hasCourier =
+    store.deliveryAvailable ||
+    (store.deliveryMethodIds && store.deliveryMethodIds.includes('dm-mensajeria'));
+
+  // Payment flags
+  const hasCash =
+    !store.paymentMethodIds ||
+    store.paymentMethodIds.length === 0 ||
+    store.paymentMethodIds.includes('pm-efectivo');
+  const hasTransfer =
+    store.paymentOptions?.transferAccepted ||
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-transferencia'));
+  const transferFee = store.paymentOptions?.transferFeePercentage;
+  const hasZelle =
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-zelle')) ||
+    store.paymentOptions?.acceptedCurrencies?.includes('Zelle');
+  const hasMlc =
+    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-mlc')) ||
+    store.paymentOptions?.acceptedCurrencies?.includes('MLC');
+
   return (
     <div
       onClick={handleCardClick}
       className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden cursor-pointer relative"
     >
-      {/* 1. Foto principal del establecimiento / tienda */}
+      {/* 1. Foto principal del establecimiento / tienda con tags superpuestas */}
       <div className="relative h-48 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <ThemeImage
           src={mainImage}
@@ -62,34 +89,59 @@ export const StoreCard: React.FC<StoreCardProps> = ({
           imgClassName="group-hover:scale-105 transition-transform duration-500 object-cover w-full h-full"
         />
 
-        {/* Badges superiores: Tasa de cambio y Sello/Publicaciones */}
-        <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-          <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
-            {interfaz.productCard.ratePrefix} {formatNumberWithDots(usdRate)} {interfaz.productCard.rateSuffix}
+        {/* Gradiente sutil para máxima legibilidad de las tags sobre cualquier imagen */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/80 pointer-events-none" />
+
+        {/* Tags superiores sobre la imagen: Tasa de cambio (izquierda) y Métodos de entrega/recogida (derecha) */}
+        <div className="absolute top-2.5 inset-x-2.5 z-10 flex items-start justify-between gap-2">
+          {/* Tag Tasa de cambio */}
+          <div className="bg-slate-950/85 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-sm border border-emerald-500/30 flex items-center gap-1 font-mono shrink-0">
+            <Coins className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span>1$ = {formatNumberWithDots(usdRate)} CUP</span>
           </div>
 
-          {store.badge ? (
-            <span className="inline-flex items-center gap-1 bg-indigo-600/95 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
-              <BadgeCheck className="w-3 h-3" />
-              <span>{store.badge}</span>
+          {/* Tags Métodos de recogida / entrega */}
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {hasPickup && (
+              <span className="inline-flex items-center gap-1 bg-slate-950/85 backdrop-blur-md text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-sky-400/30 shadow-xs">
+                <StoreIcon className="w-3 h-3 text-sky-300 shrink-0" />
+                <span>Recogida</span>
+              </span>
+            )}
+            {hasCourier && (
+              <span className="inline-flex items-center gap-1 bg-slate-950/85 backdrop-blur-md text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-lg border border-blue-400/30 shadow-xs">
+                <Truck className="w-3 h-3 text-blue-300 shrink-0" />
+                <span>Mensajería</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Tags inferiores sobre la imagen: Métodos de pago aceptados */}
+        <div className="absolute bottom-2.5 inset-x-2.5 z-10 flex flex-wrap items-center gap-1">
+          {hasCash && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-purple-200 border border-purple-400/30 shadow-xs">
+              <Banknote className="w-3 h-3 text-purple-300 shrink-0" />
+              <span>Efectivo</span>
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 bg-indigo-600/95 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xs">
-              <Package className="w-3 h-3" />
-              <span>{productsCount} ofertas</span>
+          )}
+          {hasTransfer && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-indigo-200 border border-indigo-400/30 shadow-xs">
+              <CreditCard className="w-3 h-3 text-indigo-300 shrink-0" />
+              <span>Transferencia{transferFee ? ` (+${transferFee}%)` : ''}</span>
+            </span>
+          )}
+          {hasZelle && (
+            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-violet-200 border border-violet-400/30 shadow-xs">
+              Zelle
+            </span>
+          )}
+          {hasMlc && (
+            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-amber-200 border border-amber-400/30 shadow-xs">
+              MLC
             </span>
           )}
         </div>
-
-        {/* Badge superior derecho: Mensajería */}
-        {store.deliveryAvailable && (
-          <div className="absolute top-2.5 right-2.5 z-10">
-            <span className="inline-flex items-center gap-1 bg-blue-600/90 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-white/10">
-              <Truck className="w-3 h-3" />
-              <span>Mensajería</span>
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Card body content */}
@@ -120,7 +172,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
         </div>
 
         {/* 5. Botón de Contactar por WhatsApp */}
-        <div className="pt-2">
+        <div className="pt-1">
           <button
             type="button"
             onClick={handleWhatsApp}
@@ -129,7 +181,7 @@ export const StoreCard: React.FC<StoreCardProps> = ({
             aria-label={`Contactar a ${store.name} por WhatsApp`}
           >
             <MessageCircle className="w-4 h-4 shrink-0 fill-current" />
-            <span>{interfaz.storeCard.contactButton || 'Contactar'}</span>
+            <span>{interfaz.storeCard.contactButton || 'Contactar por WhatsApp'}</span>
           </button>
         </div>
       </div>

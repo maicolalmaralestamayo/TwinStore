@@ -8,6 +8,7 @@ import {
   TagGroup,
   ProductTagSelection,
   NomenclatorItem,
+  MarketplaceConfig,
 } from '../../types';
 import {
   PRESET_PRODUCT_IMAGES,
@@ -15,7 +16,7 @@ import {
   INITIAL_TAGS_CATALOG,
   INITIAL_PRODUCT_TYPES_CATALOG,
 } from '../../data/initialData';
-import { formatCurrency, calculateCUP } from '../../lib/utils';
+import { formatCurrency, calculateCUP, getStoreExchangeRate, formatNumberWithDots } from '../../lib/utils';
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
 import { SearchableSelect } from '../common/SearchableSelect';
@@ -44,6 +45,7 @@ interface ProductManagerProps {
   productTypesCatalog?: NomenclatorItem[];
   paymentMethodsCatalog?: NomenclatorItem[];
   deliveryMethodsCatalog?: NomenclatorItem[];
+  marketplaceConfig?: MarketplaceConfig;
   onAddProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
@@ -61,6 +63,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   productTypesCatalog,
   paymentMethodsCatalog,
   deliveryMethodsCatalog,
+  marketplaceConfig,
   onAddProduct,
   onUpdateProduct,
   onDeleteProduct,
@@ -78,8 +81,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priceUSD, setPriceUSD] = useState<number>(45);
-  const [category, setCategory] = useState<CategoryType>('Alimentos y Combos');
-  const [subcategory, setSubcategory] = useState<string>('Carnes y Embutidos');
+  const [category, setCategory] = useState<string>('');
+  const [subcategory, setSubcategory] = useState<string>('');
   const [imageUrl, setImageUrl] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
@@ -108,8 +111,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     productTypesCatalog && productTypesCatalog.length > 0
       ? productTypesCatalog
       : INITIAL_PRODUCT_TYPES_CATALOG;
-  const currentDept =
-    catalogToUse.find((d) => d.name === category || d.id === category) || catalogToUse[0];
+  const currentDept = category
+    ? catalogToUse.find((d) => d.name === category || d.id === category)
+    : undefined;
   const availableSubcats = currentDept?.subcategories || [];
 
   const selectedStore = stores.find((s) => s.id === storeId) || stores[0];
@@ -128,16 +132,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     setTitle('');
     setDescription('');
     setPriceUSD(45);
-    const initialCategory = (catalogToUse[0]?.name || 'Alimentos y Combos') as CategoryType;
-    setCategory(initialCategory);
-    setSubcategory(catalogToUse[0]?.subcategories[0]?.name || '');
-    const defaultImg = PRESET_PRODUCT_IMAGES[0].url;
+    setCategory('');
+    setSubcategory('');
+    setSelectedSupertagComboId('');
+    setSelectedTagSelections([]);
+    const defaultImg = marketplaceConfig?.defaultProductImageUrl || 'local:product';
     setImageUrl(defaultImg);
-    setImages([defaultImg]);
+    setImages([]);
     setNewImageUrl('');
     setIsAvailable(true);
     setProductTypeId('pt-producto');
-    setSelectedTagSelections([]);
     setIsModalOpen(true);
   };
 
@@ -148,9 +152,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     setTitle(product.title);
     setDescription(product.description);
     setPriceUSD(product.priceUSD);
-    setCategory(product.category);
+    setCategory(product.category || '');
     setSubcategory(product.subcategory || '');
-    const mainImg = product.imageUrl || 'local:product';
+    setSelectedSupertagComboId('');
+    setSelectedTagSelections(product.tagSelections || []);
+    const defaultImg = marketplaceConfig?.defaultProductImageUrl || 'local:product';
+    const mainImg = product.imageUrl || defaultImg;
     const initialGallery = product.images && product.images.length > 0 ? product.images : [mainImg];
     setImageUrl(mainImg);
     setImages(initialGallery);
@@ -161,7 +168,6 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         (pt) => pt.id === product.productTypeId || pt.name === product.productType
       ) || effectiveProductTypesCatalog[0];
     setProductTypeId(matchedPt?.id || 'pt-producto');
-    setSelectedTagSelections(product.tagSelections || []);
     setIsModalOpen(true);
   };
 
@@ -234,7 +240,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       .filter(Boolean);
 
     const tags = Array.from(new Set(twoTierTagNames));
-    const finalMainImage = imageUrl || images[0] || 'local:product';
+    const finalMainImage =
+      (imageUrl && imageUrl.trim() !== '')
+        ? imageUrl.trim()
+        : images[0] || marketplaceConfig?.defaultProductImageUrl || 'local:product';
     const finalGallery = images.length > 0 ? images : [finalMainImage];
 
     const cleanCode = (code || '').trim().toUpperCase();
@@ -750,12 +759,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 />
               </div>
 
-              {/* 2-TIER CLASSIFICATION */}
+              {/* CLASSIFICATION */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
                   <label className="block text-xs font-bold uppercase text-indigo-900 mb-1 flex items-center gap-1.5">
                     <FolderTree className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>1er Escalón: Departamento</span>
+                    <span>Departamento (Opcional)</span>
                   </label>
                   <SearchableSelect
                     options={(catalogToUse.length > 0
@@ -766,19 +775,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     onChange={(val) => {
                       const newCat = (val || '') as CategoryType;
                       setCategory(newCat);
-                      const dept = catalogToUse.find((d) => d.name === newCat || d.id === newCat);
-                      setSubcategory(dept?.subcategories[0]?.name || '');
+                      setSubcategory('');
                     }}
-                    searchPlaceholder="Buscar departamento..."
+                    searchPlaceholder="Seleccionar departamento (opcional)..."
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-emerald-900 mb-1 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>2do Escalón: Subdepartamento</span>
+                    <span>Subdepartamento (Opcional)</span>
                   </label>
-                  {availableSubcats.length > 0 ? (
+                  {!category ? (
+                    <div className="px-3.5 py-2.5 rounded-xl border border-dashed border-slate-300 bg-white text-slate-400 text-xs font-medium flex items-center h-[42px]">
+                      Selecciona primero un departamento (opcional)
+                    </div>
+                  ) : availableSubcats.length > 0 ? (
                     <SearchableSelect
                       options={availableSubcats.map((s) => ({
                         value: s.name,
@@ -786,7 +798,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       }))}
                       value={subcategory}
                       onChange={(val) => setSubcategory(val || '')}
-                      searchPlaceholder="Buscar subdepartamento..."
+                      searchPlaceholder="Seleccionar subdepartamento (opcional)..."
                     />
                   ) : (
                     <input
@@ -800,11 +812,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </div>
               </div>
 
-              {/* Price USD & Real-time CUP equivalent preview */}
+              {/* Price USD & Real-time currency equivalent preview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-200">
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                    Precio Base (USD $)
+                    Precio Base ({selectedStore?.baseCurrency || 'USD'})
                   </label>
                   <input
                     type="number"
@@ -816,20 +828,47 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     required
                   />
                   <span className="text-[10px] text-gray-400">
-                    Ingresa el precio en dólares
+                    Ingresa el precio en {selectedStore?.baseCurrency || 'USD'}
                   </span>
                 </div>
 
                 <div className="flex flex-col justify-center">
-                  <span className="text-xs font-bold uppercase text-emerald-800">
-                    Equivalente en Pesos Cubanos:
-                  </span>
-                  <div className="text-2xl font-black text-emerald-700 mt-0.5">
-                    {formatCurrency(cupEquivalent, 'CUP')}
-                  </div>
-                  <span className="text-[10px] text-gray-500">
-                    Calculado con la tasa {storeRate} CUP/$ de la tienda
-                  </span>
+                  {(() => {
+                    const baseCurr = selectedStore?.baseCurrency || 'USD';
+                    const secCurr = selectedStore?.secondaryCurrency;
+                    const rate = secCurr ? getStoreExchangeRate(selectedStore, baseCurr, secCurr) : undefined;
+
+                    if (secCurr && rate && rate > 0) {
+                      const secEquiv = Math.round((priceUSD || 0) * rate * 100) / 100;
+                      return (
+                        <>
+                          <span className="text-xs font-bold uppercase text-emerald-800">
+                            Equivalente en {secCurr}:
+                          </span>
+                          <div className="text-2xl font-black text-emerald-700 mt-0.5">
+                            {formatNumberWithDots(secEquiv)} {secCurr}
+                          </div>
+                          <span className="text-[10px] text-gray-500">
+                            Calculado con la tasa 1 {baseCurr} = {rate} {secCurr} de la tienda
+                          </span>
+                        </>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <span className="text-xs font-bold uppercase text-slate-700">
+                          Moneda Única de Venta:
+                        </span>
+                        <div className="text-xl font-black text-slate-800 mt-0.5">
+                          {baseCurr}
+                        </div>
+                        <span className="text-[10px] text-gray-500">
+                          La tienda solo opera en su moneda base ({baseCurr})
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -877,11 +916,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                   )}
                 </div>
 
-                {/* 1. Combo con Superetiquetas */}
+                {/* Combo con Superetiquetas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase text-slate-600 mb-1">
-                      1. Selecciona Superetiqueta
+                      Selecciona Superetiqueta (Opcional)
                     </label>
                     <SearchableSelect
                       options={effectiveTagsCatalog.map((group) => ({
@@ -889,25 +928,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         label: group.name,
                         sublabel: `${group.tags.length} etiquetas`,
                       }))}
-                      value={selectedSupertagComboId || effectiveTagsCatalog[0]?.id || ''}
+                      value={selectedSupertagComboId}
                       onChange={(val) => setSelectedSupertagComboId(val || '')}
-                      searchPlaceholder="Buscar superetiqueta..."
+                      searchPlaceholder="Seleccionar superetiqueta (opcional)..."
                     />
                   </div>
 
-                  {/* 2. Lista de Etiquetas con Checkboxes */}
+                  {/* Lista de Etiquetas con Checkboxes */}
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase text-slate-600 mb-1">
-                      2. Selecciona Etiquetas (Checkboxes)
+                      Selecciona Etiquetas (Checkboxes - Opcional)
                     </label>
                     {(() => {
-                      const activeGroup =
-                        effectiveTagsCatalog.find((g) => g.id === selectedSupertagComboId) ||
-                        effectiveTagsCatalog[0];
+                      if (!selectedSupertagComboId) {
+                        return (
+                          <div className="p-3 text-xs text-slate-400 bg-white rounded-xl border border-dashed border-slate-200 text-center font-medium">
+                            Selecciona una superetiqueta primero para ver sus etiquetas (opcional)
+                          </div>
+                        );
+                      }
+
+                      const activeGroup = effectiveTagsCatalog.find((g) => g.id === selectedSupertagComboId);
 
                       if (!activeGroup || activeGroup.tags.length === 0) {
                         return (
-                          <div className="p-2 text-xs text-slate-400 bg-white rounded-xl border border-slate-200">
+                          <div className="p-2 text-xs text-slate-400 bg-white rounded-xl border border-slate-200 text-center">
                             No hay etiquetas en esta superetiqueta
                           </div>
                         );

@@ -49,6 +49,55 @@ export function calculateCUP(priceUSD: number, rate: number): number {
 }
 
 /**
+ * Retrieves the effective exchange rate between two currencies for a given store.
+ */
+export function getStoreExchangeRate(
+  store: Store | undefined,
+  fromCurr: string,
+  toCurr: string
+): number | undefined {
+  if (!store || !fromCurr || !toCurr || fromCurr === toCurr) return 1;
+  const rates = store.exchangeRates || [];
+  const direct = rates.find((r) => r.fromCurrency === fromCurr && r.toCurrency === toCurr);
+  if (direct && direct.rate > 0) return direct.rate;
+  const inverse = rates.find((r) => r.fromCurrency === toCurr && r.toCurrency === fromCurr);
+  if (inverse && inverse.rate > 0) return 1 / inverse.rate;
+
+  // Fallback for USD <-> CUP legacy rate
+  if (fromCurr === 'USD' && toCurr === 'CUP' && store.usdToCupRate) {
+    return store.usdToCupRate;
+  }
+  if (fromCurr === 'CUP' && toCurr === 'USD' && store.usdToCupRate) {
+    return 1 / store.usdToCupRate;
+  }
+  return undefined;
+}
+
+/**
+ * Calculates a product's price in a target currency according to the store's currency settings.
+ */
+export function calculateProductPriceInCurrency(
+  product: Product,
+  store: Store | undefined,
+  targetCurrency: string
+): number {
+  const basePrice = product.priceUSD || 0;
+  const baseCurr = store?.baseCurrency || 'USD';
+  if (!targetCurrency || targetCurrency === baseCurr) {
+    return basePrice;
+  }
+  const rate = getStoreExchangeRate(store, baseCurr, targetCurrency);
+  if (rate !== undefined && rate > 0) {
+    return Math.round(basePrice * rate * 100) / 100;
+  }
+  // Fallback if target is CUP
+  if (targetCurrency === 'CUP') {
+    return calculateCUP(basePrice, store?.usdToCupRate || 330);
+  }
+  return basePrice;
+}
+
+/**
  * Normalize phone number for wa.me URL
  * Strips spaces, dashes, parentheses and ensures valid Cuban country code (53)
  */

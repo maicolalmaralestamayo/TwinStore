@@ -86,7 +86,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const productTypesCatalog =
     marketplaceConfig?.productTypesCatalog || INITIAL_PRODUCT_TYPES_CATALOG;
 
-  // 8. Superetiquetas y etiquetas
+  // Superetiquetas y etiquetas
   // Group tag selections by Superetiqueta (group)
   const supertagGroups = useMemo(() => {
     const groupsMap: { [key: string]: string[] } = {};
@@ -107,7 +107,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     return Object.entries(groupsMap).map(([group, tags]) => ({ group, tags }));
   }, [product?.tagSelections]);
 
-  // 11. Tipo de pago y gravamen
+  // Tipo de pago y gravamen
   // Resolve payment methods with their gravamen from store or catalog
   const storePaymentMethodsWithGravamen = useMemo(() => {
     if (!store) return [];
@@ -145,7 +145,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     return methods;
   }, [store, paymentMethodsCatalog]);
 
-  // 12. Tipo de mensajería
+  // Tipo de mensajería
   const storeDeliveryMethods = useMemo(() => {
     if (!store) return [];
     if (store.deliveryMethodIds && store.deliveryMethodIds.length > 0) {
@@ -168,11 +168,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const activeImage = gallery[activeImageIndex] || gallery[0] || 'local:product';
 
-  // 4. Precio y 5. Tasa de cambio
+  // Precio y Tasa de cambio
   const usdRate = store.usdToCupRate || 330;
   const cupPrice = calculateCUP(product.priceUSD, usdRate);
 
-  // 6. Tipo de oferta
+  // Tipo de oferta
   const isServiceItem =
     product.productTypeId === 'pt-servicio' ||
     (product.productType || '').toLowerCase().includes('servicio') ||
@@ -183,18 +183,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const offerTypeName = matchedProductType?.name || product.productType || (isServiceItem ? 'Servicios Profesionales' : 'Productos Físicos');
 
-  // 7. Departamento y subdepartamento
+  // Departamento y subdepartamento
   const departmentName = product.category || 'General';
   const subdepartmentName = product.subcategory || 'General';
 
   const generalDisplayTags = extractProductDisplayTags(product);
 
-  // 10. Reparto, municipio y provincia
+  // Reparto, municipio y provincia
   const reparto = store.address?.neighborhood || 'No especificado';
   const municipio = store.address?.municipality || 'No especificado';
   const provincia = store.address?.province || 'No especificado';
 
-  // 13. Tipos de pago (Formas y monedas aceptadas)
+  // Tipos de pago (Formas y monedas aceptadas)
   const acceptedCurrencies = store.paymentOptions?.acceptedCurrencies || ['CUP', 'USD'];
 
   // WhatsApp Order
@@ -256,10 +256,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* ========================================================================= */}
           <div className="overflow-y-auto p-4 sm:p-6 space-y-5 text-slate-800 dark:text-slate-100">
 
-            {/* 1. IMÁGENES */}
+            {/* IMÁGENES */}
             <div className="space-y-2">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                1. Imágenes
+                Imágenes
               </span>
               <div className="relative w-full h-64 sm:h-80 bg-slate-100 dark:bg-slate-950 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center group shadow-2xs">
                 <ThemeImage
@@ -321,11 +321,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
             </div>
 
-            {/* 2. CÓDIGO */}
+            {/* CÓDIGO */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <Hash className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>2. Código Único</span>
+                <span>Código Único</span>
               </span>
               <div className="flex items-center gap-2">
                 <span className="font-mono font-black text-sm sm:text-base px-3 py-1 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 tracking-wider shadow-2xs">
@@ -337,22 +337,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 3. DESCRIPCIÓN */}
+            {/* DESCRIPCIÓN */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>3. Descripción</span>
+                <span>Descripción</span>
               </span>
               <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line font-medium">
                 {product.description || 'Sin descripción detallada por el vendedor.'}
               </p>
             </div>
 
-            {/* 4. PRECIO */}
+            {/* PRECIO */}
             <div className="bg-indigo-50/70 dark:bg-slate-800/90 p-4 rounded-2xl border border-indigo-100 dark:border-slate-700">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5 mb-2">
                 <DollarSign className="w-3.5 h-3.5" />
-                <span>4. Precio</span>
+                <span>Precio</span>
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                 <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-indigo-200/80 dark:border-slate-700">
@@ -375,11 +375,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 5. TASA DE CAMBIO */}
+            {/* TASA DE CAMBIO */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <Coins className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>5. Tasa de Cambio</span>
+                <span>Tasa de Cambio</span>
               </span>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
@@ -396,11 +396,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 6. TIPO DE OFERTA */}
+            {/* TIPO DE OFERTA */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <Briefcase className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>6. Tipo de Oferta</span>
+                <span>Tipo de Oferta</span>
               </span>
               <div className="flex items-center gap-2">
                 <span
@@ -421,16 +421,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 7. DEPARTAMENTO Y SUBDEPARTAMENTO */}
+            {/* DEPARTAMENTO Y SUBDEPARTAMENTO */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <FolderTree className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>7. Departamento y Subdepartamento</span>
+                <span>Departamento y Subdepartamento</span>
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block mb-0.5">
-                    Departamento Principal (1er Escalón)
+                    Departamento Principal
                   </span>
                   <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                     <FolderTree className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -440,7 +440,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block mb-0.5">
-                    Subdepartamento (2do Escalón)
+                    Subdepartamento
                   </span>
                   <div className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -450,11 +450,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 8. SUPERETIQUETAS Y ETIQUETAS */}
+            {/* SUPERETIQUETAS Y ETIQUETAS */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>8. Superetiquetas y Etiquetas</span>
+                <span>Superetiquetas y Etiquetas</span>
               </span>
 
               {supertagGroups.length > 0 ? (
@@ -499,11 +499,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
             </div>
 
-            {/* 9. TIENDA A LA QUE PERTENECE */}
+            {/* TIENDA A LA QUE PERTENECE */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-2">
                 <StoreIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>9. Tienda a la que Pertenece</span>
+                <span>Tienda a la que Pertenece</span>
               </span>
 
               <div className="flex items-center gap-3.5 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -538,11 +538,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 10. REPARTO, MUNICIPIO Y PROVINCIA */}
+            {/* REPARTO, MUNICIPIO Y PROVINCIA */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>10. Reparto, Municipio y Provincia</span>
+                <span>Reparto, Municipio y Provincia</span>
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -575,11 +575,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 11. TIPO DE PAGO Y GRAVAMEN */}
+            {/* TIPO DE PAGO Y GRAVAMEN */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>11. Tipo de Pago y Gravamen</span>
+                <span>Tipo de Pago y Gravamen</span>
               </span>
 
               <div className="space-y-1.5">
@@ -612,11 +612,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 12. TIPO DE MENSAJERÍA */}
+            {/* TIPO DE MENSAJERÍA */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Truck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>12. Tipo de Mensajería</span>
+                <span>Tipo de Mensajería</span>
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -641,11 +641,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </div>
             </div>
 
-            {/* 13. TIPOS DE PAGO */}
+            {/* TIPOS DE PAGO */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>13. Tipos de Pago (Formas y Monedas Aceptadas)</span>
+                <span>Tipos de Pago (Formas y Monedas Aceptadas)</span>
               </span>
 
               <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
@@ -676,20 +676,20 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* ========================================================================= */}
           {/* BOTONES DE ACCIÓN AL FINAL:                                               */}
-          {/* 1. Botón de contactar (WhatsApp)                                          */}
-          {/* 2. Botón que abre modal con datos de la tienda (SIN cambios en filtros)   */}
+          {/* - Botón de contactar (WhatsApp)                                          */}
+          {/* - Botón que abre modal con datos de la tienda (SIN cambios en filtros)   */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md space-y-2.5 shrink-0">
             {/* Botón Principal de Contactar */}
             <button
               type="button"
               onClick={handleOpenWhatsApp}
-              title="Contactar al vendedor por WhatsApp para pedir este producto o servicio"
-              aria-label="Contactar al vendedor por WhatsApp"
+              title="Contactar por WhatsApp para pedir este producto o servicio"
+              aria-label="Contactar por WhatsApp"
               className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black py-3 px-5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md text-sm cursor-pointer"
             >
               <MessageCircle className="w-5 h-5 fill-current" />
-              <span>Contactar al vendedor por WhatsApp</span>
+              <span>Contactar por WhatsApp</span>
             </button>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

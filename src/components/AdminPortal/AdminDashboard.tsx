@@ -351,6 +351,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           productTypesCatalog={marketplaceConfig?.productTypesCatalog}
           paymentMethodsCatalog={marketplaceConfig?.paymentMethodsCatalog}
           deliveryMethodsCatalog={marketplaceConfig?.deliveryMethodsCatalog}
+          marketplaceConfig={marketplaceConfig}
           onAddProduct={onAddProduct}
           onUpdateProduct={onUpdateProduct}
           onDeleteProduct={onDeleteProduct}
