@@ -326,6 +326,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           config={marketplaceConfig}
           onUpdateConfig={onUpdateMarketplaceConfig}
           onShowToast={onShowToast}
+          stores={stores}
+          onUpdateStores={(updatedStores) => {
+            updatedStores.forEach((s) => onUpdateStore(s));
+          }}
         />
       )}
 

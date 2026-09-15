@@ -3,7 +3,7 @@ import { Product, Store, CurrencyDisplayMode } from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
 import {
   formatNumberWithDots,
-  calculateCUP,
+  getProductPricesInAllowedCurrencies,
   generateWhatsAppOrderUrl,
 } from '../../lib/utils';
 import {
@@ -23,8 +23,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   store,
   onSelectProduct,
 }) => {
-  const usdRate = store?.usdToCupRate || 330;
-  const cupPrice = calculateCUP(product.priceUSD, usdRate);
+  // Product currency and prices in allowed currencies for this specific product
+  const pricesInCurrencies = getProductPricesInAllowedCurrencies(product, store);
+  const primaryItem = pricesInCurrencies[0] || {
+    currency: product.currency || 'USD',
+    amount: product.price !== undefined && product.price !== null ? product.price : (product.priceUSD || 0),
+    rate: 1,
+    isOriginal: true,
+  };
+  const alternateItem = pricesInCurrencies.find((p) => !p.isOriginal);
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,11 +55,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           imgClassName="group-hover:scale-105 transition-transform duration-500"
         />
 
-        {/* Badges: Tasa (1 USD x 328 CUP) + Código único */}
+        {/* Badges: Tasa o Moneda del Producto + Código único */}
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-          <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
-            {interfaz.productCard.ratePrefix} {formatNumberWithDots(usdRate)} {interfaz.productCard.rateSuffix}
-          </div>
+          {alternateItem ? (
+            <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono">
+              1 {primaryItem.currency} x {formatNumberWithDots(alternateItem.rate)} {alternateItem.currency}
+            </div>
+          ) : (
+            <div className="bg-slate-900/90 dark:bg-slate-950/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-white/10 font-mono uppercase">
+              {primaryItem.currency}
+            </div>
+          )}
 
           {product.code && (
             <span className="inline-flex items-center gap-1 bg-indigo-600/95 text-white px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shadow-xs">
@@ -75,14 +88,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.description}
           </p>
 
-          {/* 4. Precios en USD y CUP con separadores de puntos de tres en tres */}
+          {/* 4. Precios: Moneda del producto y moneda equivalente permitida (si existe) */}
           <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between gap-2">
             <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
-              {formatNumberWithDots(product.priceUSD)} {interfaz.productCard.currencyUsd}
+              {formatNumberWithDots(primaryItem.amount)} {primaryItem.currency}
             </span>
-            <span className="text-sm sm:text-base font-black text-indigo-700 dark:text-indigo-400 font-mono">
-              {formatNumberWithDots(cupPrice)} {interfaz.productCard.currencyCup}
-            </span>
+            {alternateItem ? (
+              <span className="text-sm sm:text-base font-black text-indigo-700 dark:text-indigo-400 font-mono">
+                {formatNumberWithDots(alternateItem.amount)} {alternateItem.currency}
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-slate-400">
+                Solo {primaryItem.currency}
+              </span>
+            )}
           </div>
         </div>
 

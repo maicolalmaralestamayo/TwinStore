@@ -14,12 +14,12 @@ export function formatNumberWithDots(amount: number): string {
  * Example: formatCurrency(410, 'USD') -> "410 USD"
  * Example: formatCurrency(134480, 'CUP') -> "134.480 CUP"
  */
-export function formatCurrency(amount: number, currency: 'USD' | 'CUP'): string {
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
   return `${formatNumberWithDots(amount)} ${currency}`;
 }
 
 /**
- * Formats dual price pair cleanly without conjunction 'y': e.g. "410 USD - 134.480 CUP"
+ * Formats dual price pair cleanly without conjunction 'y': e.g. "410 USD  134.480 CUP"
  */
 export function formatPricePair(priceUSD: number, cupPrice: number): string {
   return `${formatNumberWithDots(priceUSD)} USD  ${formatNumberWithDots(cupPrice)} CUP`;
@@ -46,6 +46,57 @@ export function extractProductDisplayTags(product: Product): string[] {
  */
 export function calculateCUP(priceUSD: number, rate: number): number {
   return Math.round(priceUSD * (rate || 330));
+}
+
+/**
+ * Gets all allowed exchange rates from the store for a specific product.
+ */
+export function getProductAllowedExchangeRates(
+  product: Product,
+  store: Store | undefined
+): import('../types').StoreExchangeRate[] {
+  if (!store || !store.exchangeRates || store.exchangeRates.length === 0) return [];
+  const prodCurrency = (product.currency || 'USD').toUpperCase();
+  const allowedIds = product.allowedExchangeRateIds;
+
+  if (Array.isArray(allowedIds) && allowedIds.length > 0) {
+    return store.exchangeRates.filter((r) => allowedIds.includes(r.id));
+  }
+
+  return store.exchangeRates.filter((r) => (r.fromCurrency || '').toUpperCase() === prodCurrency);
+}
+
+/**
+ * Returns list of prices in all currencies allowed for this product (original + converted).
+ */
+export function getProductPricesInAllowedCurrencies(
+  product: Product,
+  store: Store | undefined
+): { currency: string; amount: number; rate: number; isOriginal: boolean }[] {
+  const origPrice = product.price !== undefined && product.price !== null ? product.price : (product.priceUSD || 0);
+  const origCurrency = (product.currency || 'USD').toUpperCase();
+  const results: { currency: string; amount: number; rate: number; isOriginal: boolean }[] = [
+    {
+      currency: origCurrency,
+      amount: origPrice,
+      rate: 1,
+      isOriginal: true,
+    },
+  ];
+
+  const allowedRates = getProductAllowedExchangeRates(product, store);
+  for (const rateObj of allowedRates) {
+    if ((rateObj.fromCurrency || '').toUpperCase() === origCurrency && rateObj.rate > 0) {
+      const converted = Math.round(origPrice * rateObj.rate * 100) / 100;
+      results.push({
+        currency: (rateObj.toCurrency || '').toUpperCase(),
+        amount: converted,
+        rate: rateObj.rate,
+        isOriginal: false,
+      });
+    }
+  }
+  return results;
 }
 
 /**
@@ -81,20 +132,32 @@ export function calculateProductPriceInCurrency(
   store: Store | undefined,
   targetCurrency: string
 ): number {
-  const basePrice = product.priceUSD || 0;
-  const baseCurr = store?.baseCurrency || 'USD';
-  if (!targetCurrency || targetCurrency === baseCurr) {
-    return basePrice;
+  const origPrice = product.price !== undefined && product.price !== null ? product.price : (product.priceUSD || 0);
+  const origCurrency = (product.currency || 'USD').toUpperCase();
+  const target = (targetCurrency || 'USD').toUpperCase();
+
+  if (!target || target === origCurrency) {
+    return origPrice;
   }
-  const rate = getStoreExchangeRate(store, baseCurr, targetCurrency);
+
+  const allowedRates = getProductAllowedExchangeRates(product, store);
+  const matchedRate = allowedRates.find(
+    (r) => (r.fromCurrency || '').toUpperCase() === origCurrency && (r.toCurrency || '').toUpperCase() === target
+  );
+  if (matchedRate && matchedRate.rate > 0) {
+    return Math.round(origPrice * matchedRate.rate * 100) / 100;
+  }
+
+  const rate = getStoreExchangeRate(store, origCurrency, target);
   if (rate !== undefined && rate > 0) {
-    return Math.round(basePrice * rate * 100) / 100;
+    return Math.round(origPrice * rate * 100) / 100;
   }
-  // Fallback if target is CUP
-  if (targetCurrency === 'CUP') {
-    return calculateCUP(basePrice, store?.usdToCupRate || 330);
+
+  if (origCurrency === 'USD' && target === 'CUP') {
+    return calculateCUP(origPrice, store?.usdToCupRate || 330);
   }
-  return basePrice;
+
+  return origPrice;
 }
 
 /**
@@ -365,6 +428,9 @@ export function parseAndImportCsvContent(
           description: row[3] || '',
           whatsappPhone: row[4] || '+53 50000000',
           location: row[5] || 'La Habana',
+          baseCurrency: 'USD',
+          secondaryCurrency: 'CUP',
+          exchangeRates: [{ id: `rate_${i}`, fromCurrency: 'USD', toCurrency: 'CUP', rate: Number(row[6]) || 330 }],
           usdToCupRate: Number(row[6]) || 330,
           deliveryAvailable: row[7] === 'true' || row[7] === '1',
           active: row[8] !== 'false' && row[8] !== '0',
@@ -384,7 +450,9 @@ export function parseAndImportCsvContent(
           code: `PRD-${Date.now().toString().slice(-4)}${i}`,
           title: row[2],
           description: row[3] || '',
+          price: Number(row[4]) || 10,
           priceUSD: Number(row[4]) || 10,
+          currency: 'USD',
           category: row[5] || 'Alimentos y Combos',
           subcategory: row[6] || '',
           imageUrl: 'local:product',
@@ -411,6 +479,9 @@ export function parseAndImportCsvContent(
           description: row[3] || '',
           whatsappPhone: row[4] || '+53 50000000',
           location: row[5] || 'La Habana',
+          baseCurrency: 'USD',
+          secondaryCurrency: 'CUP',
+          exchangeRates: [{ id: `rate_fallback_${i}`, fromCurrency: 'USD', toCurrency: 'CUP', rate: Number(row[6]) || 330 }],
           usdToCupRate: Number(row[6]) || 330,
           deliveryAvailable: row[7] === 'true',
           active: row[8] !== 'false',

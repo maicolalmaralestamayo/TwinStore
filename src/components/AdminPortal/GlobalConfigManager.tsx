@@ -9,6 +9,9 @@ import {
   TagGroup,
   TagItem,
   NomenclatorItem,
+  CurrencyItem,
+  Store,
+  GlobalExchangeRate,
 } from '../../types';
 import {
   INITIAL_GEO_CATALOG,
@@ -17,6 +20,7 @@ import {
   INITIAL_PRODUCT_TYPES_CATALOG,
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
+  INITIAL_CURRENCIES_CATALOG,
 } from '../../data/initialData';
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
@@ -61,6 +65,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   SlidersHorizontal,
+  ArrowRightLeft,
+  Landmark,
 } from 'lucide-react';
 import { interfaz } from '../../data/interfaz';
 
@@ -68,15 +74,19 @@ interface GlobalConfigManagerProps {
   config: MarketplaceConfig;
   onUpdateConfig: (newConfig: MarketplaceConfig) => void;
   onShowToast: (title: string, desc?: string, type?: 'success' | 'info' | 'error') => void;
+  stores?: Store[];
+  onUpdateStores?: (stores: Store[]) => void;
 }
 
 export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   config,
   onUpdateConfig,
   onShowToast,
+  stores,
+  onUpdateStores,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
-    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel'
+    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel' | 'currencies'
   >('identity');
 
   // Business Model Nomenclators State
@@ -101,6 +111,51 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   const [activeNomCategory, setActiveNomCategory] = useState<
     'productTypes' | 'paymentMethods' | 'deliveryMethods'
   >('productTypes');
+
+  // Currencies catalog and marketplace global currencies state
+  const [currenciesCatalog, setCurrenciesCatalog] = useState<CurrencyItem[]>(
+    config.currenciesCatalog && config.currenciesCatalog.length > 0
+      ? config.currenciesCatalog
+      : INITIAL_CURRENCIES_CATALOG
+  );
+
+  const [globalBaseCurrency, setGlobalBaseCurrency] = useState<string>(
+    config.baseCurrency || 'USD'
+  );
+  const [globalSecondaryCurrency, setGlobalSecondaryCurrency] = useState<string>(
+    config.secondaryCurrency !== undefined ? config.secondaryCurrency : 'CUP'
+  );
+  const [globalExchangeRate, setGlobalExchangeRate] = useState<number>(
+    config.globalExchangeRate || 330
+  );
+
+  // Suggested marketplace exchange rates state
+  const [globalExchangeRates, setGlobalExchangeRates] = useState<GlobalExchangeRate[]>(
+    config.globalExchangeRates && config.globalExchangeRates.length > 0
+      ? config.globalExchangeRates
+      : [
+          { id: 'rate-sug-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 335 },
+          { id: 'rate-sug-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
+          { id: 'rate-sug-mlc-cup', fromCurrency: 'MLC', toCurrency: 'CUP', rate: 290 },
+        ]
+  );
+  const [newSugRateFrom, setNewSugRateFrom] = useState('USD');
+  const [newSugRateTo, setNewSugRateTo] = useState('CUP');
+  const [newSugRateValue, setNewSugRateValue] = useState<number | ''>(335);
+
+  // New currency inputs
+  const [newCurrCode, setNewCurrCode] = useState('');
+  const [newCurrName, setNewCurrName] = useState('');
+  const [newCurrSymbol, setNewCurrSymbol] = useState('');
+  const [newCurrDesc, setNewCurrDesc] = useState('');
+
+  // Editing currency
+  const [editingCurrId, setEditingCurrId] = useState<string | null>(null);
+  const [editingCurrCode, setEditingCurrCode] = useState('');
+  const [editingCurrName, setEditingCurrName] = useState('');
+  const [editingCurrSymbol, setEditingCurrSymbol] = useState('');
+  const [editingCurrDesc, setEditingCurrDesc] = useState('');
+  const [editingCurrActive, setEditingCurrActive] = useState(true);
 
   // New item inputs for Nomenclator
   const [newNomName, setNewNomName] = useState('');
@@ -1025,6 +1080,294 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     }
   };
 
+  // --- CURRENCIES NOMENCLATOR & GLOBAL CONFIG HANDLERS ---
+  const saveCurrenciesCatalog = (
+    updated: CurrencyItem[],
+    newBase?: string,
+    newSec?: string,
+    newRate?: number
+  ) => {
+    setCurrenciesCatalog(updated);
+    const updatedConfig: MarketplaceConfig = {
+      ...config,
+      currenciesCatalog: updated,
+      baseCurrency: newBase !== undefined ? newBase : globalBaseCurrency,
+      secondaryCurrency: newSec !== undefined ? newSec : globalSecondaryCurrency,
+      globalExchangeRate: newRate !== undefined ? newRate : globalExchangeRate,
+    };
+    onUpdateConfig(updatedConfig);
+  };
+
+  const handleAddCurrency = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = newCurrCode.trim().toUpperCase();
+    const name = newCurrName.trim();
+    const symbol = newCurrSymbol.trim() || code;
+    if (!code || !name) {
+      onShowToast('Campos requeridos', 'Ingresa el código y el nombre de la moneda', 'error');
+      return;
+    }
+    if (currenciesCatalog.some((c) => c.code.toUpperCase() === code)) {
+      onShowToast('Moneda duplicada', `Ya existe una moneda con código "${code}"`, 'error');
+      return;
+    }
+    const newCurr: CurrencyItem = {
+      id: `curr-${code.toLowerCase()}-${Date.now()}`,
+      code,
+      name,
+      symbol,
+      description: newCurrDesc.trim() || undefined,
+      active: true,
+    };
+    const updated = [...currenciesCatalog, newCurr];
+    saveCurrenciesCatalog(updated);
+    setNewCurrCode('');
+    setNewCurrName('');
+    setNewCurrSymbol('');
+    setNewCurrDesc('');
+    onShowToast('Moneda agregada', `Se añadió "${code} - ${name}" al nomenclador de monedas`);
+  };
+
+  const handleDeleteCurrency = (curr: CurrencyItem) => {
+    if (curr.code === globalBaseCurrency) {
+      onShowToast('Acción no permitida', `"${curr.code}" está configurada como la Moneda Base Global`, 'error');
+      return;
+    }
+    if (curr.code === globalSecondaryCurrency) {
+      onShowToast('Acción no permitida', `"${curr.code}" está configurada como la Moneda Secundaria Global`, 'error');
+      return;
+    }
+    const updated = currenciesCatalog.filter((c) => c.id !== curr.id);
+    saveCurrenciesCatalog(updated);
+    onShowToast('Moneda eliminada', `Se eliminó "${curr.code}" del catálogo`);
+  };
+
+  const handleToggleCurrencyActive = (id: string) => {
+    const updated = currenciesCatalog.map((c) => {
+      if (c.id === id) {
+        if (c.active && (c.code === globalBaseCurrency || c.code === globalSecondaryCurrency)) {
+          onShowToast('Moneda en uso', `No puedes desactivar "${c.code}" porque está configurada como moneda global`, 'error');
+          return c;
+        }
+        return { ...c, active: !c.active };
+      }
+      return c;
+    });
+    saveCurrenciesCatalog(updated);
+  };
+
+  const handleStartEditCurrency = (curr: CurrencyItem) => {
+    setEditingCurrId(curr.id);
+    setEditingCurrCode(curr.code);
+    setEditingCurrName(curr.name);
+    setEditingCurrSymbol(curr.symbol);
+    setEditingCurrDesc(curr.description || '');
+    setEditingCurrActive(curr.active !== false);
+  };
+
+  const handleSaveEditCurrency = () => {
+    if (!editingCurrId || !editingCurrCode.trim() || !editingCurrName.trim()) {
+      setEditingCurrId(null);
+      return;
+    }
+    const code = editingCurrCode.trim().toUpperCase();
+    const updated = currenciesCatalog.map((c) =>
+      c.id === editingCurrId
+        ? {
+            ...c,
+            code,
+            name: editingCurrName.trim(),
+            symbol: editingCurrSymbol.trim() || code,
+            description: editingCurrDesc.trim() || undefined,
+            active: editingCurrActive,
+          }
+        : c
+    );
+    saveCurrenciesCatalog(updated);
+    setEditingCurrId(null);
+    onShowToast('Moneda actualizada', `Se guardaron los cambios para ${code}`);
+  };
+
+  const handleResetCurrencies = () => {
+    saveCurrenciesCatalog(INITIAL_CURRENCIES_CATALOG, 'USD', 'CUP', 330);
+    setGlobalBaseCurrency('USD');
+    setGlobalSecondaryCurrency('CUP');
+    setGlobalExchangeRate(330);
+    onShowToast('Monedas restablecidas', 'Se restablecieron las monedas por defecto (USD, CUP, EUR)');
+  };
+
+  const handleSaveGlobalCurrencyConfig = () => {
+    const updatedConfig: MarketplaceConfig = {
+      ...config,
+      currenciesCatalog,
+      baseCurrency: globalBaseCurrency,
+      secondaryCurrency: globalSecondaryCurrency,
+      globalExchangeRate: Number(globalExchangeRate) || 1,
+      globalExchangeRates,
+    };
+    onUpdateConfig(updatedConfig);
+    onShowToast(
+      'Configuración de divisas guardada',
+      `Se actualizaron las divisas y el nomenclador de tasas sugeridas del marketplace`
+    );
+  };
+
+  const handleAddGlobalRate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSugRateFrom || !newSugRateTo || !newSugRateValue || Number(newSugRateValue) <= 0) {
+      onShowToast('Datos requeridos', 'Selecciona monedas válidas y una tasa positiva', 'error');
+      return;
+    }
+    if (newSugRateFrom === newSugRateTo) {
+      onShowToast('Monedas iguales', 'Las monedas de origen y destino no pueden ser iguales', 'error');
+      return;
+    }
+    const val = Number(newSugRateValue);
+    const existingIdx = globalExchangeRates.findIndex(
+      (r) => r.fromCurrency === newSugRateFrom && r.toCurrency === newSugRateTo
+    );
+    let updated: GlobalExchangeRate[];
+    if (existingIdx >= 0) {
+      updated = [...globalExchangeRates];
+      updated[existingIdx].rate = val;
+    } else {
+      updated = [
+        ...globalExchangeRates,
+        {
+          id: `rate-sug-${newSugRateFrom.toLowerCase()}-${newSugRateTo.toLowerCase()}-${Date.now()}`,
+          fromCurrency: newSugRateFrom,
+          toCurrency: newSugRateTo,
+          rate: val,
+        },
+      ];
+    }
+    setGlobalExchangeRates(updated);
+    onUpdateConfig({
+      ...config,
+      globalExchangeRates: updated,
+    });
+    onShowToast('Tasa sugerida agregada', `1 ${newSugRateFrom} = ${val} ${newSugRateTo}`);
+  };
+
+  const handleDeleteGlobalRate = (rateId: string) => {
+    const updated = globalExchangeRates.filter((r) => r.id !== rateId);
+    setGlobalExchangeRates(updated);
+    onUpdateConfig({
+      ...config,
+      globalExchangeRates: updated,
+    });
+    onShowToast('Tasa eliminada', 'Se eliminó la tasa sugerida del marketplace');
+  };
+
+  const handleUpdateGlobalRateValue = (rateId: string, val: number) => {
+    const updated = globalExchangeRates.map((r) =>
+      r.id === rateId ? { ...r, rate: val } : r
+    );
+    setGlobalExchangeRates(updated);
+  };
+
+  const handleBroadcastRatesToStores = () => {
+    if (!stores || stores.length === 0 || !onUpdateStores) {
+      onShowToast('Sin tiendas', 'No hay tiendas registradas para propagar las tasas', 'info');
+      return;
+    }
+    let totalUpdated = 0;
+    const updatedStores = stores.map((store) => {
+      const existingRates = store.exchangeRates ? [...store.exchangeRates] : [];
+      let storeChanged = false;
+      for (const gr of globalExchangeRates) {
+        const idx = existingRates.findIndex(
+          (r) => r.fromCurrency === gr.fromCurrency && r.toCurrency === gr.toCurrency
+        );
+        if (idx >= 0) {
+          if (existingRates[idx].rate !== gr.rate) {
+            existingRates[idx].rate = gr.rate;
+            storeChanged = true;
+          }
+        } else {
+          existingRates.push({
+            id: `rate-${store.id}-${gr.fromCurrency}-${gr.toCurrency}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            storeId: store.id,
+            fromCurrency: gr.fromCurrency,
+            toCurrency: gr.toCurrency,
+            rate: gr.rate,
+          });
+          storeChanged = true;
+        }
+      }
+      if (storeChanged) totalUpdated++;
+      return {
+        ...store,
+        exchangeRates: existingRates,
+      };
+    });
+    onUpdateStores(updatedStores);
+    onShowToast(
+      'Tasas propagadas',
+      `Se propagaron las tasas sugeridas a ${totalUpdated} tiendas del marketplace`
+    );
+  };
+
+  const handleApplyGlobalRateToMatchingStores = () => {
+    if (!globalSecondaryCurrency) {
+      onShowToast('Sin moneda secundaria', 'Selecciona una moneda secundaria global para propagar la tasa', 'error');
+      return;
+    }
+    const rateNum = Number(globalExchangeRate);
+    if (!rateNum || rateNum <= 0) {
+      onShowToast('Tasa inválida', 'Ingresa una tasa de cambio numérica mayor a 0', 'error');
+      return;
+    }
+    if (!stores || stores.length === 0 || !onUpdateStores) {
+      onShowToast('Sin tiendas', 'No hay tiendas para actualizar', 'info');
+      return;
+    }
+
+    let matchedCount = 0;
+    const updatedStores = stores.map((store) => {
+      const sBase = store.baseCurrency || 'USD';
+      const sSec = store.secondaryCurrency !== undefined ? store.secondaryCurrency : (sBase === 'USD' ? 'CUP' : '');
+      if (sBase === globalBaseCurrency && sSec === globalSecondaryCurrency) {
+        matchedCount++;
+        const existingRates = store.exchangeRates || [];
+        const updatedRates = existingRates.map((r) =>
+          r.fromCurrency === sBase && r.toCurrency === sSec
+            ? { ...r, rate: rateNum }
+            : r
+        );
+        if (!updatedRates.some((r) => r.fromCurrency === sBase && r.toCurrency === sSec)) {
+          updatedRates.push({
+            id: `rate-${store.id}-${sBase}-${sSec}`,
+            fromCurrency: sBase,
+            toCurrency: sSec,
+            rate: rateNum,
+          });
+        }
+        return {
+          ...store,
+          usdToCupRate: (sBase === 'USD' && sSec === 'CUP') ? rateNum : store.usdToCupRate,
+          exchangeRates: updatedRates,
+        };
+      }
+      return store;
+    });
+
+    if (matchedCount === 0) {
+      onShowToast(
+        'Sin coincidencias',
+        `Ninguna tienda tiene ${globalBaseCurrency} como base y ${globalSecondaryCurrency} como secundaria`,
+        'info'
+      );
+    } else {
+      onUpdateStores(updatedStores);
+      onShowToast(
+        'Tasa propagada',
+        `Se actualizó la tasa a ${rateNum} en ${matchedCount} tienda(s) con combinación ${globalBaseCurrency} -> ${globalSecondaryCurrency}`,
+        'success'
+      );
+    }
+  };
+
   const currentNomCatalog =
     activeNomCategory === 'productTypes'
       ? productTypesCatalog
@@ -1100,6 +1443,19 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           >
             <Sliders className="w-4 h-4" />
             <span>Modelo de Negocio (Nomencladores)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('currencies')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === 'currencies'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Coins className="w-4 h-4" />
+            <span>Monedas y Tasas</span>
           </button>
         </div>
       </div>
@@ -2288,6 +2644,448 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      ) : activeSubTab === 'currencies' ? (
+        /* SECTION: CURRENCIES NOMENCLATOR & GLOBAL MARKETPLACE CURRENCIES CONFIGURATION */
+        <div className="space-y-6">
+          {/* CARD 1: NOMENCLADOR DE TASAS SUGERIDAS DEL MARKETPLACE */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+                  <span>Nomenclador de Tasas de Cambio Sugeridas del Marketplace</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Define las tasas sugeridas entre monedas (ej. 1 USD = 335 CUP, 1 EUR = 360 CUP). Las tiendas pueden importar o personalizar sus propias tasas en base a estas sugerencias.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBroadcastRatesToStores}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  title="Propagar estas tasas sugeridas a todas las tiendas registradas"
+                >
+                  <ArrowRightLeft className="w-4 h-4" />
+                  <span>Propagar a Todas las Tiendas</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ADD SUGGESTED RATE FORM */}
+            <form onSubmit={handleAddGlobalRate} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  1ª Moneda (Origen / Producto)
+                </label>
+                <select
+                  value={newSugRateFrom}
+                  onChange={(e) => setNewSugRateFrom(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                >
+                  {currenciesCatalog
+                    .filter((c) => c.active !== false)
+                    .map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.code} - {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  2ª Moneda (Destino de Cobro)
+                </label>
+                <select
+                  value={newSugRateTo}
+                  onChange={(e) => setNewSugRateTo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                >
+                  {currenciesCatalog
+                    .filter((c) => c.active !== false && c.code !== newSugRateFrom)
+                    .map((c) => (
+                      <option key={c.id} value={c.code}>
+                        {c.code} - {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Tasa (1 {newSugRateFrom} = X {newSugRateTo})
+                </label>
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="any"
+                  value={newSugRateValue}
+                  onChange={(e) =>
+                    setNewSugRateValue(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  placeholder="335"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 font-mono"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Añadir Sugerida</span>
+                </button>
+              </div>
+            </form>
+
+            {/* SUGGESTED RATES GRID */}
+            <div className="space-y-3">
+              <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center justify-between">
+                <span>Tasas Sugeridas del Marketplace ({globalExchangeRates.length})</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  Las tiendas pueden importarlas con un solo clic
+                </span>
+              </h4>
+
+              {globalExchangeRates.length === 0 ? (
+                <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 text-center text-xs text-slate-400">
+                  No hay tasas sugeridas configuradas en el marketplace.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {globalExchangeRates.map((gr) => (
+                    <div
+                      key={gr.id}
+                      className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-slate-900 text-white shadow-2xs">
+                            {gr.fromCurrency}
+                          </span>
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {gr.toCurrency}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1 font-mono">
+                          1 {gr.fromCurrency} = {gr.rate} {gr.toCurrency}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
+                          <span className="text-[10px] font-bold text-slate-500">Tasa:</span>
+                          <input
+                            type="number"
+                            min="0.0001"
+                            step="any"
+                            value={gr.rate}
+                            onChange={(e) =>
+                              handleUpdateGlobalRateValue(gr.id, Number(e.target.value) || 1)
+                            }
+                            className="w-16 text-center font-mono font-black text-xs text-slate-900 outline-none bg-transparent"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGlobalRate(gr.id)}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Eliminar tasa sugerida"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={handleSaveGlobalCurrencyConfig}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <Check className="w-4 h-4" />
+                <span>Guardar Tasas del Marketplace</span>
+              </button>
+            </div>
+          </div>
+
+          {/* CARD 2: NOMENCLATOR DE MONEDAS DEL MARKETPLACE */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-indigo-600" />
+                  <span>Nomenclador de Monedas Admitidas</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Tipos de moneda registrados en el marketplace (USD, CUP, EUR, MLC, etc.). Cada tienda puede seleccionar su moneda base y secundaria a partir de esta lista.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleResetCurrencies}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer border border-slate-200"
+                title="Restaurar a las monedas por defecto (USD, CUP, EUR)"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Restaurar por Defecto</span>
+              </button>
+            </div>
+
+            {/* ADD NEW CURRENCY FORM */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+              <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm mb-3 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-indigo-600" />
+                <span>Añadir Nueva Moneda al Nomenclador</span>
+              </h4>
+
+              <form onSubmit={handleAddCurrency} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Código (ej. USD) *</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={newCurrCode}
+                    onChange={(e) => setNewCurrCode(e.target.value.toUpperCase())}
+                    placeholder="USD, CUP..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 uppercase font-mono"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    value={newCurrName}
+                    onChange={(e) => setNewCurrName(e.target.value)}
+                    placeholder="ej. Dólar Estadounidense"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Símbolo (ej. $, €)</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={newCurrSymbol}
+                    onChange={(e) => setNewCurrSymbol(e.target.value)}
+                    placeholder="$, CUP, €..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Descripción (Opcional)</label>
+                  <input
+                    type="text"
+                    value={newCurrDesc}
+                    onChange={(e) => setNewCurrDesc(e.target.value)}
+                    placeholder="Uso o detalles de la moneda..."
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Añadir</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* CURRENCIES LIST */}
+            <div className="space-y-2">
+              <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center justify-between">
+                <span>Monedas Registradas ({currenciesCatalog.length})</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  Haz clic en el estado para activar/desactivar monedas
+                </span>
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {currenciesCatalog.map((curr) => {
+                  const isEditing = editingCurrId === curr.id;
+                  const isBase = curr.code === globalBaseCurrency;
+                  const isSec = curr.code === globalSecondaryCurrency;
+
+                  if (isEditing) {
+                    return (
+                      <div
+                        key={curr.id}
+                        className="p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50/40 space-y-3"
+                      >
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600">Código</label>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                value={editingCurrCode}
+                                onChange={(e) => setEditingCurrCode(e.target.value.toUpperCase())}
+                                className="w-full px-2 py-1 rounded-lg text-xs font-bold text-slate-900 bg-white border border-indigo-300 outline-none uppercase font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600">Símbolo</label>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                value={editingCurrSymbol}
+                                onChange={(e) => setEditingCurrSymbol(e.target.value)}
+                                className="w-full px-2 py-1 rounded-lg text-xs font-bold text-slate-900 bg-white border border-indigo-300 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600">Nombre</label>
+                            <input
+                              type="text"
+                              value={editingCurrName}
+                              onChange={(e) => setEditingCurrName(e.target.value)}
+                              className="w-full px-2 py-1 rounded-lg text-xs text-slate-900 bg-white border border-indigo-300 outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600">Descripción</label>
+                            <input
+                              type="text"
+                              value={editingCurrDesc}
+                              onChange={(e) => setEditingCurrDesc(e.target.value)}
+                              className="w-full px-2 py-1 rounded-lg text-xs text-slate-900 bg-white border border-indigo-300 outline-none"
+                            />
+                          </div>
+
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer pt-1">
+                            <input
+                              type="checkbox"
+                              checked={editingCurrActive}
+                              onChange={(e) => setEditingCurrActive(e.target.checked)}
+                              className="rounded text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span>Moneda Activa</span>
+                          </label>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
+                          <button
+                            type="button"
+                            onClick={() => setEditingCurrId(null)}
+                            className="px-3 py-1.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveEditCurrency}
+                            className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Guardar</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={curr.id}
+                      className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
+                        curr.active !== false
+                          ? 'bg-white border-slate-200 hover:border-indigo-200 hover:shadow-xs'
+                          : 'bg-slate-50 border-slate-200 opacity-60'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-slate-900 text-white shadow-2xs">
+                            {curr.code}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">
+                            {curr.name} ({curr.symbol})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCurrencyActive(curr.id)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                              curr.active !== false
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                            }`}
+                            title="Alternar estado activo/inactivo"
+                          >
+                            {curr.active !== false ? 'Activa' : 'Inactiva'}
+                          </button>
+
+                          {isBase && (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                              Base Global
+                            </span>
+                          )}
+                          {isSec && (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
+                              Secundaria Global
+                            </span>
+                          )}
+                        </div>
+
+                        {curr.description && (
+                          <p className="text-xs text-slate-500 mt-2 leading-snug">
+                            {curr.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditCurrency(curr)}
+                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                          title="Editar moneda"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCurrency(curr)}
+                          disabled={isBase || isSec}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+                          title={isBase || isSec ? 'No se puede eliminar la moneda global activa' : 'Eliminar moneda'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

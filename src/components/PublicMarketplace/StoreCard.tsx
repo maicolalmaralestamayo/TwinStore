@@ -45,7 +45,15 @@ export const StoreCard: React.FC<StoreCardProps> = ({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const usdRate = store.usdToCupRate || 330;
+  const baseCurrency = store.baseCurrency || 'USD';
+  const secondaryCurrency = store.secondaryCurrency;
+  let secondaryRate: number | null = null;
+  if (secondaryCurrency) {
+    const foundRate = store.exchangeRates?.find(
+      (r) => r.fromCurrency === baseCurrency && r.toCurrency === secondaryCurrency
+    );
+    secondaryRate = foundRate ? foundRate.rate : (store.usdToCupRate || 330);
+  }
   const normalizedAddress = formatNormalizedAddressText(store);
   const mainImage = store.images && store.images.length > 0 ? store.images[0] : getStoreLogoUrl(store);
 
@@ -94,10 +102,14 @@ export const StoreCard: React.FC<StoreCardProps> = ({
 
         {/* Tags superiores sobre la imagen: Tasa de cambio (izquierda) y Métodos de entrega/recogida (derecha) */}
         <div className="absolute top-2.5 inset-x-2.5 z-10 flex items-start justify-between gap-2">
-          {/* Tag Tasa de cambio */}
+          {/* Tag Moneda / Tasa de cambio */}
           <div className="bg-slate-950/85 backdrop-blur-md text-emerald-400 text-[10px] font-extrabold px-2.5 py-1 rounded-lg shadow-sm border border-emerald-500/30 flex items-center gap-1 font-mono shrink-0">
             <Coins className="w-3 h-3 text-emerald-400 shrink-0" />
-            <span>1$ = {formatNumberWithDots(usdRate)} CUP</span>
+            {secondaryCurrency && secondaryRate !== null ? (
+              <span>1 {baseCurrency} = {formatNumberWithDots(secondaryRate)} {secondaryCurrency}</span>
+            ) : (
+              <span>Moneda: {baseCurrency}</span>
+            )}
           </div>
 
           {/* Tags Métodos de recogida / entrega */}

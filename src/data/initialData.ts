@@ -1021,19 +1021,24 @@ export const INITIAL_STORES: Store[] = [
     badge: 'Inactiva',
     createdAt: '2026-08-01'
   }
-].map((s: any): Store => ({
-  ...s,
-  baseCurrency: s.baseCurrency || 'USD',
-  secondaryCurrency: s.secondaryCurrency !== undefined ? s.secondaryCurrency : 'CUP',
-  exchangeRates: s.exchangeRates || (s.secondaryCurrency !== undefined || true ? [
-    {
-      id: `rate-${s.id}-base-sec`,
-      fromCurrency: s.baseCurrency || 'USD',
-      toCurrency: s.secondaryCurrency !== undefined ? s.secondaryCurrency : 'CUP',
-      rate: s.usdToCupRate || 335,
-    },
-  ] : []),
-}));
+].map((s: any): Store => {
+  const storeRates = s.exchangeRates && s.exchangeRates.length > 0
+    ? s.exchangeRates
+    : [
+        {
+          id: `rate-${s.id}-usd-cup`,
+          storeId: s.id,
+          fromCurrency: 'USD',
+          toCurrency: 'CUP',
+          rate: s.usdToCupRate || 335,
+        },
+      ];
+  return {
+    ...s,
+    exchangeRates: storeRates,
+    usdToCupRate: s.usdToCupRate || (storeRates[0]?.rate || 335),
+  };
+});
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
@@ -1575,9 +1580,15 @@ export const INITIAL_PRODUCTS: Product[] = [
 ].map((p: any, idx: number): Product => {
   const { isService, ...rest } = p;
   const isServ = isService || p.productTypeId === 'pt-servicio' || (p.productType || '').toLowerCase().includes('servicio');
+  const priceVal = p.price !== undefined && p.price !== null ? p.price : p.priceUSD;
+  const currVal = p.currency || 'USD';
   return {
     ...rest,
     code: p.code || `PRD-${String(idx + 1).padStart(3, '0')}`,
+    price: priceVal,
+    priceUSD: p.priceUSD !== undefined && p.priceUSD !== null ? p.priceUSD : priceVal,
+    currency: currVal,
+    allowedExchangeRateIds: p.allowedExchangeRateIds || [`rate-${p.storeId}-usd-cup`],
     productTypeId: p.productTypeId || (isServ ? 'pt-servicio' : 'pt-producto'),
     productType: p.productType || (isServ ? 'Servicios Profesionales' : 'Productos Físicos'),
     paymentMethodIds: p.paymentMethodIds || ['pm-efectivo', 'pm-transferencia'],

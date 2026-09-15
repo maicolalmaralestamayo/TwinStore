@@ -6,7 +6,7 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_MARKETPLACE_CONFIG,
 } from '../src/data/initialData';
-import { Store, Product, MarketplaceConfig } from '../src/types';
+import { Store, Product, MarketplaceConfig, StoreExchangeRate } from '../src/types';
 
 let dbInstance: Database | null = null;
 const DB_FILE_PATH = path.join(process.cwd(), 'twinstore.sqlite');
@@ -88,7 +88,25 @@ function initTables(db: Database) {
       badge TEXT,
       paymentMethodIds TEXT,
       deliveryMethodIds TEXT,
+      exchangeRates TEXT,
       createdAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS store_exchange_rates (
+      id TEXT PRIMARY KEY,
+      storeId TEXT NOT NULL,
+      fromCurrency TEXT NOT NULL,
+      toCurrency TEXT NOT NULL,
+      rate REAL NOT NULL,
+      FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS product_allowed_exchange_rates (
+      id TEXT PRIMARY KEY,
+      productId TEXT NOT NULL,
+      storeId TEXT NOT NULL,
+      exchangeRateId TEXT NOT NULL,
+      FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS products (
@@ -97,7 +115,10 @@ function initTables(db: Database) {
       storeId TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
+      price REAL NOT NULL DEFAULT 0,
       priceUSD REAL NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      allowedExchangeRateIds TEXT,
       category TEXT NOT NULL,
       subcategory TEXT,
       imageUrl TEXT,
@@ -135,14 +156,20 @@ function initTables(db: Database) {
       tagsCatalog TEXT,
       productTypesCatalog TEXT,
       paymentMethodsCatalog TEXT,
-      deliveryMethodsCatalog TEXT
+      deliveryMethodsCatalog TEXT,
+      currenciesCatalog TEXT,
+      globalExchangeRates TEXT
     );
   `);
 
   // Safe migration for existing SQLite files
   try { db.run("ALTER TABLE stores ADD COLUMN paymentMethodIds TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE stores ADD COLUMN deliveryMethodIds TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE stores ADD COLUMN exchangeRates TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN code TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN price REAL;"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN currency TEXT DEFAULT 'USD';"); } catch (e) {}
+  try { db.run("ALTER TABLE products ADD COLUMN allowedExchangeRateIds TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN productTypeId TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN productType TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE products ADD COLUMN paymentMethodIds TEXT;"); } catch (e) {}
@@ -150,7 +177,11 @@ function initTables(db: Database) {
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN productTypesCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN paymentMethodsCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN deliveryMethodsCatalog TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN currenciesCatalog TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN globalExchangeRates TEXT;"); } catch (e) {}
   try { db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_code ON products(code);"); } catch (e) {}
+  try { db.run("CREATE INDEX IF NOT EXISTS idx_store_rates_storeId ON store_exchange_rates(storeId);"); } catch (e) {}
+  try { db.run("CREATE INDEX IF NOT EXISTS idx_prod_rates_productId ON product_allowed_exchange_rates(productId);"); } catch (e) {}
 
   // Backfill any products that have null or empty codes
   try {
@@ -196,6 +227,24 @@ export function saveStoreToDb(db: Database, store: Store) {
     ? ['dm-mensajeria', 'dm-recogida']
     : ['dm-recogida'];
 
+  let effectiveRates: StoreExchangeRate[] = Array.isArray(store.exchangeRates) && store.exchangeRates.length > 0
+    ? store.exchangeRates
+    : [
+        {
+          id: `rate-${store.id}-USD-CUP`,
+          storeId: store.id,
+          fromCurrency: 'USD',
+          toCurrency: 'CUP',
+          rate: Number(store.usdToCupRate) || 330,
+        },
+      ];
+
+  // Ensure storeId is set on each rate
+  effectiveRates = effectiveRates.map((r) => ({
+    ...r,
+    storeId: store.id,
+  }));
+
   const sql = `
     INSERT OR REPLACE INTO stores (
       id, name, logoUrl, images, slogan, description, whatsappPhone, location,
@@ -204,7 +253,8 @@ export function saveStoreToDb(db: Database, store: Store) {
       address_municipality, address_province, address_googleMapsUrl,
       usdToCupRate, deliveryAvailable, paymentOptions_transferAccepted,
       paymentOptions_transferFeePercentage, paymentOptions_acceptedCurrencies,
-      paymentOptions_notes, active, rating, badge, paymentMethodIds, deliveryMethodIds, createdAt
+      paymentOptions_notes, active, rating, badge, paymentMethodIds, deliveryMethodIds,
+      exchangeRates, createdAt
     ) VALUES (
       $id, $name, $logoUrl, $images, $slogan, $description, $whatsappPhone, $location,
       $address_street, $address_number, $address_building, $address_apartment,
@@ -212,7 +262,8 @@ export function saveStoreToDb(db: Database, store: Store) {
       $address_municipality, $address_province, $address_googleMapsUrl,
       $usdToCupRate, $deliveryAvailable, $paymentOptions_transferAccepted,
       $paymentOptions_transferFeePercentage, $paymentOptions_acceptedCurrencies,
-      $paymentOptions_notes, $active, $rating, $badge, $paymentMethodIds, $deliveryMethodIds, $createdAt
+      $paymentOptions_notes, $active, $rating, $badge, $paymentMethodIds, $deliveryMethodIds,
+      $exchangeRates, $createdAt
     )
   `;
 
@@ -235,7 +286,7 @@ export function saveStoreToDb(db: Database, store: Store) {
     '$address_municipality': store.address?.municipality || '',
     '$address_province': store.address?.province || '',
     '$address_googleMapsUrl': store.address?.googleMapsUrl || '',
-    '$usdToCupRate': store.usdToCupRate || 330,
+    '$usdToCupRate': store.usdToCupRate || (effectiveRates.find(r => r.fromCurrency === 'USD' && r.toCurrency === 'CUP')?.rate || 330),
     '$deliveryAvailable': store.deliveryAvailable ? 1 : 0,
     '$paymentOptions_transferAccepted': store.paymentOptions?.transferAccepted ? 1 : 0,
     '$paymentOptions_transferFeePercentage': store.paymentOptions?.transferFeePercentage || 0,
@@ -246,10 +297,32 @@ export function saveStoreToDb(db: Database, store: Store) {
     '$badge': store.badge || '',
     '$paymentMethodIds': JSON.stringify(store.paymentMethodIds || defaultPaymentIds),
     '$deliveryMethodIds': JSON.stringify(store.deliveryMethodIds || defaultDeliveryIds),
+    '$exchangeRates': JSON.stringify(effectiveRates),
     '$createdAt': store.createdAt || new Date().toISOString()
   };
 
   db.run(sql, params);
+
+  // Sync to normalized relational table store_exchange_rates (1 to Many)
+  try {
+    db.run("DELETE FROM store_exchange_rates WHERE storeId = $storeId", { "$storeId": store.id });
+    for (const r of effectiveRates) {
+      const rId = r.id || `rate-${store.id}-${r.fromCurrency}-${r.toCurrency}-${Math.random().toString(36).slice(2, 7)}`;
+      db.run(
+        `INSERT OR REPLACE INTO store_exchange_rates (id, storeId, fromCurrency, toCurrency, rate)
+         VALUES ($id, $storeId, $fromCurrency, $toCurrency, $rate)`,
+        {
+          "$id": rId,
+          "$storeId": store.id,
+          "$fromCurrency": r.fromCurrency,
+          "$toCurrency": r.toCurrency,
+          "$rate": Number(r.rate) || 1,
+        }
+      );
+    }
+  } catch (e) {
+    console.error('Error syncing store_exchange_rates table:', e);
+  }
 }
 
 export function rowToStore(row: any[]): Store {
@@ -260,7 +333,8 @@ export function rowToStore(row: any[]): Store {
     address_municipality, address_province, address_googleMapsUrl,
     usdToCupRate, deliveryAvailable, paymentOptions_transferAccepted,
     paymentOptions_transferFeePercentage, paymentOptions_acceptedCurrencies,
-    paymentOptions_notes, active, rating, badge, paymentMethodIdsStr, deliveryMethodIdsStr, createdAt
+    paymentOptions_notes, active, rating, badge, paymentMethodIdsStr, deliveryMethodIdsStr,
+    exchangeRatesStr, createdAt
   ] = row;
 
   let acceptedCurrencies: string[] = ['USD', 'CUP'];
@@ -300,6 +374,28 @@ export function rowToStore(row: any[]): Store {
     }
   } catch (e) {}
 
+  let exchangeRates: StoreExchangeRate[] = [];
+  try {
+    if (exchangeRatesStr) {
+      const parsed = JSON.parse(exchangeRatesStr);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        exchangeRates = parsed;
+      }
+    }
+  } catch (e) {}
+
+  if (exchangeRates.length === 0) {
+    exchangeRates = [
+      {
+        id: `rate-${id}-USD-CUP`,
+        storeId: String(id),
+        fromCurrency: 'USD',
+        toCurrency: 'CUP',
+        rate: Number(usdToCupRate) || 330,
+      },
+    ];
+  }
+
   return {
     id: String(id),
     name: String(name || ''),
@@ -321,7 +417,8 @@ export function rowToStore(row: any[]): Store {
       province: String(address_province || ''),
       googleMapsUrl: String(address_googleMapsUrl || ''),
     },
-    usdToCupRate: Number(usdToCupRate) || 330,
+    exchangeRates,
+    usdToCupRate: Number(usdToCupRate) || (exchangeRates.find(r => r.fromCurrency === 'USD' && r.toCurrency === 'CUP')?.rate || 330),
     deliveryAvailable: isDeliveryAvailable,
     paymentOptions: {
       transferAccepted: isTransferAccepted,
@@ -350,14 +447,19 @@ export function saveProductToDb(db: Database, product: Product) {
     }
   }
 
+  const effectiveCurrency = (product.currency || 'USD').toUpperCase();
+  const effectivePrice = Number(product.price !== undefined && product.price !== null ? product.price : product.priceUSD) || 0;
+  const effectivePriceUSD = Number(product.priceUSD !== undefined && product.priceUSD !== null ? product.priceUSD : effectivePrice) || 0;
+  const allowedRateIds = Array.isArray(product.allowedExchangeRateIds) ? product.allowedExchangeRateIds : [];
+
   const sql = `
     INSERT OR REPLACE INTO products (
-      id, code, storeId, title, description, priceUSD, category, subcategory,
-      imageUrl, images, isAvailable, isService, deliveryAvailable, featured,
+      id, code, storeId, title, description, price, priceUSD, currency, allowedExchangeRateIds,
+      category, subcategory, imageUrl, images, isAvailable, isService, deliveryAvailable, featured,
       tags, tagSelections, productTypeId, productType, paymentMethodIds, deliveryMethodIds, createdAt
     ) VALUES (
-      $id, $code, $storeId, $title, $description, $priceUSD, $category, $subcategory,
-      $imageUrl, $images, $isAvailable, $isService, $deliveryAvailable, $featured,
+      $id, $code, $storeId, $title, $description, $price, $priceUSD, $currency, $allowedExchangeRateIds,
+      $category, $subcategory, $imageUrl, $images, $isAvailable, $isService, $deliveryAvailable, $featured,
       $tags, $tagSelections, $productTypeId, $productType, $paymentMethodIds, $deliveryMethodIds, $createdAt
     )
   `;
@@ -370,8 +472,11 @@ export function saveProductToDb(db: Database, product: Product) {
     '$storeId': product.storeId,
     '$title': product.title,
     '$description': product.description || '',
-    '$priceUSD': product.priceUSD,
-    '$category': product.category,
+    '$price': effectivePrice,
+    '$priceUSD': effectivePriceUSD,
+    '$currency': effectiveCurrency,
+    '$allowedExchangeRateIds': JSON.stringify(allowedRateIds),
+    '$category': product.category || '',
     '$subcategory': product.subcategory || '',
     '$imageUrl': product.imageUrl || '',
     '$images': JSON.stringify(product.images || []),
@@ -389,6 +494,26 @@ export function saveProductToDb(db: Database, product: Product) {
   };
 
   db.run(sql, params);
+
+  // Sync to normalized relational table product_allowed_exchange_rates (Many to Many / Allowed Rates)
+  try {
+    db.run("DELETE FROM product_allowed_exchange_rates WHERE productId = $productId", { "$productId": product.id });
+    for (const rateId of allowedRateIds) {
+      const linkId = `link-${product.id}-${rateId}`;
+      db.run(
+        `INSERT OR REPLACE INTO product_allowed_exchange_rates (id, productId, storeId, exchangeRateId)
+         VALUES ($id, $productId, $storeId, $exchangeRateId)`,
+        {
+          "$id": linkId,
+          "$productId": product.id,
+          "$storeId": product.storeId,
+          "$exchangeRateId": rateId,
+        }
+      );
+    }
+  } catch (e) {
+    console.error('Error syncing product_allowed_exchange_rates table:', e);
+  }
 }
 
 export function rowToProduct(row: any[], columns?: string[]): Product {
@@ -422,6 +547,11 @@ export function rowToProduct(row: any[], columns?: string[]): Product {
   const deliveryMethodIdsStr = getCol('deliveryMethodIds', 18);
   const createdAt = getCol('createdAt', 19);
 
+  // New currency & price columns
+  const priceVal = getCol('price', -1);
+  const currencyVal = getCol('currency', -1);
+  const allowedExchangeRateIdsStr = getCol('allowedExchangeRateIds', -1);
+
   let tags: string[] = [];
   try {
     if (tagsStr) tags = JSON.parse(tagsStr);
@@ -447,10 +577,18 @@ export function rowToProduct(row: any[], columns?: string[]): Product {
     if (imagesStr) images = JSON.parse(imagesStr);
   } catch (e) {}
 
+  let allowedExchangeRateIds: string[] = [];
+  try {
+    if (allowedExchangeRateIdsStr) allowedExchangeRateIds = JSON.parse(allowedExchangeRateIdsStr);
+  } catch (e) {}
+
   const isServ = Boolean(isService) || String(productTypeId) === 'pt-servicio';
   const deliveryAvailableBool = Boolean(deliveryAvailable);
 
   const finalCode = String(codeVal || (id ? `PRD-${String(id).replace(/\D/g, '').padStart(3, '0') || '001'}` : 'PRD-001'));
+  const effectiveCurrency = String(currencyVal || 'USD').toUpperCase();
+  const effectivePrice = Number(priceVal !== undefined && priceVal !== null ? priceVal : priceUSD) || 0;
+  const effectivePriceUSD = Number(priceUSD !== undefined && priceUSD !== null ? priceUSD : effectivePrice) || 0;
 
   return {
     id: String(id),
@@ -458,7 +596,10 @@ export function rowToProduct(row: any[], columns?: string[]): Product {
     storeId: String(storeId),
     title: String(title || ''),
     description: String(description || ''),
-    priceUSD: Number(priceUSD) || 0,
+    price: effectivePrice,
+    priceUSD: effectivePriceUSD,
+    currency: effectiveCurrency,
+    allowedExchangeRateIds,
     category: String(category || ''),
     subcategory: String(subcategory || ''),
     imageUrl: String(imageUrl || ''),
@@ -482,17 +623,19 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
       id, name, slogan, logoUrl, defaultStoreLogoUrl, defaultProductImageUrl,
       bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
       accentColor, socialLinks, geoCatalog, departmentsCatalog, tagsCatalog,
-      productTypesCatalog, paymentMethodsCatalog, deliveryMethodsCatalog
+      productTypesCatalog, paymentMethodsCatalog, deliveryMethodsCatalog,
+      currenciesCatalog, globalExchangeRates
     ) VALUES (
       'default', $name, $slogan, $logoUrl, $defaultStoreLogoUrl, $defaultProductImageUrl,
       $bannerUrl, $bannerTitle, $bannerSubtitle, $primaryColor, $secondaryColor,
       $accentColor, $socialLinks, $geoCatalog, $departmentsCatalog, $tagsCatalog,
-      $productTypesCatalog, $paymentMethodsCatalog, $deliveryMethodsCatalog
+      $productTypesCatalog, $paymentMethodsCatalog, $deliveryMethodsCatalog,
+      $currenciesCatalog, $globalExchangeRates
     )
   `;
 
   const params = {
-    '$name': config.name || 'MercadoCuba',
+    '$name': config.name || 'TwinStore',
     '$slogan': config.slogan || '',
     '$logoUrl': config.logoUrl || '',
     '$defaultStoreLogoUrl': config.defaultStoreLogoUrl || '',
@@ -509,7 +652,9 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
     '$tagsCatalog': JSON.stringify(config.tagsCatalog || []),
     '$productTypesCatalog': JSON.stringify(config.productTypesCatalog || []),
     '$paymentMethodsCatalog': JSON.stringify(config.paymentMethodsCatalog || []),
-    '$deliveryMethodsCatalog': JSON.stringify(config.deliveryMethodsCatalog || [])
+    '$deliveryMethodsCatalog': JSON.stringify(config.deliveryMethodsCatalog || []),
+    '$currenciesCatalog': JSON.stringify(config.currenciesCatalog || []),
+    '$globalExchangeRates': JSON.stringify(config.globalExchangeRates || [])
   };
 
   db.run(sql, params);
@@ -520,7 +665,8 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
     id, name, slogan, logoUrl, defaultStoreLogoUrl, defaultProductImageUrl,
     bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
     accentColor, socialLinksStr, geoCatalogStr, departmentsCatalogStr, tagsCatalogStr,
-    productTypesCatalogStr, paymentMethodsCatalogStr, deliveryMethodsCatalogStr
+    productTypesCatalogStr, paymentMethodsCatalogStr, deliveryMethodsCatalogStr,
+    currenciesCatalogStr, globalExchangeRatesStr
   ] = row;
 
   let socialLinks = INITIAL_MARKETPLACE_CONFIG.socialLinks;
@@ -544,8 +690,14 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
   let deliveryMethodsCatalog = INITIAL_MARKETPLACE_CONFIG.deliveryMethodsCatalog;
   try { if (deliveryMethodsCatalogStr) deliveryMethodsCatalog = JSON.parse(deliveryMethodsCatalogStr); } catch (e) {}
 
+  let currenciesCatalog = INITIAL_MARKETPLACE_CONFIG.currenciesCatalog;
+  try { if (currenciesCatalogStr) currenciesCatalog = JSON.parse(currenciesCatalogStr); } catch (e) {}
+
+  let globalExchangeRates = INITIAL_MARKETPLACE_CONFIG.globalExchangeRates;
+  try { if (globalExchangeRatesStr) globalExchangeRates = JSON.parse(globalExchangeRatesStr); } catch (e) {}
+
   return {
-    name: String(name || 'MercadoCuba'),
+    name: String(name || 'TwinStore'),
     slogan: String(slogan || ''),
     logoUrl: String(logoUrl || ''),
     defaultStoreLogoUrl: String(defaultStoreLogoUrl || ''),
@@ -563,5 +715,7 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
     productTypesCatalog,
     paymentMethodsCatalog,
     deliveryMethodsCatalog,
+    currenciesCatalog,
+    globalExchangeRates,
   };
 }

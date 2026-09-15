@@ -7,6 +7,8 @@ import {
   generateWhatsAppOrderUrl,
   getStoreLogoUrl,
   extractProductDisplayTags,
+  getProductPricesInAllowedCurrencies,
+  getProductAllowedExchangeRates,
 } from '../../lib/utils';
 import {
   X,
@@ -168,9 +170,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const activeImage = gallery[activeImageIndex] || gallery[0] || 'local:product';
 
-  // Precio y Tasa de cambio
-  const usdRate = store.usdToCupRate || 330;
-  const cupPrice = calculateCUP(product.priceUSD, usdRate);
+  // Precios en monedas admitidas para este producto específico (según tasas permitidas por la tienda)
+  const productPrices = getProductPricesInAllowedCurrencies(product, store);
+  const primaryPriceItem = productPrices[0] || {
+    currency: product.currency || 'USD',
+    amount: product.price !== undefined && product.price !== null ? product.price : (product.priceUSD || 0),
+    rate: 1,
+    isOriginal: true,
+  };
+  const alternatePrices = productPrices.filter((p) => !p.isOriginal);
+  const allowedRates = getProductAllowedExchangeRates(product, store);
+
+  // Fallback for legacy cupPrice if used anywhere else
+  const cupPrice = alternatePrices.find(p => p.currency === 'CUP')?.amount ?? calculateCUP(primaryPriceItem.amount, store.usdToCupRate || 330);
 
   // Tipo de oferta
   const isServiceItem =
@@ -204,7 +216,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   const handleCopyMessage = () => {
-    const orderMessageText = `¡Hola! 👋 Vi su publicación:\n*${product.title}*${product.code ? ` (Cód: ${product.code})` : ''}\n💵 Precio: ${formatNumberWithDots(product.priceUSD)} USD (${formatNumberWithDots(cupPrice)} CUP)\n🏪 Tienda: ${store.name}\n\nMe interesa este ${isServiceItem ? 'servicio' : 'producto'}. ¿Tienen disponibilidad en este momento?`;
+    const priceText = productPrices.map(p => `${formatNumberWithDots(p.amount)} ${p.currency}`).join(' / ');
+    const orderMessageText = `¡Hola! 👋 Vi su publicación:\n*${product.title}*${product.code ? ` (Cód: ${product.code})` : ''}\n💵 Precio: ${priceText}\n🏪 Tienda: ${store.name}\n\nMe interesa este ${isServiceItem ? 'servicio' : 'producto'}. ¿Tienen disponibilidad en este momento?`;
     navigator.clipboard.writeText(orderMessageText);
     setCopied(true);
     onShowToast('Mensaje copiado', 'Puedes pegarlo en WhatsApp o SMS con el vendedor');
@@ -352,26 +365,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="bg-indigo-50/70 dark:bg-slate-800/90 p-4 rounded-2xl border border-indigo-100 dark:border-slate-700">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5 mb-2">
                 <DollarSign className="w-3.5 h-3.5" />
-                <span>Precio</span>
+                <span>Precio y Monedas de Cobro Permitidas</span>
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <div className="grid gap-3 items-center grid-cols-1 sm:grid-cols-2">
                 <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-indigo-200/80 dark:border-slate-700">
                   <span className="text-[10px] font-extrabold uppercase text-slate-500 dark:text-slate-400 block mb-0.5">
-                    Precio en USD (Moneda Base)
+                    Precio en {primaryPriceItem.currency} (Moneda del Producto)
                   </span>
                   <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                    ${formatNumberWithDots(product.priceUSD)} USD
+                    {formatNumberWithDots(primaryPriceItem.amount)} {primaryPriceItem.currency}
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-indigo-200/80 dark:border-slate-700">
-                  <span className="text-[10px] font-extrabold uppercase text-indigo-700 dark:text-indigo-300 block mb-0.5">
-                    Precio en CUP (Moneda Nacional)
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                    {formatNumberWithDots(cupPrice)} CUP
+                {alternatePrices.length > 0 ? (
+                  alternatePrices.map((alt) => (
+                    <div key={alt.currency} className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-indigo-200/80 dark:border-slate-700">
+                      <span className="text-[10px] font-extrabold uppercase text-indigo-700 dark:text-indigo-300 block mb-0.5">
+                        Equivalente en {alt.currency} (Tasa: {alt.rate})
+                      </span>
+                      <div className="text-xl sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                        {formatNumberWithDots(alt.amount)} {alt.currency}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white/60 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Este producto no tiene tasas secundarias habilitadas; se cobra exclusivamente en {primaryPriceItem.currency}.
+                    </span>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -379,20 +402,35 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
                 <Coins className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Tasa de Cambio</span>
+                <span>Tasas de Cambio Aplicables</span>
               </span>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <div className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
-                    Tasa Oficial de la Tienda ({store.name})
+                    Tasas de la Tienda ({store.name})
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Conversión aplicada automáticamente a este producto
+                    {allowedRates.length > 0
+                      ? 'Tasas de cambio permitidas específicamente para el cobro de este producto'
+                      : `Este producto solo se cobra en su moneda original (${primaryPriceItem.currency})`}
                   </div>
                 </div>
-                <div className="font-mono font-black text-sm sm:text-base bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs">
-                  1 USD x {formatNumberWithDots(usdRate)} CUP
-                </div>
+                {allowedRates.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {allowedRates.map((r) => (
+                      <div
+                        key={r.id}
+                        className="font-mono font-black text-xs sm:text-sm bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs"
+                      >
+                        1 {r.fromCurrency} = {formatNumberWithDots(r.rate)} {r.toCurrency}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="font-mono font-bold text-xs bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                    Sin conversión alterna
+                  </div>
+                )}
               </div>
             </div>
 
