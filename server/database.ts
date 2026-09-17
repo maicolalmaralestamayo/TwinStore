@@ -101,6 +101,14 @@ function initTables(db: Database) {
       FOREIGN KEY (storeId) REFERENCES stores(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS global_exchange_rates (
+      id TEXT PRIMARY KEY,
+      fromCurrency TEXT NOT NULL,
+      toCurrency TEXT NOT NULL,
+      rate REAL NOT NULL,
+      description TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS product_allowed_exchange_rates (
       id TEXT PRIMARY KEY,
       productId TEXT NOT NULL,
@@ -658,6 +666,29 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
   };
 
   db.run(sql, params);
+
+  // Sync to normalized relational table global_exchange_rates
+  try {
+    db.run("DELETE FROM global_exchange_rates");
+    if (Array.isArray(config.globalExchangeRates)) {
+      for (const gr of config.globalExchangeRates) {
+        const grId = gr.id || `rate-global-${gr.fromCurrency}-${gr.toCurrency}-${Math.random().toString(36).slice(2, 7)}`;
+        db.run(
+          `INSERT OR REPLACE INTO global_exchange_rates (id, fromCurrency, toCurrency, rate, description)
+           VALUES ($id, $fromCurrency, $toCurrency, $rate, $description)`,
+          {
+            "$id": grId,
+            "$fromCurrency": gr.fromCurrency,
+            "$toCurrency": gr.toCurrency,
+            "$rate": Number(gr.rate) || 1,
+            "$description": gr.description || '',
+          }
+        );
+      }
+    }
+  } catch (e) {
+    console.error('Error syncing global_exchange_rates table:', e);
+  }
 }
 
 export function rowToConfig(row: any[]): MarketplaceConfig {

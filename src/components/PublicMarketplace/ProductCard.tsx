@@ -9,6 +9,7 @@ import {
 import {
   MessageCircle,
 } from 'lucide-react';
+import { CartQuantityControl } from '../common/CartQuantityControl';
 import { interfaz } from '../../data/interfaz';
 
 interface ProductCardProps {
@@ -16,12 +17,20 @@ interface ProductCardProps {
   store?: Store;
   currencyMode: CurrencyDisplayMode;
   onSelectProduct: (product: Product) => void;
+  onAddToCart?: (product: Product, quantity?: number) => void;
+  onUpdateQuantity?: (productId: string, quantity: number) => void;
+  onRemoveFromCart?: (productId: string) => void;
+  cartQuantity?: number;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   store,
   onSelectProduct,
+  onAddToCart,
+  onUpdateQuantity,
+  onRemoveFromCart,
+  cartQuantity = 0,
 }) => {
   // Product currency and prices in allowed currencies for this specific product
   const pricesInCurrencies = getProductPricesInAllowedCurrencies(product, store);
@@ -32,6 +41,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     isOriginal: true,
   };
   const alternateItem = pricesInCurrencies.find((p) => !p.isOriginal);
+
+  const handleRemove = () => {
+    if (onRemoveFromCart) {
+      onRemoveFromCart(product.id);
+    } else if (onUpdateQuantity) {
+      onUpdateQuantity(product.id, 0);
+    }
+  };
+
+  const handleQuantityChange = (newQty: number) => {
+    if (cartQuantity === 0 && newQty > 0 && onAddToCart) {
+      onAddToCart(product, newQty);
+      return;
+    }
+    if (newQty <= 0) {
+      handleRemove();
+      return;
+    }
+    if (onUpdateQuantity) {
+      onUpdateQuantity(product.id, newQty);
+    } else if (onAddToCart) {
+      const diff = newQty - cartQuantity;
+      if (diff > 0) {
+        onAddToCart(product, diff);
+      }
+    }
+  };
 
   const handleWhatsAppClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -105,17 +141,33 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* 5. Botón con el ícono de WhatsApp y texto Contactar */}
-        <div className="pt-2">
+        {/* 5. Botones de Acción: Control de Cantidad y Contactar */}
+        <div className="pt-2 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+          {(onAddToCart || onUpdateQuantity) && (
+            <div className="w-full flex items-center justify-center">
+              <CartQuantityControl
+                quantity={cartQuantity}
+                onUpdateQuantity={handleQuantityChange}
+                onRemove={handleRemove}
+                size="md"
+                addLabel="Añadir"
+                allowDeleteAtOne={true}
+                showAddButtonWhenZero={true}
+                showRemoveButton={true}
+                className="w-full justify-center"
+              />
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleWhatsAppClick}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs text-xs sm:text-sm cursor-pointer"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-2 px-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs text-xs cursor-pointer select-none"
             title={`${interfaz.productCard.contactAriaLabel} ${product.title}`}
             aria-label={`${interfaz.productCard.contactAriaLabel} ${product.title}`}
           >
-            <MessageCircle className="w-4 h-4 shrink-0 fill-current" />
-            <span>{interfaz.productCard.contactButton}</span>
+            <MessageCircle className="w-3.5 h-3.5 shrink-0 fill-current" />
+            <span className="truncate">{interfaz.productCard.contactButton}</span>
           </button>
         </div>
       </div>

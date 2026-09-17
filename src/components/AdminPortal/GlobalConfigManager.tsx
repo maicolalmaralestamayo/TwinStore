@@ -129,19 +129,19 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     config.globalExchangeRate || 330
   );
 
-  // Suggested marketplace exchange rates state
+  // Global marketplace exchange rates state
   const [globalExchangeRates, setGlobalExchangeRates] = useState<GlobalExchangeRate[]>(
     config.globalExchangeRates && config.globalExchangeRates.length > 0
       ? config.globalExchangeRates
       : [
-          { id: 'rate-sug-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 335 },
-          { id: 'rate-sug-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
-          { id: 'rate-sug-mlc-cup', fromCurrency: 'MLC', toCurrency: 'CUP', rate: 290 },
+          { id: 'rate-global-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 335 },
+          { id: 'rate-global-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
+          { id: 'rate-global-mlc-cup', fromCurrency: 'MLC', toCurrency: 'CUP', rate: 290 },
         ]
   );
-  const [newSugRateFrom, setNewSugRateFrom] = useState('USD');
-  const [newSugRateTo, setNewSugRateTo] = useState('CUP');
-  const [newSugRateValue, setNewSugRateValue] = useState<number | ''>(335);
+  const [newRateFrom, setNewRateFrom] = useState('USD');
+  const [newRateTo, setNewRateTo] = useState('CUP');
+  const [newRateValue, setNewRateValue] = useState<number | ''>(335);
 
   // New currency inputs
   const [newCurrCode, setNewCurrCode] = useState('');
@@ -1081,19 +1081,12 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   };
 
   // --- CURRENCIES NOMENCLATOR & GLOBAL CONFIG HANDLERS ---
-  const saveCurrenciesCatalog = (
-    updated: CurrencyItem[],
-    newBase?: string,
-    newSec?: string,
-    newRate?: number
-  ) => {
+  const saveCurrenciesCatalog = (updated: CurrencyItem[]) => {
     setCurrenciesCatalog(updated);
     const updatedConfig: MarketplaceConfig = {
       ...config,
       currenciesCatalog: updated,
-      baseCurrency: newBase !== undefined ? newBase : globalBaseCurrency,
-      secondaryCurrency: newSec !== undefined ? newSec : globalSecondaryCurrency,
-      globalExchangeRate: newRate !== undefined ? newRate : globalExchangeRate,
+      globalExchangeRates,
     };
     onUpdateConfig(updatedConfig);
   };
@@ -1129,26 +1122,26 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   };
 
   const handleDeleteCurrency = (curr: CurrencyItem) => {
-    if (curr.code === globalBaseCurrency) {
-      onShowToast('Acción no permitida', `"${curr.code}" está configurada como la Moneda Base Global`, 'error');
-      return;
-    }
-    if (curr.code === globalSecondaryCurrency) {
-      onShowToast('Acción no permitida', `"${curr.code}" está configurada como la Moneda Secundaria Global`, 'error');
+    // Check if the currency is in use in any global exchange rate
+    const usedInRates = globalExchangeRates.some(
+      (r) => r.fromCurrency === curr.code || r.toCurrency === curr.code
+    );
+    if (usedInRates) {
+      onShowToast(
+        'Moneda en uso',
+        `No se puede eliminar "${curr.code}" porque está configurada en una o más tasas globales. Elimina primero esas tasas.`,
+        'error'
+      );
       return;
     }
     const updated = currenciesCatalog.filter((c) => c.id !== curr.id);
     saveCurrenciesCatalog(updated);
-    onShowToast('Moneda eliminada', `Se eliminó "${curr.code}" del catálogo`);
+    onShowToast('Moneda eliminada', `Se eliminó "${curr.code}" del nomenclador`);
   };
 
   const handleToggleCurrencyActive = (id: string) => {
     const updated = currenciesCatalog.map((c) => {
       if (c.id === id) {
-        if (c.active && (c.code === globalBaseCurrency || c.code === globalSecondaryCurrency)) {
-          onShowToast('Moneda en uso', `No puedes desactivar "${c.code}" porque está configurada como moneda global`, 'error');
-          return c;
-        }
         return { ...c, active: !c.active };
       }
       return c;
@@ -1189,10 +1182,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   };
 
   const handleResetCurrencies = () => {
-    saveCurrenciesCatalog(INITIAL_CURRENCIES_CATALOG, 'USD', 'CUP', 330);
-    setGlobalBaseCurrency('USD');
-    setGlobalSecondaryCurrency('CUP');
-    setGlobalExchangeRate(330);
+    saveCurrenciesCatalog(INITIAL_CURRENCIES_CATALOG);
     onShowToast('Monedas restablecidas', 'Se restablecieron las monedas por defecto (USD, CUP, EUR)');
   };
 
@@ -1200,31 +1190,28 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     const updatedConfig: MarketplaceConfig = {
       ...config,
       currenciesCatalog,
-      baseCurrency: globalBaseCurrency,
-      secondaryCurrency: globalSecondaryCurrency,
-      globalExchangeRate: Number(globalExchangeRate) || 1,
       globalExchangeRates,
     };
     onUpdateConfig(updatedConfig);
     onShowToast(
-      'Configuración de divisas guardada',
-      `Se actualizaron las divisas y el nomenclador de tasas sugeridas del marketplace`
+      'Configuración guardada',
+      'Se actualizaron el catálogo de monedas y las tasas globales del marketplace'
     );
   };
 
   const handleAddGlobalRate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSugRateFrom || !newSugRateTo || !newSugRateValue || Number(newSugRateValue) <= 0) {
-      onShowToast('Datos requeridos', 'Selecciona monedas válidas y una tasa positiva', 'error');
+    if (!newRateFrom || !newRateTo || !newRateValue || Number(newRateValue) <= 0) {
+      onShowToast('Datos requeridos', 'Selecciona monedas válidas y un valor de conversión positivo', 'error');
       return;
     }
-    if (newSugRateFrom === newSugRateTo) {
-      onShowToast('Monedas iguales', 'Las monedas de origen y destino no pueden ser iguales', 'error');
+    if (newRateFrom === newRateTo) {
+      onShowToast('Monedas iguales', 'La 1ª moneda (origen) y la 2ª moneda (destino) deben ser distintas', 'error');
       return;
     }
-    const val = Number(newSugRateValue);
+    const val = Number(newRateValue);
     const existingIdx = globalExchangeRates.findIndex(
-      (r) => r.fromCurrency === newSugRateFrom && r.toCurrency === newSugRateTo
+      (r) => r.fromCurrency === newRateFrom && r.toCurrency === newRateTo
     );
     let updated: GlobalExchangeRate[];
     if (existingIdx >= 0) {
@@ -1234,9 +1221,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       updated = [
         ...globalExchangeRates,
         {
-          id: `rate-sug-${newSugRateFrom.toLowerCase()}-${newSugRateTo.toLowerCase()}-${Date.now()}`,
-          fromCurrency: newSugRateFrom,
-          toCurrency: newSugRateTo,
+          id: `rate-global-${newRateFrom.toLowerCase()}-${newRateTo.toLowerCase()}-${Date.now()}`,
+          fromCurrency: newRateFrom,
+          toCurrency: newRateTo,
           rate: val,
         },
       ];
@@ -1246,7 +1233,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       ...config,
       globalExchangeRates: updated,
     });
-    onShowToast('Tasa sugerida agregada', `1 ${newSugRateFrom} = ${val} ${newSugRateTo}`);
+    onShowToast('Tasa global registrada', `1 ${newRateFrom} = ${val} ${newRateTo}`);
   };
 
   const handleDeleteGlobalRate = (rateId: string) => {
@@ -1256,7 +1243,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       ...config,
       globalExchangeRates: updated,
     });
-    onShowToast('Tasa eliminada', 'Se eliminó la tasa sugerida del marketplace');
+    onShowToast('Tasa eliminada', 'Se eliminó la tasa global del marketplace');
   };
 
   const handleUpdateGlobalRateValue = (rateId: string, val: number) => {
@@ -1266,106 +1253,133 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     setGlobalExchangeRates(updated);
   };
 
-  const handleBroadcastRatesToStores = () => {
+  // Propaga UNA tasa global específica a las tiendas que tengan esa misma combinación
+  const handlePropagateSingleRate = (gr: GlobalExchangeRate) => {
+    if (!stores || stores.length === 0 || !onUpdateStores) {
+      onShowToast('Sin tiendas', 'No hay tiendas registradas para propagar la tasa', 'info');
+      return;
+    }
+
+    let updatedStoresCount = 0;
+    const updatedStores = stores.map((store) => {
+      const existingRates = store.exchangeRates ? [...store.exchangeRates] : [];
+      const matchIdx = existingRates.findIndex(
+        (r) => r.fromCurrency === gr.fromCurrency && r.toCurrency === gr.toCurrency
+      );
+
+      // Solamente copia a las tasas de tiendas que presenten la misma combinación
+      if (matchIdx >= 0) {
+        existingRates[matchIdx] = {
+          ...existingRates[matchIdx],
+          rate: gr.rate,
+        };
+        updatedStoresCount++;
+        return {
+          ...store,
+          usdToCupRate: (gr.fromCurrency === 'USD' && gr.toCurrency === 'CUP') ? gr.rate : store.usdToCupRate,
+          exchangeRates: existingRates,
+        };
+      }
+
+      return store;
+    });
+
+    if (updatedStoresCount === 0) {
+      onShowToast(
+        'Sin tiendas con esta combinación',
+        `Ninguna tienda tiene actualmente configurada la combinación ${gr.fromCurrency} → ${gr.toCurrency}. Solo se propaga a tiendas que ya la posean.`,
+        'info'
+      );
+      return;
+    }
+
+    onUpdateStores(updatedStores);
+    onShowToast(
+      'Tasa propagada',
+      `Se propagó 1 ${gr.fromCurrency} = ${gr.rate} ${gr.toCurrency} a ${updatedStoresCount} tienda(s) con la misma combinación`
+    );
+  };
+
+  // Propaga TODAS las tasas globales a las tiendas que presenten las mismas combinaciones
+  const handlePropagateAllMatchingRates = () => {
     if (!stores || stores.length === 0 || !onUpdateStores) {
       onShowToast('Sin tiendas', 'No hay tiendas registradas para propagar las tasas', 'info');
       return;
     }
-    let totalUpdated = 0;
+
+    let updatedStoresCount = 0;
+    let updatedRatesCount = 0;
+
     const updatedStores = stores.map((store) => {
       const existingRates = store.exchangeRates ? [...store.exchangeRates] : [];
-      let storeChanged = false;
+      let storeModified = false;
+
       for (const gr of globalExchangeRates) {
-        const idx = existingRates.findIndex(
+        const matchIdx = existingRates.findIndex(
           (r) => r.fromCurrency === gr.fromCurrency && r.toCurrency === gr.toCurrency
         );
-        if (idx >= 0) {
-          if (existingRates[idx].rate !== gr.rate) {
-            existingRates[idx].rate = gr.rate;
-            storeChanged = true;
+
+        // Solamente copia a las tasas de tiendas que presenten la misma combinación
+        if (matchIdx >= 0) {
+          if (existingRates[matchIdx].rate !== gr.rate) {
+            existingRates[matchIdx] = {
+              ...existingRates[matchIdx],
+              rate: gr.rate,
+            };
+            storeModified = true;
+            updatedRatesCount++;
           }
-        } else {
-          existingRates.push({
-            id: `rate-${store.id}-${gr.fromCurrency}-${gr.toCurrency}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            storeId: store.id,
-            fromCurrency: gr.fromCurrency,
-            toCurrency: gr.toCurrency,
-            rate: gr.rate,
-          });
-          storeChanged = true;
         }
       }
-      if (storeChanged) totalUpdated++;
-      return {
-        ...store,
-        exchangeRates: existingRates,
-      };
-    });
-    onUpdateStores(updatedStores);
-    onShowToast(
-      'Tasas propagadas',
-      `Se propagaron las tasas sugeridas a ${totalUpdated} tiendas del marketplace`
-    );
-  };
 
-  const handleApplyGlobalRateToMatchingStores = () => {
-    if (!globalSecondaryCurrency) {
-      onShowToast('Sin moneda secundaria', 'Selecciona una moneda secundaria global para propagar la tasa', 'error');
-      return;
-    }
-    const rateNum = Number(globalExchangeRate);
-    if (!rateNum || rateNum <= 0) {
-      onShowToast('Tasa inválida', 'Ingresa una tasa de cambio numérica mayor a 0', 'error');
-      return;
-    }
-    if (!stores || stores.length === 0 || !onUpdateStores) {
-      onShowToast('Sin tiendas', 'No hay tiendas para actualizar', 'info');
-      return;
-    }
-
-    let matchedCount = 0;
-    const updatedStores = stores.map((store) => {
-      const sBase = store.baseCurrency || 'USD';
-      const sSec = store.secondaryCurrency !== undefined ? store.secondaryCurrency : (sBase === 'USD' ? 'CUP' : '');
-      if (sBase === globalBaseCurrency && sSec === globalSecondaryCurrency) {
-        matchedCount++;
-        const existingRates = store.exchangeRates || [];
-        const updatedRates = existingRates.map((r) =>
-          r.fromCurrency === sBase && r.toCurrency === sSec
-            ? { ...r, rate: rateNum }
-            : r
-        );
-        if (!updatedRates.some((r) => r.fromCurrency === sBase && r.toCurrency === sSec)) {
-          updatedRates.push({
-            id: `rate-${store.id}-${sBase}-${sSec}`,
-            fromCurrency: sBase,
-            toCurrency: sSec,
-            rate: rateNum,
-          });
-        }
+      if (storeModified) {
+        updatedStoresCount++;
+        const usdCup = existingRates.find((r) => r.fromCurrency === 'USD' && r.toCurrency === 'CUP');
         return {
           ...store,
-          usdToCupRate: (sBase === 'USD' && sSec === 'CUP') ? rateNum : store.usdToCupRate,
-          exchangeRates: updatedRates,
+          usdToCupRate: usdCup ? usdCup.rate : store.usdToCupRate,
+          exchangeRates: existingRates,
         };
       }
+
       return store;
     });
 
-    if (matchedCount === 0) {
+    if (updatedStoresCount === 0) {
       onShowToast(
-        'Sin coincidencias',
-        `Ninguna tienda tiene ${globalBaseCurrency} como base y ${globalSecondaryCurrency} como secundaria`,
+        'Sin cambios',
+        'Las tiendas con combinaciones coincidentes ya tienen los mismos valores que las tasas globales',
         'info'
       );
-    } else {
-      onUpdateStores(updatedStores);
-      onShowToast(
-        'Tasa propagada',
-        `Se actualizó la tasa a ${rateNum} en ${matchedCount} tienda(s) con combinación ${globalBaseCurrency} -> ${globalSecondaryCurrency}`,
-        'success'
-      );
+      return;
     }
+
+    onUpdateStores(updatedStores);
+    onShowToast(
+      'Tasas propagadas',
+      `Se actualizaron ${updatedRatesCount} tasa(s) en ${updatedStoresCount} tienda(s) que presentan las mismas combinaciones`
+    );
+  };
+
+  // Modificar una tasa directamente en una tienda desde la vista de administración
+  const handleUpdateStoreDirectRate = (storeId: string, rateId: string, newRateVal: number) => {
+    if (!stores || !onUpdateStores) return;
+    const updated = stores.map((s) => {
+      if (s.id === storeId) {
+        const rates = (s.exchangeRates || []).map((r) =>
+          r.id === rateId ? { ...r, rate: newRateVal } : r
+        );
+        const usdCup = rates.find((r) => r.fromCurrency === 'USD' && r.toCurrency === 'CUP');
+        return {
+          ...s,
+          usdToCupRate: usdCup ? usdCup.rate : s.usdToCupRate,
+          exchangeRates: rates,
+        };
+      }
+      return s;
+    });
+    onUpdateStores(updated);
+    onShowToast('Tasa de tienda actualizada', `Nueva tasa: ${newRateVal}`);
   };
 
   const currentNomCatalog =
@@ -2648,181 +2662,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           </div>
         </div>
       ) : activeSubTab === 'currencies' ? (
-        /* SECTION: CURRENCIES NOMENCLATOR & GLOBAL MARKETPLACE CURRENCIES CONFIGURATION */
-        <div className="space-y-6">
-          {/* CARD 1: NOMENCLADOR DE TASAS SUGERIDAS DEL MARKETPLACE */}
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
-                  <span>Nomenclador de Tasas de Cambio Sugeridas del Marketplace</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Define las tasas sugeridas entre monedas (ej. 1 USD = 335 CUP, 1 EUR = 360 CUP). Las tiendas pueden importar o personalizar sus propias tasas en base a estas sugerencias.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBroadcastRatesToStores}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                  title="Propagar estas tasas sugeridas a todas las tiendas registradas"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  <span>Propagar a Todas las Tiendas</span>
-                </button>
-              </div>
-            </div>
-
-            {/* ADD SUGGESTED RATE FORM */}
-            <form onSubmit={handleAddGlobalRate} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              <div className="sm:col-span-4">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  1ª Moneda (Origen / Producto)
-                </label>
-                <select
-                  value={newSugRateFrom}
-                  onChange={(e) => setNewSugRateFrom(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
-                >
-                  {currenciesCatalog
-                    .filter((c) => c.active !== false)
-                    .map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code} - {c.name} ({c.symbol})
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-4">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  2ª Moneda (Destino de Cobro)
-                </label>
-                <select
-                  value={newSugRateTo}
-                  onChange={(e) => setNewSugRateTo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
-                >
-                  {currenciesCatalog
-                    .filter((c) => c.active !== false && c.code !== newSugRateFrom)
-                    .map((c) => (
-                      <option key={c.id} value={c.code}>
-                        {c.code} - {c.name} ({c.symbol})
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Tasa (1 {newSugRateFrom} = X {newSugRateTo})
-                </label>
-                <input
-                  type="number"
-                  min="0.0001"
-                  step="any"
-                  value={newSugRateValue}
-                  onChange={(e) =>
-                    setNewSugRateValue(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  placeholder="335"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 font-mono"
-                  required
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Añadir Sugerida</span>
-                </button>
-              </div>
-            </form>
-
-            {/* SUGGESTED RATES GRID */}
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center justify-between">
-                <span>Tasas Sugeridas del Marketplace ({globalExchangeRates.length})</span>
-                <span className="text-[11px] font-normal text-slate-400">
-                  Las tiendas pueden importarlas con un solo clic
-                </span>
-              </h4>
-
-              {globalExchangeRates.length === 0 ? (
-                <div className="p-6 rounded-2xl border-2 border-dashed border-slate-200 text-center text-xs text-slate-400">
-                  No hay tasas sugeridas configuradas en el marketplace.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {globalExchangeRates.map((gr) => (
-                    <div
-                      key={gr.id}
-                      className="p-3.5 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-slate-900 text-white shadow-2xs">
-                            {gr.fromCurrency}
-                          </span>
-                          <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-mono font-black text-xs px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            {gr.toCurrency}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                          1 {gr.fromCurrency} = {gr.rate} {gr.toCurrency}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
-                          <span className="text-[10px] font-bold text-slate-500">Tasa:</span>
-                          <input
-                            type="number"
-                            min="0.0001"
-                            step="any"
-                            value={gr.rate}
-                            onChange={(e) =>
-                              handleUpdateGlobalRateValue(gr.id, Number(e.target.value) || 1)
-                            }
-                            className="w-16 text-center font-mono font-black text-xs text-slate-900 outline-none bg-transparent"
-                          />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGlobalRate(gr.id)}
-                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Eliminar tasa sugerida"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
-              <button
-                type="button"
-                onClick={handleSaveGlobalCurrencyConfig}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-              >
-                <Check className="w-4 h-4" />
-                <span>Guardar Tasas del Marketplace</span>
-              </button>
-            </div>
-          </div>
-
-          {/* CARD 2: NOMENCLATOR DE MONEDAS DEL MARKETPLACE */}
+        /* SECTION: CURRENCIES NOMENCLATOR & GLOBAL EXCHANGE RATES WITH SEPARATE STORE RATES TABLE */
+        <div className="space-y-8">
+          {/* CARD 1: NOMENCLADOR DE MONEDAS DEL MARKETPLACE */}
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
             <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -2831,7 +2673,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   <span>Nomenclador de Monedas Admitidas</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Tipos de moneda registrados en el marketplace (USD, CUP, EUR, MLC, etc.). Cada tienda puede seleccionar su moneda base y secundaria a partir de esta lista.
+                  Define las monedas admitidas en el marketplace. No es obligatorio que existan 2 monedas iniciales: con una sola moneda registrada, el marketplace solo vende y cobra en esa única moneda sin requerir tasas de cambio.
                 </p>
               </div>
 
@@ -2845,6 +2687,21 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 <span>Restaurar por Defecto</span>
               </button>
             </div>
+
+            {/* SINGLE CURRENCY NOTICE */}
+            {currenciesCatalog.length === 1 && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-800 shrink-0">
+                  <Coins className="w-4 h-4" />
+                </div>
+                <div className="text-xs text-amber-900">
+                  <p className="font-extrabold">Operación en Moneda Única ({currenciesCatalog[0].code})</p>
+                  <p className="mt-0.5 text-amber-800 leading-relaxed">
+                    El marketplace cuenta con una sola moneda registrada. Esto significa que todas las tiendas venden y cobran exclusivamente en <strong>{currenciesCatalog[0].name} ({currenciesCatalog[0].code})</strong>. No es necesario definir tasas de cambio a menos que añadas más monedas al catálogo.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* ADD NEW CURRENCY FORM */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
@@ -2919,15 +2776,13 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
               <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center justify-between">
                 <span>Monedas Registradas ({currenciesCatalog.length})</span>
                 <span className="text-[11px] font-normal text-slate-400">
-                  Haz clic en el estado para activar/desactivar monedas
+                  Haz clic en el estado para activar o desactivar cada moneda
                 </span>
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {currenciesCatalog.map((curr) => {
                   const isEditing = editingCurrId === curr.id;
-                  const isBase = curr.code === globalBaseCurrency;
-                  const isSec = curr.code === globalSecondaryCurrency;
 
                   if (isEditing) {
                     return (
@@ -3043,17 +2898,6 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                           >
                             {curr.active !== false ? 'Activa' : 'Inactiva'}
                           </button>
-
-                          {isBase && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
-                              Base Global
-                            </span>
-                          )}
-                          {isSec && (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">
-                              Secundaria Global
-                            </span>
-                          )}
                         </div>
 
                         {curr.description && (
@@ -3075,9 +2919,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDeleteCurrency(curr)}
-                          disabled={isBase || isSec}
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
-                          title={isBase || isSec ? 'No se puede eliminar la moneda global activa' : 'Eliminar moneda'}
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Eliminar moneda"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -3087,6 +2930,372 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 })}
               </div>
             </div>
+          </div>
+
+          {/* CARD 2: TABLA DE TASAS DE CAMBIO GLOBALES DEL MARKETPLACE */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+                  <span>Tabla de Tasas de Cambio Globales del Marketplace</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Añadir una tasa significa poner dos tipos de moneda con el valor de conversión en una única dirección o sentido (ej. 1 USD = 335 CUP). Luego cada tasa puede propagarse opcionalmente a las tiendas que tengan esa misma combinación.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handlePropagateAllMatchingRates}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  title="Propagar tasas globales a todas las tiendas que tengan la misma combinación"
+                >
+                  <ArrowRightLeft className="w-4 h-4" />
+                  <span>Propagar todas a tiendas con misma combinación</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGlobalCurrencyConfig}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Guardar Tasas Globales</span>
+                </button>
+              </div>
+            </div>
+
+            {currenciesCatalog.length < 2 ? (
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                Se requieren al menos 2 monedas registradas en el nomenclador para definir tasas de cambio entre divisas.
+              </div>
+            ) : (
+              <>
+                {/* ADD GLOBAL RATE FORM */}
+                <form onSubmit={handleAddGlobalRate} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div className="sm:col-span-4">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      1ª Moneda (Origen / Producto)
+                    </label>
+                    <select
+                      value={newRateFrom}
+                      onChange={(e) => {
+                        setNewRateFrom(e.target.value);
+                        if (e.target.value === newRateTo) {
+                          const other = currenciesCatalog.find((c) => c.code !== e.target.value);
+                          if (other) setNewRateTo(other.code);
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                    >
+                      {currenciesCatalog
+                        .filter((c) => c.active !== false)
+                        .map((c) => (
+                          <option key={c.id} value={c.code}>
+                            {c.code} - {c.name} ({c.symbol})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-4">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      2ª Moneda (Destino de Cobro)
+                    </label>
+                    <select
+                      value={newRateTo}
+                      onChange={(e) => setNewRateTo(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                    >
+                      {currenciesCatalog
+                        .filter((c) => c.active !== false && c.code !== newRateFrom)
+                        .map((c) => (
+                          <option key={c.id} value={c.code}>
+                            {c.code} - {c.name} ({c.symbol})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Valor (1 {newRateFrom} = X {newRateTo})
+                    </label>
+                    <input
+                      type="number"
+                      min="0.0001"
+                      step="any"
+                      value={newRateValue}
+                      onChange={(e) =>
+                        setNewRateValue(e.target.value === '' ? '' : Number(e.target.value))
+                      }
+                      placeholder="335"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 font-mono"
+                      required
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <button
+                      type="submit"
+                      className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Añadir Tasa</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* GLOBAL RATES TABLE */}
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 font-extrabold text-[11px] border-b border-slate-200 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3">Combinación (Dirección Única)</th>
+                        <th className="px-4 py-3">Conversión Global</th>
+                        <th className="px-4 py-3">Tiendas con esta combinación</th>
+                        <th className="px-4 py-3 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {globalExchangeRates.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                            No hay tasas globales definidas. Agrega una tasa arriba para establecer la relación entre monedas.
+                          </td>
+                        </tr>
+                      ) : (
+                        globalExchangeRates.map((gr) => {
+                          // Contar cuántas tiendas tienen exactamente esta combinación
+                          const matchingStores = (stores || []).filter((s) =>
+                            (s.exchangeRates || []).some(
+                              (r) => r.fromCurrency === gr.fromCurrency && r.toCurrency === gr.toCurrency
+                            )
+                          );
+                          const syncedStores = matchingStores.filter((s) =>
+                            (s.exchangeRates || []).some(
+                              (r) =>
+                                r.fromCurrency === gr.fromCurrency &&
+                                r.toCurrency === gr.toCurrency &&
+                                r.rate === gr.rate
+                            )
+                          );
+
+                          return (
+                            <tr key={gr.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-slate-900 text-white shadow-2xs">
+                                    {gr.fromCurrency}
+                                  </span>
+                                  <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    {gr.toCurrency}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-500 font-mono text-xs">1 {gr.fromCurrency} =</span>
+                                  <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+                                    <input
+                                      type="number"
+                                      min="0.0001"
+                                      step="any"
+                                      value={gr.rate}
+                                      onChange={(e) =>
+                                        handleUpdateGlobalRateValue(gr.id, Number(e.target.value) || 1)
+                                      }
+                                      className="w-20 font-mono font-black text-xs text-slate-900 outline-none bg-transparent"
+                                    />
+                                    <span className="font-mono font-bold text-xs text-slate-500">{gr.toCurrency}</span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                    {matchingStores.length} tienda(s)
+                                  </span>
+                                  {matchingStores.length > 0 && (
+                                    <span
+                                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                                        syncedStores.length === matchingStores.length
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      }`}
+                                    >
+                                      {syncedStores.length}/{matchingStores.length} con tasa global
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="px-4 py-3.5 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePropagateSingleRate(gr)}
+                                    className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs flex items-center gap-1 border border-emerald-200 transition-colors cursor-pointer"
+                                    title={`Copiar tasa global (${gr.rate}) a las tiendas que tienen ${gr.fromCurrency} -> ${gr.toCurrency}`}
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>Propagar a tiendas</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteGlobalRate(gr.id)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="Eliminar tasa global"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* CARD 3: TABLA DE TASAS POR TIENDAS */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <StoreIcon className="w-5 h-5 text-indigo-600" />
+                <span>Tabla de Tasas de Cambio por Tiendas</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Cada tienda define de forma autónoma las tasas que considere. La función de propagar copia exclusivamente desde las tasas globales a las tiendas que presenten la misma combinación de monedas.
+              </p>
+            </div>
+
+            {(!stores || stores.length === 0) ? (
+              <div className="p-8 text-center text-slate-400 text-xs rounded-2xl border border-slate-200 bg-slate-50">
+                No hay tiendas registradas actualmente en el marketplace.
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-extrabold text-[11px] border-b border-slate-200 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Tienda</th>
+                      <th className="px-4 py-3">Tasas Definidas en la Tienda</th>
+                      <th className="px-4 py-3 text-center">Estado vs. Globales</th>
+                      <th className="px-4 py-3 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {stores.map((store) => {
+                      const rates = store.exchangeRates || [];
+
+                      return (
+                        <tr key={store.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0 flex items-center justify-center">
+                                {store.logoUrl ? (
+                                  <ThemeImage
+                                    src={store.logoUrl}
+                                    alt={store.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <StoreIcon className="w-4 h-4 text-slate-400" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-slate-900 text-xs">{store.name}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {store.address?.province || 'Sin provincia'}
+                                  {store.address?.municipality ? ` • ${store.address.municipality}` : ''}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3.5">
+                            {rates.length === 0 ? (
+                              <span className="text-[11px] text-slate-400 italic">
+                                Sin tasas configuradas (Opera en moneda base única)
+                              </span>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {rates.map((r) => {
+                                  const matchingGlobal = globalExchangeRates.find(
+                                    (gr) => gr.fromCurrency === r.fromCurrency && gr.toCurrency === r.toCurrency
+                                  );
+                                  const isExactGlobal = matchingGlobal && matchingGlobal.rate === r.rate;
+
+                                  return (
+                                    <div
+                                      key={r.id}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px]"
+                                    >
+                                      <span className="font-black text-slate-800">1 {r.fromCurrency}</span>
+                                      <span className="text-slate-400">=</span>
+                                      <span className="font-black text-indigo-700">{r.rate} {r.toCurrency}</span>
+
+                                      {isExactGlobal ? (
+                                        <span
+                                          className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800"
+                                          title="Esta tasa coincide con la tasa global del marketplace"
+                                        >
+                                          Global
+                                        </span>
+                                      ) : matchingGlobal ? (
+                                        <span
+                                          className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800"
+                                          title={`Tasa personalizada de la tienda (Global: ${matchingGlobal.rate})`}
+                                        >
+                                          Propia
+                                        </span>
+                                      ) : (
+                                        <span
+                                          className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800"
+                                          title="Combinación exclusiva definida por esta tienda"
+                                        >
+                                          Exclusiva
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-center">
+                            {rates.length === 0 ? (
+                              <span className="text-[10px] text-slate-400">Moneda única</span>
+                            ) : (
+                              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                                {rates.length} tasa(s) activa(s)
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3.5 text-right">
+                            <span className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer">
+                              Gestionar en Tiendas
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       ) : (

@@ -62,6 +62,14 @@ export interface CurrencyItem {
   active?: boolean;
 }
 
+export interface StoreCurrencyPaymentMethod {
+  id: string; // ID único del enlace relacional
+  storeId?: string; // Llave foránea de la tienda
+  currency: string; // Moneda asociada (llave del nomenclador de monedas, ej: 'USD', 'CUP', 'EUR')
+  paymentMethodId: string; // ID del tipo de pago aceptado para esta moneda (ej: 'pm-efectivo', 'pm-transferencia')
+  notes?: string; // Nota descriptiva opcional (ej: 'Solo efectivo en billetes', 'Transfermóvil / EnZona')
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -78,6 +86,7 @@ export interface Store {
   secondaryCurrency?: string; // Compatibilidad
   deliveryAvailable?: boolean; // si tiene o no la opción de mensajería (domicilio)
   paymentOptions?: StorePaymentOptions; // opciones de pago por transferencia y otras monedas
+  currencyPaymentMethods?: StoreCurrencyPaymentMethod[]; // Tabla relacional: Moneda ↔ Formas de pago aceptadas en esta tienda
   paymentMethodIds?: string[]; // IDs de Tipos de Pago del nomenclador asociados a esta tienda (ej: ["pm-efectivo", "pm-transferencia"])
   deliveryMethodIds?: string[]; // IDs de Tipos de Recogida / Entrega del nomenclador asociados a esta tienda (ej: ["dm-mensajeria", "dm-recogida"])
   active: boolean;
@@ -219,10 +228,11 @@ export interface FilterState {
 
 export interface StoreFilterState {
   searchQuery: string;
+  currencies?: string[]; // Monedas aceptadas por la tienda (ej: ['USD', 'CUP'])
   provinces: string[]; // empty = all provinces selected
   municipalities: string[]; // empty = all municipalities selected
   repartos: string[]; // empty = all repartos selected
-  paymentMethods?: string[]; // 'transfer' | 'cash', empty = all
+  paymentMethods?: string[]; // 'transfer' | 'cash' o IDs del nomenclador, empty = all
   deliveryMethods?: string[]; // 'delivery' | 'pickup', empty = all
   deliveryOnly?: boolean;
   transferOnly?: boolean;
@@ -296,5 +306,21 @@ export interface MarketplaceConfig {
   secondaryCurrency?: string; // Moneda secundaria global del marketplace (ej: 'CUP')
   globalExchangeRate?: number; // Tasa de cambio global para tiendas con la combinación base/secundaria
   globalExchangeRates?: GlobalExchangeRate[]; // Nomenclador de tasas de cambio globales del marketplace
+}
+
+export interface CartItem {
+  productId: string;
+  quantity: number;
+  addedAt?: string;
+  paymentCurrency?: string; // Moneda de pago para este producto (por defecto la primera que tenga configurada la tienda)
+  paymentMethodId?: string; // Forma de pago elegida
+  deliveryMethodId?: string; // Forma de recogida/entrega elegida
+}
+
+export interface StoreCartPreferences {
+  selectedCurrency: string; // Moneda de pago seleccionada para la tienda (ej: 'USD', 'CUP', 'EUR')
+  selectedPaymentMethodId?: string; // Forma de pago elegida
+  selectedDeliveryMethodId?: string; // Forma de entrega/recogida elegida
+  notes?: string;
 }
 

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   TrendingUp,
+  ShoppingCart,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,6 +24,8 @@ interface HeaderProps {
   onPublicSubViewChange?: (view: 'products' | 'stores') => void;
   onOpenStoresModal: () => void;
   isAdminAuthenticated: boolean;
+  cartItemsCount?: number;
+  onOpenCart?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
   onPublicSubViewChange,
   onOpenStoresModal,
   isAdminAuthenticated,
+  cartItemsCount = 0,
+  onOpenCart,
 }) => {
   const { theme, resolvedTheme, setTheme } = useTheme();
 
@@ -150,6 +155,25 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.storesBadge}</span>
             <span>{activeStores.length}</span>
           </div>
+
+          {/* Shopping Cart Button */}
+          {onOpenCart && (
+            <button
+              type="button"
+              onClick={onOpenCart}
+              title={`Ver Carrito de Compras (${cartItemsCount} artículos)`}
+              aria-label={`Ver Carrito de Compras con ${cartItemsCount} artículos`}
+              className="relative inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-xs transition-all shadow-xs cursor-pointer"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span className="hidden sm:inline">Carrito</span>
+              {cartItemsCount > 0 && (
+                <span className="bg-white text-indigo-700 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-2xs min-w-[18px] inline-flex items-center justify-center text-center leading-none">
+                  {cartItemsCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Theme Selector (Claro / Oscuro / Sistema) */}
           <ThemeSelector

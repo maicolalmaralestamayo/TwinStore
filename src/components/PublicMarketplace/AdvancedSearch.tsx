@@ -21,6 +21,10 @@ import {
   INITIAL_DELIVERY_METHODS_CATALOG,
 } from '../../data/initialData';
 import {
+  getStorePaymentMethodsForCurrency,
+  getStoreAcceptedCurrencies,
+} from '../../lib/cartUtils';
+import {
   RotateCcw,
   Store as StoreIcon,
   FolderTree,
@@ -201,17 +205,27 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         return false;
       }
     }
-    // 4. Payment method filter (support catalog IDs and legacy values)
+    // 4. Payment method filter (Relación Moneda ↔ Forma de Pago)
     if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-      const storePayIds: string[] = s.paymentMethodIds && s.paymentMethodIds.length > 0
-        ? s.paymentMethodIds
-        : s.paymentOptions?.transferAccepted
-        ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
-        : ['pm-efectivo', 'cash'];
+      const targetCurrencies =
+        filters.currencies && filters.currencies.length > 0
+          ? filters.currencies
+          : getStoreAcceptedCurrencies(s);
+
+      const storePayIds = Array.from(
+        new Set(
+          targetCurrencies.flatMap((curr) =>
+            getStorePaymentMethodsForCurrency(s, curr, effectivePaymentMethods).map((pm) => pm.id)
+          )
+        )
+      );
 
       const matchesPayment = filters.paymentMethods.some((selected) => {
         if (selected === 'transfer' || selected === 'pm-transferencia') {
-          return storePayIds.includes('pm-transferencia') || storePayIds.includes('transfer') || Boolean(s.paymentOptions?.transferAccepted);
+          return (
+            storePayIds.includes('pm-transferencia') ||
+            storePayIds.includes('transfer')
+          );
         }
         if (selected === 'cash' || selected === 'pm-efectivo') {
           return storePayIds.includes('pm-efectivo') || storePayIds.includes('cash');

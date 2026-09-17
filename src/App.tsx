@@ -8,6 +8,8 @@ import {
   CurrencyDisplayMode,
   ToastMessage,
   MarketplaceConfig,
+  CartItem,
+  StoreCartPreferences,
 } from './types';
 import {
   INITIAL_STORES,
@@ -16,6 +18,10 @@ import {
   INITIAL_MARKETPLACE_CONFIG,
 } from './data/initialData';
 import { calculateCUP, generateStoreWhatsAppUrl, formatNormalizedAddressText } from './lib/utils';
+import {
+  getStorePaymentMethodsForCurrency,
+  getStoreAcceptedCurrencies,
+} from './lib/cartUtils';
 import {
   fetchStoresApi,
   saveStoreApi,
@@ -32,11 +38,14 @@ import { ThemeImage } from './components/common/ThemeImage';
 import { ToastContainer } from './components/Toast';
 import { AdvancedSearch } from './components/PublicMarketplace/AdvancedSearch';
 import { ProductCard } from './components/PublicMarketplace/ProductCard';
+import { ProductTableView } from './components/PublicMarketplace/ProductTableView';
 import { StoreCard } from './components/PublicMarketplace/StoreCard';
+import { StoreTableView } from './components/PublicMarketplace/StoreTableView';
 import { StoreFilterBar } from './components/PublicMarketplace/StoreFilterBar';
 import { ProductDetailModal } from './components/PublicMarketplace/ProductDetailModal';
 import { StoreDetailModal } from './components/PublicMarketplace/StoreDetailModal';
 import { StoreDirectoryModal } from './components/PublicMarketplace/StoreDirectoryModal';
+import { CartModal } from './components/Cart/CartModal';
 import { AdminLoginModal } from './components/AdminPortal/AdminLoginModal';
 import { AdminDashboard } from './components/AdminPortal/AdminDashboard';
 import { interfaz } from './data/interfaz';
@@ -53,6 +62,14 @@ import {
   Twitter,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  Table,
+  Eye,
+  ExternalLink,
+  MapPin,
+  CheckCircle2,
+  XCircle,
+  ShoppingCart,
 } from 'lucide-react';
 
 const LOCAL_STORAGE_KEYS = {
@@ -60,6 +77,8 @@ const LOCAL_STORAGE_KEYS = {
   PRODUCTS: 'mc_products_v1',
   CURRENCY_MODE: 'mc_currency_mode_v1',
   CONFIG: 'mc_config_v1',
+  CART: 'mc_cart_items_v1',
+  CART_PREFS: 'mc_cart_prefs_v1',
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -202,6 +221,110 @@ export default function App() {
   const [storeCurrentPage, setStoreCurrentPage] = useState<number>(1);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // --- Shopping Cart State & Persistence ---
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.CART);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
+  });
+
+  const [storeCartPreferences, setStoreCartPreferences] = useState<Record<string, StoreCartPreferences>>(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.CART_PREFS);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {};
+  });
+
+  const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+
+  const totalCartCount = useMemo(() => {
+    return cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
+  }, [cartItems]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.CART, JSON.stringify(cartItems));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [cartItems]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.CART_PREFS, JSON.stringify(storeCartPreferences));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [storeCartPreferences]);
+
+  const handleAddToCart = (product: Product, quantity = 1) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.productId === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+      return [...prev, { productId: product.id, quantity, addedAt: new Date().toISOString() }];
+    });
+    showToast(
+      'Añadido al carrito',
+      `${product.title} (+${quantity}) añadido al carrito`,
+      'success'
+    );
+  };
+
+  const handleUpdateCartQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      handleRemoveFromCart(productId);
+      return;
+    }
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.productId === productId);
+      if (existing) {
+        return prev.map((item) =>
+          item.productId === productId ? { ...item, quantity: newQuantity } : item
+        );
+      }
+      return [...prev, { productId, quantity: newQuantity, addedAt: new Date().toISOString() }];
+    });
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCartItems((prev) => prev.filter((item) => item.productId !== productId));
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+  };
+
+  const handleUpdateStorePreferences = (storeId: string, prefs: Partial<StoreCartPreferences>) => {
+    setStoreCartPreferences((prev) => ({
+      ...prev,
+      [storeId]: {
+        ...prev[storeId],
+        ...prefs,
+      },
+    }));
+  };
+
+  const handleUpdateItemPreferences = (productId: string, prefs: Partial<CartItem>) => {
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.productId === productId ? { ...item, ...prefs } : item
+      )
+    );
+  };
+
   // Persistent filter accordion expansion state (memory across views & reloads, collapsed by default)
   const [isProductFilterExpanded, setIsProductFilterExpanded] = useState<boolean>(() => {
     try {
@@ -232,6 +355,10 @@ export default function App() {
       return next;
     });
   };
+
+  // View modes: cards or table
+  const [productViewMode, setProductViewMode] = useState<'cards' | 'table'>('cards');
+  const [storeViewMode, setStoreViewMode] = useState<'cards' | 'table'>('cards');
 
   const toggleStoreFilterExpanded = () => {
     setIsStoreFilterExpanded((prev) => {
@@ -609,19 +736,26 @@ export default function App() {
         return false;
       }
 
-      // 7b. Transfer / Payment filter (Nomenclador Dinámico)
+      // 7b. Transfer / Payment filter (Relación Moneda ↔ Forma de Pago)
       if (filters.paymentMethods && filters.paymentMethods.length > 0) {
-        const storePayIds: string[] = store?.paymentMethodIds && store.paymentMethodIds.length > 0
-          ? store.paymentMethodIds
-          : store?.paymentOptions?.transferAccepted
-          ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
-          : ['pm-efectivo', 'cash'];
+        const itemCurrency = p.currency || store?.baseCurrency || 'USD';
+        const validPayMethods = store
+          ? getStorePaymentMethodsForCurrency(store, itemCurrency, paymentMethodsCatalog)
+          : [
+              { id: 'pm-efectivo', name: 'Efectivo', gravamen: 0 },
+              { id: 'pm-transferencia', name: 'Transferencia', gravamen: 0 },
+            ];
+        const validPayIds = validPayMethods.map((pm) => pm.id);
         const prodPayIds: string[] = p.paymentMethodIds || [];
-        const allPayIds = [...storePayIds, ...prodPayIds];
+        const allPayIds = [...validPayIds, ...prodPayIds];
 
         const matchesPayment = filters.paymentMethods.some((selected) => {
           if (selected === 'transfer' || selected === 'pm-transferencia') {
-            return allPayIds.includes('pm-transferencia') || allPayIds.includes('transfer') || Boolean(store?.paymentOptions?.transferAccepted);
+            return (
+              allPayIds.includes('pm-transferencia') ||
+              allPayIds.includes('transfer') ||
+              Boolean(store?.paymentOptions?.transferAccepted && itemCurrency.toUpperCase() === 'CUP')
+            );
           }
           if (selected === 'cash' || selected === 'pm-efectivo') {
             return allPayIds.includes('pm-efectivo') || allPayIds.includes('cash');
@@ -629,8 +763,15 @@ export default function App() {
           return allPayIds.includes(selected);
         });
         if (!matchesPayment) return false;
-      } else if (filters.transferOnly && !store?.paymentOptions?.transferAccepted) {
-        return false;
+      } else if (filters.transferOnly) {
+        const itemCurrency = p.currency || store?.baseCurrency || 'USD';
+        const validPayMethods = store
+          ? getStorePaymentMethodsForCurrency(store, itemCurrency, paymentMethodsCatalog)
+          : [];
+        const hasTransfer = validPayMethods.some(
+          (pm) => pm.id === 'pm-transferencia' || pm.id.toLowerCase().includes('transfer')
+        );
+        if (!hasTransfer) return false;
       }
 
       // 8. Location filter (3-Tier Address: Provincia, Municipio, Reparto) (Multiselect)
@@ -802,22 +943,42 @@ export default function App() {
           return false;
         }
 
-        // Payment filter (Nomenclador Dinámico)
+        // Currencies filter (Monedas aceptadas por la tienda)
+        if (storeFilters.currencies && storeFilters.currencies.length > 0) {
+          const storeCurrs = getStoreAcceptedCurrencies(s).map((c) => c.toUpperCase());
+          const matchesCurr = storeFilters.currencies.some((c) => storeCurrs.includes(c.toUpperCase()));
+          if (!matchesCurr) return false;
+        }
+
+        // Payment filter (Relación Moneda ↔ Forma de Pago)
         if (storeFilters.paymentMethods && storeFilters.paymentMethods.length > 0) {
-          const storePayIds: string[] = s.paymentMethodIds && s.paymentMethodIds.length > 0
-            ? s.paymentMethodIds
-            : s.paymentOptions?.transferAccepted
-            ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
-            : ['pm-efectivo', 'cash'];
+          const targetCurrencies =
+            storeFilters.currencies && storeFilters.currencies.length > 0
+              ? storeFilters.currencies
+              : getStoreAcceptedCurrencies(s);
+
+          const storePayIdsForTargetCurrencies = Array.from(
+            new Set(
+              targetCurrencies.flatMap((curr) =>
+                getStorePaymentMethodsForCurrency(s, curr, paymentMethodsCatalog).map((pm) => pm.id)
+              )
+            )
+          );
 
           const matchesPayment = storeFilters.paymentMethods.some((selected) => {
             if (selected === 'transfer' || selected === 'pm-transferencia') {
-              return storePayIds.includes('pm-transferencia') || storePayIds.includes('transfer') || Boolean(s.paymentOptions?.transferAccepted);
+              return (
+                storePayIdsForTargetCurrencies.includes('pm-transferencia') ||
+                storePayIdsForTargetCurrencies.includes('transfer')
+              );
             }
             if (selected === 'cash' || selected === 'pm-efectivo') {
-              return storePayIds.includes('pm-efectivo') || storePayIds.includes('cash');
+              return (
+                storePayIdsForTargetCurrencies.includes('pm-efectivo') ||
+                storePayIdsForTargetCurrencies.includes('cash')
+              );
             }
-            return storePayIds.includes(selected);
+            return storePayIdsForTargetCurrencies.includes(selected);
           });
           if (!matchesPayment) return false;
         } else if (storeFilters.transferOnly && !s.paymentOptions?.transferAccepted) {
@@ -952,6 +1113,8 @@ export default function App() {
         onOpenStoresModal={() => setIsStoresModalOpen(true)}
         isAdminAuthenticated={isAdminAuthenticated}
         marketplaceConfig={marketplaceConfig}
+        cartItemsCount={totalCartCount}
+        onOpenCart={() => setIsCartOpen(true)}
       />
 
       {/* Main Area */}
@@ -1032,7 +1195,7 @@ export default function App() {
                   onToggleExpanded={toggleProductFilterExpanded}
                 />
 
-                {/* Product Grid */}
+                {/* Product Grid / Table View Switcher */}
                 {filteredProducts.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-12 text-center my-6">
                     <ShoppingBag className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -1051,20 +1214,79 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                      {paginatedProducts.map((product) => {
-                        const store = stores.find((s) => s.id === product.storeId);
-                        return (
-                          <ProductCard
-                            key={product.id}
-                            product={product}
-                            store={store}
-                            currencyMode={currencyMode}
-                            onSelectProduct={setSelectedProduct}
-                          />
-                        );
-                      })}
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                      <p className="text-xs text-slate-500 font-semibold">
+                        Mostrando {filteredProducts.length} {filteredProducts.length === 1 ? 'oferta' : 'ofertas'}
+                      </p>
+
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                        <button
+                          onClick={() => setProductViewMode('cards')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            productViewMode === 'cards'
+                              ? 'bg-white text-indigo-600 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                          title="Vista en tarjetas (cards)"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span>Tarjetas</span>
+                        </button>
+                        <button
+                          onClick={() => setProductViewMode('table')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            productViewMode === 'table'
+                              ? 'bg-white text-indigo-600 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                          title="Vista en formato de tabla"
+                        >
+                          <Table className="w-3.5 h-3.5" />
+                          <span>Tabla</span>
+                        </button>
+                      </div>
                     </div>
+
+                    {productViewMode === 'cards' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                        {paginatedProducts.map((product) => {
+                          const store = stores.find((s) => s.id === product.storeId);
+                          const cartItem = cartItems.find((ci) => ci.productId === product.id);
+                          return (
+                            <ProductCard
+                              key={product.id}
+                              product={product}
+                              store={store}
+                              currencyMode={currencyMode}
+                              onSelectProduct={setSelectedProduct}
+                              onAddToCart={handleAddToCart}
+                              onUpdateQuantity={handleUpdateCartQuantity}
+                              onRemoveFromCart={(id) => {
+                                handleRemoveFromCart(id);
+                                showToast('Producto eliminado', `Se quitó "${product.title}" del carrito`, 'info');
+                              }}
+                              cartQuantity={cartItem?.quantity || 0}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <ProductTableView
+                        products={paginatedProducts}
+                        stores={stores}
+                        currencyMode={currencyMode}
+                        onSelectProduct={setSelectedProduct}
+                        onSelectStore={(st) => setSelectedStore(st)}
+                        onAddToCart={handleAddToCart}
+                        onUpdateQuantity={handleUpdateCartQuantity}
+                        onRemoveFromCart={(id) => {
+                          const prod = products.find((p) => p.id === id);
+                          handleRemoveFromCart(id);
+                          showToast('Producto eliminado', `Se quitó "${prod?.title || 'artículo'}" del carrito`, 'info');
+                        }}
+                        cartItems={cartItems}
+                      />
+                    )}
 
                     {/* Pagination for Products (Default 10 items per page) */}
                     {totalProductPages > 1 && (
@@ -1144,7 +1366,7 @@ export default function App() {
                   onToggleExpanded={toggleStoreFilterExpanded}
                 />
 
-                {/* Stores Grid */}
+                {/* Stores Grid / Table Switcher */}
                 {filteredStores.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-12 text-center my-6">
                     <StoreIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -1163,22 +1385,64 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                      {paginatedStores.map((store) => {
-                        const storeProductsCount = products.filter(
-                          (p) => p.storeId === store.id && p.isAvailable !== false
-                        ).length;
-                        return (
-                          <StoreCard
-                            key={store.id}
-                            store={store}
-                            productsCount={storeProductsCount}
-                            onSelectStore={(st) => setSelectedStore(st)}
-                            onViewStoreProducts={handleViewStoreProductsFromCard}
-                          />
-                        );
-                      })}
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                      <p className="text-xs text-slate-500 font-semibold">
+                        Mostrando {filteredStores.length} {filteredStores.length === 1 ? 'tienda' : 'tiendas'}
+                      </p>
+
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
+                        <button
+                          onClick={() => setStoreViewMode('cards')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            storeViewMode === 'cards'
+                              ? 'bg-white text-indigo-600 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                          title="Vista en tarjetas (cards)"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                          <span>Tarjetas</span>
+                        </button>
+                        <button
+                          onClick={() => setStoreViewMode('table')}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            storeViewMode === 'table'
+                              ? 'bg-white text-indigo-600 shadow-xs'
+                              : 'text-slate-500 hover:text-slate-900'
+                          }`}
+                          title="Vista en formato de tabla"
+                        >
+                          <Table className="w-3.5 h-3.5" />
+                          <span>Tabla</span>
+                        </button>
+                      </div>
                     </div>
+
+                    {storeViewMode === 'cards' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                        {paginatedStores.map((store) => {
+                          const storeProductsCount = products.filter(
+                            (p) => p.storeId === store.id && p.isAvailable !== false
+                          ).length;
+                          return (
+                            <StoreCard
+                              key={store.id}
+                              store={store}
+                              productsCount={storeProductsCount}
+                              onSelectStore={(st) => setSelectedStore(st)}
+                              onViewStoreProducts={handleViewStoreProductsFromCard}
+                            />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <StoreTableView
+                        stores={paginatedStores}
+                        products={products}
+                        onSelectStore={(st) => setSelectedStore(st)}
+                        onViewStoreProducts={handleViewStoreProductsFromCard}
+                      />
+                    )}
 
                     {/* Pagination for Stores */}
                     {totalStorePages > 1 && (
@@ -1362,6 +1626,14 @@ export default function App() {
         onShowToast={showToast}
         marketplaceConfig={marketplaceConfig}
         products={products}
+        onAddToCart={handleAddToCart}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveFromCart={handleRemoveFromCart}
+        cartQuantity={
+          selectedProduct
+            ? cartItems.find((ci) => ci.productId === selectedProduct.id)?.quantity || 0
+            : 0
+        }
       />
 
       <StoreDetailModal
@@ -1380,6 +1652,42 @@ export default function App() {
         products={products}
         onSelectStore={(storeId) => setFilters({ ...filters, storeId })}
       />
+
+      {/* Shopping Cart Modal */}
+      <CartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartItems={cartItems}
+        stores={stores}
+        products={products}
+        marketplaceConfig={marketplaceConfig}
+        storePreferences={storeCartPreferences}
+        onUpdateQuantity={handleUpdateCartQuantity}
+        onRemoveItem={handleRemoveFromCart}
+        onClearCart={handleClearCart}
+        onUpdateStorePreferences={handleUpdateStorePreferences}
+        onUpdateItemPreferences={handleUpdateItemPreferences}
+        onShowToast={showToast}
+        onSelectStore={(st) => setSelectedStore(st)}
+      />
+
+      {/* Floating Action Button for Quick Cart Access */}
+      {totalCartCount > 0 && !isCartOpen && (
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(true)}
+          className="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black py-3 px-4 sm:px-5 rounded-2xl shadow-xl flex items-center gap-2.5 transition-all transform hover:scale-105 active:scale-95 cursor-pointer border border-indigo-400/40"
+          title={`Abrir Carrito (${totalCartCount} artículos)`}
+        >
+          <div className="relative">
+            <ShoppingCart className="w-5 h-5" />
+            <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[10px] font-black w-4 h-4 rounded-full inline-flex items-center justify-center text-center leading-none shadow-xs">
+              {totalCartCount}
+            </span>
+          </div>
+          <span className="text-xs sm:text-sm font-black hidden xs:inline">Ver Carrito</span>
+        </button>
+      )}
 
       <AdminLoginModal
         isOpen={isLoginModalOpen}

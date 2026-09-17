@@ -1033,10 +1033,61 @@ export const INITIAL_STORES: Store[] = [
           rate: s.usdToCupRate || 335,
         },
       ];
+
+  const hasTransfer = Boolean(s.paymentOptions?.transferAccepted);
+  const explicitCpm = s.currencyPaymentMethods && s.currencyPaymentMethods.length > 0
+    ? s.currencyPaymentMethods
+    : [
+        // USD: En Cuba los dólares se cobran casi siempre en efectivo
+        {
+          id: `cpm-${s.id}-usd-cash`,
+          storeId: s.id,
+          currency: 'USD',
+          paymentMethodId: 'pm-efectivo',
+          notes: 'Pago en mano en billetes de dólar',
+        },
+        // CUP: Efectivo
+        {
+          id: `cpm-${s.id}-cup-cash`,
+          storeId: s.id,
+          currency: 'CUP',
+          paymentMethodId: 'pm-efectivo',
+          notes: 'Pago en mano en CUP',
+        },
+        // CUP: Transferencia (solo si la tienda la acepta)
+        ...(hasTransfer
+          ? [
+              {
+                id: `cpm-${s.id}-cup-transf`,
+                storeId: s.id,
+                currency: 'CUP',
+                paymentMethodId: 'pm-transferencia',
+                notes: 'Transfermóvil o EnZona',
+              },
+            ]
+          : []),
+        // EUR: En efectivo si la tienda acepta euros
+        ...(s.paymentOptions?.acceptedCurrencies?.includes('EUR')
+          ? [
+              {
+                id: `cpm-${s.id}-eur-cash`,
+                storeId: s.id,
+                currency: 'EUR',
+                paymentMethodId: 'pm-efectivo',
+                notes: 'Billetes de Euro en mano',
+              },
+            ]
+          : []),
+      ];
+
+  const derivedPayIds = Array.from(new Set(explicitCpm.map((item: any) => item.paymentMethodId)));
+
   return {
     ...s,
     exchangeRates: storeRates,
     usdToCupRate: s.usdToCupRate || (storeRates[0]?.rate || 335),
+    currencyPaymentMethods: explicitCpm,
+    paymentMethodIds: s.paymentMethodIds && s.paymentMethodIds.length > 0 ? s.paymentMethodIds : derivedPayIds,
   };
 });
 

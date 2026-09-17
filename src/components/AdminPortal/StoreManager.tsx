@@ -8,6 +8,8 @@ import {
   DeliveryMethodItem,
   StoreExchangeRate,
   CurrencyItem,
+  StoreFilterState,
+  StoreCurrencyPaymentMethod,
 } from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
 import {
@@ -33,10 +35,30 @@ import {
   Coins,
   ArrowRightLeft,
   DollarSign,
+  Banknote,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { getStoreLogoUrl } from '../../lib/utils';
+import { getStoreCurrencyPaymentMethods } from '../../lib/cartUtils';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
 import { SearchableSelect } from '../common/SearchableSelect';
+import { SearchableMultiSelect } from '../common/SearchableMultiSelect';
+import { StoreFilterBar } from '../PublicMarketplace/StoreFilterBar';
+
+const DEFAULT_STORE_FILTERS: StoreFilterState = {
+  searchQuery: '',
+  provinces: [],
+  municipalities: [],
+  repartos: [],
+  paymentMethods: [],
+  deliveryMethods: [],
+  deliveryOnly: false,
+  transferOnly: false,
+  province: 'ALL',
+  municipality: 'ALL',
+  reparto: 'ALL',
+};
 
 interface StoreManagerProps {
   stores: Store[];
@@ -77,9 +99,9 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'address' | 'payment' | 'currency'>('general');
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [storeFilters, setStoreFilters] = useState<StoreFilterState>(DEFAULT_STORE_FILTERS);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [bulkRateInput, setBulkRateInput] = useState<number>(675);
 
   // Form State - Currency & Exchange Rates
   const [baseCurrency, setBaseCurrency] = useState<string>('USD');
@@ -118,6 +140,12 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [transferAccepted, setTransferAccepted] = useState(true);
   const [transferFeePercentage, setTransferFeePercentage] = useState<number>(10);
 
+  // Form State - Relational Currency ↔ Payment Methods
+  const [currencyPaymentMethods, setCurrencyPaymentMethods] = useState<StoreCurrencyPaymentMethod[]>([]);
+  const [newCpmCurrency, setNewCpmCurrency] = useState<string>('USD');
+  const [newCpmPaymentMethodId, setNewCpmPaymentMethodId] = useState<string>('pm-efectivo');
+  const [newCpmNotes, setNewCpmNotes] = useState<string>('');
+
   const toggleDeliveryMethod = (id: string) => {
     setDeliveryMethodIds((prev) => {
       const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
@@ -138,10 +166,88 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     });
   };
 
+  const handleAddCpm = () => {
+    if (!newCpmCurrency || !newCpmPaymentMethodId) return;
+    const exists = currencyPaymentMethods.some(
+      (cpm) => cpm.currency === newCpmCurrency && cpm.paymentMethodId === newCpmPaymentMethodId
+    );
+    if (exists) {
+      onShowToast('Relación ya existe', `Ya está configurado ${newCpmCurrency} con esta forma de pago`, 'info');
+      return;
+    }
+    const newEntry: StoreCurrencyPaymentMethod = {
+      id: `cpm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      storeId: editingStore?.id,
+      currency: newCpmCurrency,
+      paymentMethodId: newCpmPaymentMethodId,
+      notes: newCpmNotes.trim() || undefined,
+    };
+    const updated = [...currencyPaymentMethods, newEntry];
+    setCurrencyPaymentMethods(updated);
+    setPaymentMethodIds((prev) => Array.from(new Set([...prev, newCpmPaymentMethodId])));
+    setNewCpmNotes('');
+    onShowToast('Vínculo agregado', `${newCpmCurrency} asociado con forma de pago`);
+  };
+
+  const handleRemoveCpm = (id: string) => {
+    const updated = currencyPaymentMethods.filter((c) => c.id !== id);
+    setCurrencyPaymentMethods(updated);
+    const remainingPmIds = Array.from(new Set(updated.map((c) => c.paymentMethodId)));
+    setPaymentMethodIds(remainingPmIds);
+    setTransferAccepted(remainingPmIds.includes('pm-transferencia'));
+  };
+
+  const handleUpdateCpmNote = (id: string, notes: string) => {
+    setCurrencyPaymentMethods((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, notes } : c))
+    );
+  };
+
+  const handleApplyCubaPreset = () => {
+    const preset: StoreCurrencyPaymentMethod[] = [
+      {
+        id: `cpm-preset-usd-cash-${Date.now()}`,
+        currency: 'USD',
+        paymentMethodId: 'pm-efectivo',
+        notes: 'Pago en mano en billetes de dólar',
+      },
+      {
+        id: `cpm-preset-cup-cash-${Date.now()}`,
+        currency: 'CUP',
+        paymentMethodId: 'pm-efectivo',
+        notes: 'Pago en mano en CUP',
+      },
+      {
+        id: `cpm-preset-cup-transf-${Date.now()}`,
+        currency: 'CUP',
+        paymentMethodId: 'pm-transferencia',
+        notes: 'Transfermóvil / EnZona',
+      },
+    ];
+    setCurrencyPaymentMethods(preset);
+    setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
+    setTransferAccepted(true);
+    onShowToast('Regla Cubana Aplicada', 'USD en Efectivo, CUP en Efectivo y Transferencia');
+  };
+
+  const handleApplyCashOnlyPreset = () => {
+    const acceptedCurrs = ['USD', 'CUP'];
+    const preset: StoreCurrencyPaymentMethod[] = acceptedCurrs.map((curr) => ({
+      id: `cpm-cash-${curr}-${Date.now()}`,
+      currency: curr,
+      paymentMethodId: 'pm-efectivo',
+      notes: 'Solo pago en mano al recibir',
+    }));
+    setCurrencyPaymentMethods(preset);
+    setPaymentMethodIds(['pm-efectivo']);
+    setTransferAccepted(false);
+    onShowToast('Solo Efectivo', 'Se configuró cobro en mano para todas las monedas');
+  };
+
   // Reset page on filter search
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [storeFilters]);
 
   // Rate metrics calculation
   const activeStoresList = useMemo(() => stores.filter((s) => s.active), [stores]);
@@ -240,6 +346,29 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
     setTransferAccepted(true);
     setTransferFeePercentage(10);
+    setCurrencyPaymentMethods([
+      {
+        id: `cpm-new-usd-cash-${Date.now()}`,
+        currency: 'USD',
+        paymentMethodId: 'pm-efectivo',
+        notes: 'Pago en mano en billetes de dólar',
+      },
+      {
+        id: `cpm-new-cup-cash-${Date.now()}`,
+        currency: 'CUP',
+        paymentMethodId: 'pm-efectivo',
+        notes: 'Pago en mano en CUP',
+      },
+      {
+        id: `cpm-new-cup-transf-${Date.now()}`,
+        currency: 'CUP',
+        paymentMethodId: 'pm-transferencia',
+        notes: 'Transfermóvil / EnZona',
+      },
+    ]);
+    setNewCpmCurrency('USD');
+    setNewCpmPaymentMethodId('pm-efectivo');
+    setNewCpmNotes('');
 
     setIsModalOpen(true);
   };
@@ -329,6 +458,12 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     );
     setTransferFeePercentage(pay.transferFeePercentage || 0);
 
+    const storeCpms = getStoreCurrencyPaymentMethods(store);
+    setCurrencyPaymentMethods(storeCpms);
+    setNewCpmCurrency(store.baseCurrency || 'USD');
+    setNewCpmPaymentMethodId(defaultPay[0] || 'pm-efectivo');
+    setNewCpmNotes('');
+
     setIsModalOpen(true);
   };
 
@@ -376,13 +511,13 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     const globalRates = marketplaceConfig?.globalExchangeRates || [];
     if (globalRates.length === 0) {
       onShowToast(
-        'Sin tasas sugeridas',
-        'El marketplace no tiene tasas sugeridas configuradas en la Configuración General',
+        'Sin tasas globales',
+        'El marketplace no tiene tasas globales configuradas en la Configuración General',
         'info'
       );
       return;
     }
-    let addedCount = 0;
+    let updatedCount = 0;
     const updated = [...exchangeRates];
     for (const gr of globalRates) {
       const existingIdx = updated.findIndex(
@@ -396,14 +531,19 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
           toCurrency: gr.toCurrency,
           rate: gr.rate,
         });
-        addedCount++;
+        updatedCount++;
+      } else {
+        if (updated[existingIdx].rate !== gr.rate) {
+          updated[existingIdx].rate = gr.rate;
+          updatedCount++;
+        }
       }
     }
     setExchangeRates(updated);
-    if (addedCount > 0) {
-      onShowToast('Tasas importadas', `Se agregaron ${addedCount} tasas sugeridas del marketplace`);
+    if (updatedCount > 0) {
+      onShowToast('Tasas actualizadas', `Se copiaron/actualizaron ${updatedCount} tasas globales en esta tienda`);
     } else {
-      onShowToast('Tasas ya presentes', 'Esta tienda ya tiene todas las tasas sugeridas del marketplace', 'info');
+      onShowToast('Tasas al día', 'Esta tienda ya tiene los mismos valores que las tasas globales del marketplace', 'info');
     }
   };
 
@@ -483,10 +623,26 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       googleMapsUrl: finalMapsUrl,
     };
 
+    const derivedPaymentMethodIds = Array.from(
+      new Set(currencyPaymentMethods.map((cpm) => cpm.paymentMethodId))
+    );
+    const finalPaymentMethodIds =
+      derivedPaymentMethodIds.length > 0 ? derivedPaymentMethodIds : paymentMethodIds;
+    const hasTransferInCpms = finalPaymentMethodIds.some(
+      (id) => id === 'pm-transferencia' || id.toLowerCase().includes('transfer')
+    );
+    const acceptedCurrenciesList = Array.from(
+      new Set([
+        ...currencyPaymentMethods.map((cpm) => cpm.currency),
+        baseCurrency || 'USD',
+        secondaryCurrency || 'CUP',
+      ])
+    ).filter(Boolean);
+
     const normalizedPayment: StorePaymentOptions = {
-      transferAccepted,
-      transferFeePercentage: transferAccepted ? Number(transferFeePercentage) || 10 : 0,
-      acceptedCurrencies: ['USD', 'CUP'],
+      transferAccepted: hasTransferInCpms,
+      transferFeePercentage: hasTransferInCpms ? Number(transferFeePercentage) || 10 : 0,
+      acceptedCurrencies: acceptedCurrenciesList,
       notes: '',
     };
 
@@ -520,8 +676,9 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         usdToCupRate: primaryRateNum,
         deliveryAvailable,
         paymentOptions: normalizedPayment,
-        paymentMethodIds,
+        paymentMethodIds: finalPaymentMethodIds,
         deliveryMethodIds,
+        currencyPaymentMethods,
         badge: editingStore.badge || 'Verificada',
         active,
       });
@@ -542,8 +699,9 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         usdToCupRate: primaryRateNum,
         deliveryAvailable,
         paymentOptions: normalizedPayment,
-        paymentMethodIds,
+        paymentMethodIds: finalPaymentMethodIds,
         deliveryMethodIds,
+        currencyPaymentMethods,
         badge: 'Verificada',
         active,
         rating: 4.8,
@@ -557,20 +715,6 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     if (window.confirm(`¿Seguro que deseas eliminar "${store.name}"?`)) {
       onDeleteStore(store.id);
       onShowToast('Tienda eliminada', `"${store.name}" fue borrada`);
-    }
-  };
-
-  const handleApplyBulkRate = () => {
-    if (!bulkRateInput || bulkRateInput <= 0) {
-      onShowToast('Tasa inválida', 'Ingresa un valor numérico válido', 'error');
-      return;
-    }
-    if (onUpdateAllStoresRate) {
-      onUpdateAllStoresRate(Number(bulkRateInput));
-      onShowToast(
-        'Tasa masiva actualizada',
-        `Se asignó ${bulkRateInput} CUP/USD a todas las tiendas`
-      );
     }
   };
 
@@ -666,20 +810,69 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   };
 
   const filteredStores = useMemo(() => {
-    return stores.filter((store) => {
-      if (!searchTerm.trim()) return true;
-      const q = searchTerm.toLowerCase();
-      const addr = store.address;
-      const locStr = addr
-        ? `${addr.province || ''} ${addr.municipality || ''} ${addr.neighborhood || ''}`.toLowerCase()
-        : store.location.toLowerCase();
-      return (
-        store.name.toLowerCase().includes(q) ||
-        store.slogan?.toLowerCase().includes(q) ||
-        locStr.includes(q)
-      );
+    return stores.filter((s) => {
+      if (storeFilters.searchQuery?.trim()) {
+        const q = storeFilters.searchQuery.toLowerCase().trim();
+        const matchesName = s.name.toLowerCase().includes(q);
+        const matchesSlogan = (s.slogan || '').toLowerCase().includes(q);
+        const matchesDesc = (s.description || '').toLowerCase().includes(q);
+        const matchesLoc = (s.location || '').toLowerCase().includes(q);
+        const addr = s.address;
+        const locStr = addr
+          ? `${addr.province || ''} ${addr.municipality || ''} ${addr.neighborhood || ''}`.toLowerCase()
+          : '';
+        if (!matchesName && !matchesSlogan && !matchesDesc && !matchesLoc && !locStr.includes(q)) {
+          return false;
+        }
+      }
+
+      const sProv = s.address?.province || (s as any).province || '';
+      const sMun = s.address?.municipality || (s as any).municipality || '';
+      const sRep = s.address?.neighborhood || (s as any).reparto || '';
+
+      if (storeFilters.provinces && storeFilters.provinces.length > 0) {
+        if (!storeFilters.provinces.includes(sProv)) return false;
+      }
+      if (storeFilters.municipalities && storeFilters.municipalities.length > 0) {
+        if (!storeFilters.municipalities.includes(sMun)) return false;
+      }
+      if (storeFilters.repartos && storeFilters.repartos.length > 0) {
+        if (!storeFilters.repartos.includes(sRep)) return false;
+      }
+
+      if (storeFilters.deliveryMethods && storeFilters.deliveryMethods.length > 0) {
+        const storeDelivIds: string[] =
+          s.deliveryMethodIds && s.deliveryMethodIds.length > 0
+            ? s.deliveryMethodIds
+            : s.deliveryAvailable
+            ? ['dm-mensajeria', 'dm-recogida']
+            : ['dm-recogida'];
+        const matchesDeliv = storeFilters.deliveryMethods.some((id) =>
+          storeDelivIds.includes(id)
+        );
+        if (!matchesDeliv) return false;
+      } else if (storeFilters.deliveryOnly && !s.deliveryAvailable) {
+        return false;
+      }
+
+      if (storeFilters.paymentMethods && storeFilters.paymentMethods.length > 0) {
+        const storePayIds: string[] =
+          s.paymentMethodIds && s.paymentMethodIds.length > 0
+            ? s.paymentMethodIds
+            : s.paymentOptions?.transferAccepted
+            ? ['pm-efectivo', 'pm-transferencia']
+            : ['pm-efectivo'];
+        const matchesPay = storeFilters.paymentMethods.some((id) =>
+          storePayIds.includes(id)
+        );
+        if (!matchesPay) return false;
+      } else if (storeFilters.transferOnly && !s.paymentOptions?.transferAccepted) {
+        return false;
+      }
+
+      return true;
     });
-  }, [stores, searchTerm]);
+  }, [stores, storeFilters]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredStores.length / ITEMS_PER_PAGE) || 1;
@@ -711,50 +904,18 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         </button>
       </div>
 
-      {/* Bulk Rate Assignment Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-700">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-700 font-bold">Asignación Masiva de Tasa:</span>
-          <span className="text-slate-400 text-[11px] font-normal hidden sm:inline">
-            (Aplica esta tasa en CUP por cada USD a todas las tiendas registradas)
-          </span>
-        </div>
-
-        {/* Quick Bulk Rate Assign */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-slate-500 font-medium shrink-0">Tasa Global:</span>
-          <input
-            type="number"
-            value={bulkRateInput}
-            onChange={(e) => setBulkRateInput(Number(e.target.value))}
-            className="w-20 px-2.5 py-1.5 rounded-xl border border-slate-300 font-bold text-center text-xs outline-none focus:border-indigo-500"
-            placeholder="675"
-          />
-          <button
-            onClick={handleApplyBulkRate}
-            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all shrink-0 cursor-pointer"
-          >
-            Aplicar a todas
-          </button>
-        </div>
-      </div>
-
-      {/* Search / Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar tienda por nombre, eslogan o ubicación (provincia, municipio, reparto)..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-emerald-500 outline-none"
-          />
-        </div>
-        <span className="text-xs text-gray-500 font-semibold shrink-0">
-          Mostrando {filteredStores.length} de {stores.length} tiendas
-        </span>
-      </div>
+      {/* Filter Bar (Same filter system as Public Marketplace User View) */}
+      <StoreFilterBar
+        geoCatalog={geoCatalog}
+        paymentMethodsCatalog={paymentMethodsCatalog}
+        deliveryMethodsCatalog={deliveryMethodsCatalog}
+        filters={storeFilters}
+        onFilterChange={setStoreFilters}
+        onReset={() => setStoreFilters(DEFAULT_STORE_FILTERS)}
+        totalResults={filteredStores.length}
+        isExpanded={isFilterExpanded}
+        onToggleExpanded={() => setIsFilterExpanded((prev) => !prev)}
+      />
 
       {/* Tabular list of existing stores */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
@@ -944,71 +1105,93 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                         </div>
                       </td>
 
-                      {/* Recogida y Entrega - Nomenclador Dinámico con Badges interactivos */}
-                      <td className="py-3 px-4 min-w-[190px]">
-                        <div className="flex flex-wrap gap-1.5 max-w-xs">
-                          {deliveryMethodsCatalog.map((dm) => {
-                            const storeDelivIds =
-                              store.deliveryMethodIds && store.deliveryMethodIds.length > 0
-                                ? store.deliveryMethodIds
-                                : store.deliveryAvailable
-                                ? ['dm-mensajeria', 'dm-recogida']
-                                : ['dm-recogida'];
-                            const isSelected = storeDelivIds.includes(dm.id);
-
-                            return (
-                              <button
-                                key={dm.id}
-                                type="button"
-                                onClick={() => handleToggleStoreDeliveryMethod(store, dm.id)}
-                                title={`${isSelected ? 'Desactivar' : 'Activar'} ${dm.name}: ${dm.description || ''}`}
-                                className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100 shadow-2xs'
-                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
-                                }`}
-                              >
-                                <span className="truncate max-w-[110px]">{dm.name}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                      {/* Recogida y Entrega - Combobox MultiSelect como en filtros */}
+                      <td className="py-3 px-4 min-w-[210px]">
+                        <SearchableMultiSelect
+                          options={deliveryMethodsCatalog.map((dm) => ({
+                            value: dm.id,
+                            label: dm.name,
+                            sublabel: dm.description,
+                          }))}
+                          values={
+                            store.deliveryMethodIds && store.deliveryMethodIds.length > 0
+                              ? store.deliveryMethodIds
+                              : store.deliveryAvailable
+                              ? ['dm-mensajeria', 'dm-recogida']
+                              : ['dm-recogida']
+                          }
+                          onChange={(newIds) => {
+                            const hasDelivery =
+                              newIds.includes('dm-mensajeria') ||
+                              newIds.some((id) => id.toLowerCase().includes('delivery') || id.toLowerCase().includes('mensajer'));
+                            onUpdateStore({
+                              ...store,
+                              deliveryMethodIds: newIds,
+                              deliveryAvailable: hasDelivery,
+                            });
+                          }}
+                          placeholder="Métodos de entrega..."
+                          allLabel="Todos activos"
+                          size="sm"
+                        />
                       </td>
 
-                      {/* Métodos de Pago - Nomenclador Dinámico con Badges interactivos */}
-                      <td className="py-3 px-4 min-w-[210px]">
-                        <div className="flex flex-wrap gap-1.5 max-w-xs">
-                          {paymentMethodsCatalog.map((pm) => {
-                            const storePayIds =
-                              store.paymentMethodIds && store.paymentMethodIds.length > 0
-                                ? store.paymentMethodIds
-                                : store.paymentOptions?.transferAccepted
-                                ? ['pm-efectivo', 'pm-transferencia']
-                                : ['pm-efectivo'];
-                            const isSelected = storePayIds.includes(pm.id);
-                            const isTransfer =
-                              pm.id === 'pm-transferencia' || pm.id.toLowerCase().includes('transfer');
-                            const fee = store.paymentOptions?.transferFeePercentage || 0;
+                      {/* Métodos de Pago - Combobox MultiSelect como en filtros */}
+                      <td className="py-3 px-4 min-w-[220px]">
+                        <SearchableMultiSelect
+                          options={paymentMethodsCatalog.map((pm) => ({
+                            value: pm.id,
+                            label: pm.name,
+                            sublabel: pm.description,
+                          }))}
+                          values={
+                            store.paymentMethodIds && store.paymentMethodIds.length > 0
+                              ? store.paymentMethodIds
+                              : store.paymentOptions?.transferAccepted
+                              ? ['pm-efectivo', 'pm-transferencia']
+                              : ['pm-efectivo']
+                          }
+                          onChange={(newIds) => {
+                            const hasTransfer =
+                              newIds.includes('pm-transferencia') ||
+                              newIds.some((id) => id.toLowerCase().includes('transfer'));
+                            const pay = store.paymentOptions || {
+                              acceptedCurrencies: ['USD', 'CUP'],
+                              transferFeePercentage: 10,
+                              transferAccepted: true,
+                            };
+                            onUpdateStore({
+                              ...store,
+                              paymentMethodIds: newIds,
+                              paymentOptions: {
+                                ...pay,
+                                transferAccepted: hasTransfer,
+                              },
+                            });
+                          }}
+                          placeholder="Métodos de pago..."
+                          allLabel="Todos activos"
+                          size="sm"
+                        />
 
+                        {/* Relación Moneda ↔ Pago configurada */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {getStoreCurrencyPaymentMethods(store).map((cpm) => {
+                            const pm = paymentMethodsCatalog.find((p) => p.id === cpm.paymentMethodId);
+                            const isCash = cpm.paymentMethodId.toLowerCase().includes('efectivo');
                             return (
-                              <button
-                                key={pm.id}
-                                type="button"
-                                onClick={() => handleToggleStorePaymentMethod(store, pm.id)}
-                                title={`${isSelected ? 'Desactivar' : 'Activar'} ${pm.name}: ${pm.description || ''}`}
-                                className={`inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                                  isSelected
-                                    ? isTransfer
-                                      ? 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 shadow-2xs'
-                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 shadow-2xs'
-                                    : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 opacity-60 hover:opacity-100'
+                              <span
+                                key={cpm.id || `${cpm.currency}-${cpm.paymentMethodId}`}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                  isCash
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-purple-50 text-purple-800 border-purple-200'
                                 }`}
+                                title={`${cpm.currency}: ${pm?.name || cpm.paymentMethodId}${cpm.notes ? ` (${cpm.notes})` : ''}`}
                               >
-                                <span className="truncate max-w-[100px]">{pm.name}</span>
-                                {isSelected && isTransfer && fee > 0 && (
-                                  <span className="text-[10px] font-mono text-purple-600">({fee}%)</span>
-                                )}
-                              </button>
+                                <span className="font-extrabold">{cpm.currency}:</span>
+                                <span>{pm?.name || cpm.paymentMethodId}</span>
+                              </span>
                             );
                           })}
                         </div>
@@ -1484,58 +1667,202 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                     </div>
                   </div>
 
-                  {/* Métodos de Pago - Nomenclador */}
-                  <div className="space-y-3 pt-4 border-t border-gray-200/80">
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                        <CreditCard className="w-4 h-4 text-purple-600" />
-                        <span>Métodos de Pago Aceptados</span>
-                      </h4>
-                      <p className="text-xs text-gray-500">
-                        Configura las formas de pago que la tienda admite en sus ventas y pedidos.
-                      </p>
+                  {/* Tabla Relacional: Monedas ↔ Formas de Pago Aceptadas */}
+                  <div className="space-y-4 pt-4 border-t border-gray-200/80">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-emerald-600" />
+                          <span>Tabla Relacional: Moneda ↔ Formas de Pago Aceptadas</span>
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          En Cuba, las divisas (USD, EUR) casi siempre se cobran en efectivo, mientras que el CUP admite efectivo y transferencias (Transfermóvil/EnZona). Define aquí la relación exacta para esta tienda.
+                        </p>
+                      </div>
+
+                      {/* Botones de configuración rápida */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={handleApplyCubaPreset}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Aplica la regla habitual de Cuba: USD en efectivo, CUP en efectivo y transferencia"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Regla Típica Cuba</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApplyCashOnlyPreset}
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Cobro únicamente en efectivo contra entrega para todas las monedas"
+                        >
+                          <Banknote className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Solo Efectivo</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {paymentMethodsCatalog.map((pm) => {
-                        const isChecked = paymentMethodIds.includes(pm.id);
+                    {/* Tabla de vínculos configurados */}
+                    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase tracking-wider">
+                            <th className="py-2.5 px-3">Moneda</th>
+                            <th className="py-2.5 px-3">Forma de Pago Aceptada</th>
+                            <th className="py-2.5 px-3">Notas / Condiciones</th>
+                            <th className="py-2.5 px-3 text-right">Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {currencyPaymentMethods.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="py-6 text-center text-gray-400 italic">
+                                No hay relaciones moneda-pago configuradas. Pulsa en "Regla Típica Cuba" o añade una debajo.
+                              </td>
+                            </tr>
+                          ) : (
+                            currencyPaymentMethods.map((cpm) => {
+                              const currObj = (INITIAL_CURRENCIES_CATALOG || []).find(
+                                (c) => c.code.toUpperCase() === cpm.currency.toUpperCase()
+                              );
+                              const pmObj = paymentMethodsCatalog.find(
+                                (p) => p.id === cpm.paymentMethodId
+                              );
+                              const isCash = cpm.paymentMethodId.toLowerCase().includes('efectivo');
 
-                        return (
-                          <div
-                            key={pm.id}
-                            onClick={() => togglePaymentMethod(pm.id)}
-                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                              isChecked
-                                ? 'bg-purple-50/70 border-purple-300 shadow-xs'
-                                : 'bg-gray-50/70 border-gray-200 hover:bg-gray-100/60'
-                            }`}
+                              return (
+                                <tr key={cpm.id || `${cpm.currency}-${cpm.paymentMethodId}`} className="hover:bg-gray-50/60">
+                                  {/* Moneda */}
+                                  <td className="py-2 px-3 font-bold">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900 text-white font-mono font-black text-xs">
+                                      <span>{currObj?.symbol || '$'}</span>
+                                      <span>{cpm.currency}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* Forma de Pago */}
+                                  <td className="py-2 px-3">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs border ${
+                                        isCash
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                          : 'bg-purple-50 text-purple-800 border-purple-200'
+                                      }`}
+                                    >
+                                      {isCash ? (
+                                        <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                                      ) : (
+                                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                                      )}
+                                      <span>{pmObj?.name || cpm.paymentMethodId}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* Notas / Condiciones */}
+                                  <td className="py-2 px-3">
+                                    <input
+                                      type="text"
+                                      value={cpm.notes || ''}
+                                      onChange={(e) => handleUpdateCpmNote(cpm.id, e.target.value)}
+                                      placeholder="Ej: Billetes limpios, Transfermóvil..."
+                                      className="w-full px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-emerald-500 text-gray-800 text-xs outline-none transition-colors"
+                                    />
+                                  </td>
+
+                                  {/* Eliminar */}
+                                  <td className="py-2 px-3 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveCpm(cpm.id)}
+                                      className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                      title="Desvincular forma de pago para esta moneda"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Barra para agregar nueva relación */}
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {/* Selector Moneda */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
+                            Moneda
+                          </label>
+                          <select
+                            value={newCpmCurrency}
+                            onChange={(e) => setNewCpmCurrency(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 focus:border-emerald-500 outline-none cursor-pointer"
                           >
-                            <div className="flex items-center gap-3">
-                              <div>
-                                <h5 className="text-sm font-bold text-gray-900">{pm.name}</h5>
-                                {pm.description && (
-                                  <p className="text-[11px] text-gray-500 line-clamp-1">{pm.description}</p>
-                                )}
-                              </div>
-                            </div>
+                            {(INITIAL_CURRENCIES_CATALOG || [
+                              { code: 'USD', name: 'Dólar Estadounidense' },
+                              { code: 'CUP', name: 'Peso Cubano' },
+                              { code: 'EUR', name: 'Euro' },
+                              { code: 'MLC', name: 'Moneda Libremente Convertible' },
+                            ]).map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.code} - {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                            <label className="relative inline-flex items-center cursor-pointer pointer-events-none">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {}}
-                                className="sr-only peer"
-                              />
-                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                            </label>
-                          </div>
-                        );
-                      })}
+                        {/* Selector Forma de Pago */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
+                            Forma de Pago Aceptada
+                          </label>
+                          <select
+                            value={newCpmPaymentMethodId}
+                            onChange={(e) => setNewCpmPaymentMethodId(e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 focus:border-emerald-500 outline-none cursor-pointer"
+                          >
+                            {paymentMethodsCatalog.map((pm) => (
+                              <option key={pm.id} value={pm.id}>
+                                {pm.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Detalle / Nota */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
+                            Condición (Opcional)
+                          </label>
+                          <input
+                            type="text"
+                            value={newCpmNotes}
+                            onChange={(e) => setNewCpmNotes(e.target.value)}
+                            placeholder="Ej: En mano, EnZona..."
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs text-gray-800 focus:border-emerald-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddCpm}
+                        className="px-3.5 py-2 mt-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Vincular</span>
+                      </button>
                     </div>
 
                     {/* Comisión por transferencia si aplica */}
-                    {paymentMethodIds.some(
-                      (id) => id === 'pm-transferencia' || id.toLowerCase().includes('transfer')
+                    {currencyPaymentMethods.some(
+                      (cpm) =>
+                        cpm.paymentMethodId === 'pm-transferencia' ||
+                        cpm.paymentMethodId.toLowerCase().includes('transfer')
                     ) && (
                       <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3">
                         <div>
@@ -1582,10 +1909,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                       type="button"
                       onClick={handleImportMarketplaceRates}
                       className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                      title="Importar tasas sugeridas configuradas en el marketplace"
+                      title="Copiar tasas globales configuradas en el marketplace"
                     >
                       <ArrowRightLeft className="w-3.5 h-3.5" />
-                      <span>Importar Sugeridas del Marketplace</span>
+                      <span>Copiar Tasas Globales del Marketplace</span>
                     </button>
                   </div>
 
@@ -1595,6 +1922,9 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                       <Plus className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Registrar Nueva Tasa de Cambio para la Tienda</span>
                     </h5>
+                    <p className="text-[11px] text-slate-500">
+                      Cada tienda puede definir de forma independiente las tasas que considere oportunas.
+                    </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                       <div className="sm:col-span-4">
@@ -1681,7 +2011,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                           Esta tienda aún no tiene tasas de cambio registradas.
                         </p>
                         <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-                          Agrega una tasa arriba o haz clic en "Importar Sugeridas del Marketplace" para traer las tasas estándar.
+                          Agrega una tasa arriba o haz clic en "Copiar Tasas Globales del Marketplace" para importar las tasas vigentes.
                         </p>
                       </div>
                     ) : (

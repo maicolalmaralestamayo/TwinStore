@@ -32,7 +32,9 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
+  ShoppingCart,
 } from 'lucide-react';
+import { CartQuantityControl } from '../common/CartQuantityControl';
 import {
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
@@ -48,6 +50,10 @@ interface ProductDetailModalProps {
   onShowToast: (title: string, desc?: string, type?: 'success' | 'info' | 'error') => void;
   marketplaceConfig?: MarketplaceConfig;
   products?: Product[];
+  onAddToCart?: (product: Product, quantity?: number) => void;
+  onUpdateQuantity?: (productId: string, quantity: number) => void;
+  onRemoveFromCart?: (productId: string) => void;
+  cartQuantity?: number;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -57,6 +63,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onShowToast,
   marketplaceConfig,
   products = [],
+  onAddToCart,
+  onUpdateQuantity,
+  onRemoveFromCart,
+  cartQuantity = 0,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
@@ -719,6 +729,74 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md space-y-2.5 shrink-0">
             {/* Botón Principal de Contactar */}
+            {/* Barra de Añadir al Carrito con Control Unificado */}
+            {(onAddToCart || onUpdateQuantity) && (
+              <div className="w-full">
+                {cartQuantity === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onAddToCart) {
+                        onAddToCart(product, 1);
+                      } else if (onUpdateQuantity) {
+                        onUpdateQuantity(product.id, 1);
+                      }
+                      onShowToast(
+                        '¡Añadido al Carrito!',
+                        `"${product.title}" añadido al carrito`,
+                        'success'
+                      );
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 px-5 rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-md text-sm cursor-pointer select-none"
+                    title="Añadir al carrito"
+                  >
+                    <ShoppingCart className="w-5 h-5 shrink-0" />
+                    <span>Añadir</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 p-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 pl-2">
+                      En el carrito:
+                    </span>
+                    <CartQuantityControl
+                      quantity={cartQuantity}
+                      onUpdateQuantity={(newQty) => {
+                        if (newQty <= 0) {
+                          if (onRemoveFromCart) {
+                            onRemoveFromCart(product.id);
+                          } else if (onUpdateQuantity) {
+                            onUpdateQuantity(product.id, 0);
+                          }
+                          onShowToast('Producto eliminado', `Se quitó "${product.title}" del carrito`, 'info');
+                          return;
+                        }
+                        if (onUpdateQuantity) {
+                          onUpdateQuantity(product.id, newQty);
+                        } else if (onAddToCart) {
+                          const diff = newQty - cartQuantity;
+                          if (diff > 0) onAddToCart(product, diff);
+                        }
+                      }}
+                      onRemove={() => {
+                        if (onRemoveFromCart) {
+                          onRemoveFromCart(product.id);
+                        } else if (onUpdateQuantity) {
+                          onUpdateQuantity(product.id, 0);
+                        }
+                        onShowToast('Producto eliminado', `Se quitó "${product.title}" del carrito`, 'info');
+                      }}
+                      size="md"
+                      allowDeleteAtOne={true}
+                      showAddButtonWhenZero={true}
+                      showRemoveButton={true}
+                      addLabel="Añadir"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Botón principal con WhatsApp */}
             <button
               type="button"
               onClick={handleOpenWhatsApp}

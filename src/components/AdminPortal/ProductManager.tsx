@@ -9,6 +9,7 @@ import {
   ProductTagSelection,
   NomenclatorItem,
   MarketplaceConfig,
+  FilterState,
 } from '../../types';
 import {
   PRESET_PRODUCT_IMAGES,
@@ -28,6 +29,8 @@ import {
 import { ThemeImage } from '../common/ThemeImage';
 import { ImageGalleryUploader } from '../common/ImageGalleryUploader';
 import { SearchableSelect } from '../common/SearchableSelect';
+import { SearchableMultiSelect } from '../common/SearchableMultiSelect';
+import { AdvancedSearch } from '../PublicMarketplace/AdvancedSearch';
 import {
   Plus,
   Edit2,
@@ -46,6 +49,38 @@ import {
   ArrowRightLeft,
   DollarSign,
 } from 'lucide-react';
+
+const DEFAULT_PRODUCT_FILTERS: FilterState = {
+  searchQuery: '',
+  storeIds: [],
+  categories: [],
+  subcategories: [],
+  tagGroups: [],
+  tagValues: [],
+  provinces: [],
+  municipalities: [],
+  repartos: [],
+  itemTypes: [],
+  paymentMethods: [],
+  deliveryMethods: [],
+  priceCurrency: 'USD',
+  minPrice: '',
+  maxPrice: '',
+  availabilityOnly: false,
+  deliveryOnly: false,
+  transferOnly: false,
+  serviceOnly: false,
+  category: 'ALL',
+  subcategory: 'ALL',
+  storeId: 'ALL',
+  location: 'ALL',
+  province: 'ALL',
+  municipality: 'ALL',
+  reparto: 'ALL',
+  tagGroup: 'ALL',
+  tagValue: 'ALL',
+  sortBy: 'featured',
+};
 
 interface ProductManagerProps {
   products: Product[];
@@ -82,7 +117,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_PRODUCT_FILTERS);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showPresets, setShowPresets] = useState(false);
 
@@ -155,7 +191,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   // Reset page when filtering
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [filters]);
 
   const openNewModal = () => {
     setEditingProduct(null);
@@ -368,19 +404,173 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      if (!searchTerm.trim()) return true;
-      const q = searchTerm.toLowerCase();
-      const storeName = stores.find((s) => s.id === p.storeId)?.name.toLowerCase() || '';
-      return (
-        (p.code && p.code.toLowerCase().includes(q)) ||
-        p.title.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
-        storeName.includes(q)
-      );
+      const pStore = stores.find((s) => s.id === p.storeId);
+      const pTypeId = p.productTypeId || (p.isService ? 'pt-servicio' : 'pt-producto');
+      const isServ =
+        pTypeId === 'pt-servicio' ||
+        (p.productType || '').toLowerCase().includes('servicio') ||
+        Boolean((p as any).isService);
+
+      // Offer Type / Product Type
+      if (filters.productTypes && filters.productTypes.length > 0) {
+        if (!filters.productTypes.includes(pTypeId) && !filters.productTypes.includes(p.productType || '')) {
+          return false;
+        }
+      } else if (filters.itemTypes && filters.itemTypes.length > 0) {
+        const matchesType = filters.itemTypes.some((selected) => {
+          if (selected === 'product' || selected === 'pt-producto') return !isServ;
+          if (selected === 'service' || selected === 'pt-servicio') return isServ;
+          return selected === pTypeId || selected === p.productType;
+        });
+        if (!matchesType) return false;
+      } else if (filters.serviceOnly) {
+        if (!isServ) return false;
+      }
+
+      // Search Query (title, description, code, store name)
+      if (filters.searchQuery?.trim()) {
+        const q = filters.searchQuery.toLowerCase().trim();
+        const storeName = pStore?.name.toLowerCase() || '';
+        const matches =
+          (p.code && p.code.toLowerCase().includes(q)) ||
+          p.title.toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
+          storeName.includes(q);
+        if (!matches) return false;
+      }
+
+      // Code filter
+      if (filters.code?.trim()) {
+        const codeQ = filters.code.toLowerCase().trim();
+        if (!p.code || !p.code.toLowerCase().includes(codeQ)) {
+          return false;
+        }
+      }
+
+      // Categories (Departamentos)
+      if (filters.categories && filters.categories.length > 0) {
+        if (!filters.categories.includes(p.category)) return false;
+      } else if (filters.category && filters.category !== 'ALL' && p.category !== filters.category) {
+        return false;
+      }
+
+      // Subcategories (Subdepartamentos)
+      if (filters.subcategories && filters.subcategories.length > 0) {
+        if (!p.subcategory || !filters.subcategories.includes(p.subcategory)) return false;
+      } else if (filters.subcategory && filters.subcategory !== 'ALL' && p.subcategory !== filters.subcategory) {
+        return false;
+      }
+
+      // Store filter
+      if (filters.storeIds && filters.storeIds.length > 0) {
+        if (!filters.storeIds.includes(p.storeId)) return false;
+      } else if (filters.storeId && filters.storeId !== 'ALL' && p.storeId !== filters.storeId) {
+        return false;
+      }
+
+      // Price filter
+      const storeRate = pStore?.usdToCupRate || 330;
+      const evalPrice =
+        filters.priceCurrency === 'USD'
+          ? p.priceUSD
+          : calculateCUP(p.priceUSD, storeRate);
+      if (filters.minPrice !== '' && evalPrice < Number(filters.minPrice)) {
+        return false;
+      }
+      if (filters.maxPrice !== '' && evalPrice > Number(filters.maxPrice)) {
+        return false;
+      }
+
+      // Availability filter
+      if (filters.availabilityOnly && !p.isAvailable) {
+        return false;
+      }
+
+      // Delivery methods
+      if (filters.deliveryMethods && filters.deliveryMethods.length > 0) {
+        const storeDeliveryIds: string[] = pStore?.deliveryMethodIds && pStore.deliveryMethodIds.length > 0
+          ? pStore.deliveryMethodIds
+          : pStore?.deliveryAvailable
+          ? ['dm-mensajeria', 'delivery']
+          : ['dm-recogida', 'pickup'];
+        const prodDeliveryIds: string[] = p.deliveryMethodIds || [];
+        const allDeliveryIds = [...storeDeliveryIds, ...prodDeliveryIds];
+        const matchesDelivery = filters.deliveryMethods.some((selected) => {
+          if (selected === 'delivery' || selected === 'dm-mensajeria') {
+            return allDeliveryIds.includes('dm-mensajeria') || allDeliveryIds.includes('delivery') || Boolean(pStore?.deliveryAvailable) || Boolean(p.deliveryAvailable);
+          }
+          if (selected === 'pickup' || selected === 'dm-recogida') {
+            return allDeliveryIds.includes('dm-recogida') || allDeliveryIds.includes('pickup') || !pStore?.deliveryAvailable;
+          }
+          return allDeliveryIds.includes(selected);
+        });
+        if (!matchesDelivery) return false;
+      }
+
+      // Payment methods
+      if (filters.paymentMethods && filters.paymentMethods.length > 0) {
+        const storePayIds: string[] = pStore?.paymentMethodIds && pStore.paymentMethodIds.length > 0
+          ? pStore.paymentMethodIds
+          : pStore?.paymentOptions?.transferAccepted
+          ? ['pm-efectivo', 'pm-transferencia', 'transfer', 'cash']
+          : ['pm-efectivo', 'cash'];
+        const prodPayIds: string[] = p.paymentMethodIds || [];
+        const allPayIds = [...storePayIds, ...prodPayIds];
+        const matchesPayment = filters.paymentMethods.some((selected) => {
+          if (selected === 'transfer' || selected === 'pm-transferencia') {
+            return allPayIds.includes('pm-transferencia') || allPayIds.includes('transfer') || Boolean(pStore?.paymentOptions?.transferAccepted);
+          }
+          if (selected === 'cash' || selected === 'pm-efectivo') {
+            return allPayIds.includes('pm-efectivo') || allPayIds.includes('cash');
+          }
+          return allPayIds.includes(selected);
+        });
+        if (!matchesPayment) return false;
+      }
+
+      // Location filters
+      if (pStore) {
+        const storeProv = pStore.address?.province || (pStore as any).province || '';
+        const storeMun = pStore.address?.municipality || (pStore as any).municipality || '';
+        const storeRep = pStore.address?.neighborhood || (pStore as any).reparto || '';
+
+        if (filters.provinces && filters.provinces.length > 0 && !filters.provinces.includes(storeProv)) {
+          return false;
+        }
+        if (filters.municipalities && filters.municipalities.length > 0 && !filters.municipalities.includes(storeMun)) {
+          return false;
+        }
+        if (filters.repartos && filters.repartos.length > 0 && !filters.repartos.includes(storeRep)) {
+          return false;
+        }
+      }
+
+      // Tags filters
+      if (filters.tagGroups && filters.tagGroups.length > 0) {
+        const matchesGroup = p.tagSelections?.some(
+          (ts) =>
+            filters.tagGroups?.includes(ts.groupName || '') ||
+            filters.tagGroups?.includes(ts.group || '') ||
+            filters.tagGroups?.includes(ts.groupId || '')
+        );
+        if (!matchesGroup) return false;
+      }
+      if (filters.tagValues && filters.tagValues.length > 0) {
+        const matchesTag =
+          p.tagSelections?.some(
+            (ts) =>
+              filters.tagValues?.includes(ts.tagName || '') ||
+              filters.tagValues?.includes(ts.value || '') ||
+              filters.tagValues?.includes(ts.tagId || '')
+          ) || p.tags.some((t) => filters.tagValues?.some((tv) => tv.toLowerCase() === t.toLowerCase()));
+        if (!matchesTag) return false;
+      }
+
+      return true;
     });
-  }, [products, stores, searchTerm]);
+  }, [products, stores, filters]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
@@ -414,22 +604,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         </button>
       </div>
 
-      {/* Search / Filter Bar - EXACT SAME DESIGN AS STORE MANAGER */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por código, nombre, tienda, departamento, subdepartamento..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-emerald-500 outline-none"
-          />
-        </div>
-        <span className="text-xs text-gray-500 font-semibold shrink-0">
-          Mostrando {filteredProducts.length} de {products.length} ofertas
-        </span>
-      </div>
+      {/* Search / Filter System - SAME AS PUBLIC MARKETPLACE USER VIEW */}
+      <AdvancedSearch
+        products={products}
+        categories={categories}
+        departmentsCatalog={departmentsCatalog || marketplaceConfig?.departmentsCatalog}
+        tagsCatalog={tagsCatalog || marketplaceConfig?.tagsCatalog}
+        geoCatalog={marketplaceConfig?.geoCatalog}
+        offerTypesCatalog={effectiveProductTypesCatalog}
+        paymentMethodsCatalog={paymentMethodsCatalog as any}
+        deliveryMethodsCatalog={deliveryMethodsCatalog as any}
+        stores={stores}
+        filters={filters}
+        onFilterChange={setFilters}
+        onResetFilters={() => setFilters(DEFAULT_PRODUCT_FILTERS)}
+        totalResults={filteredProducts.length}
+        isExpanded={isFilterExpanded}
+        onToggleExpanded={() => setIsFilterExpanded((prev) => !prev)}
+      />
 
       {/* Products list table - EXACT SAME DESIGN & INLINE EDITING AS STORE MANAGER */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
@@ -441,6 +633,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 <th className="py-3.5 px-4">Producto</th>
                 <th className="py-3.5 px-4">Clasificación</th>
                 <th className="py-3.5 px-4">Precio</th>
+                <th className="py-3.5 px-4">Tasas Permitidas</th>
+                <th className="py-3.5 px-4">Etiquetas</th>
                 <th className="py-3.5 px-4">Activo en Marketplace</th>
                 <th className="py-3.5 px-4">Tipo</th>
                 <th className="py-3.5 px-4 text-right">Acciones</th>
@@ -449,7 +643,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             <tbody className="divide-y divide-gray-200 text-sm">
               {currentProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-500 text-sm italic">
+                  <td colSpan={9} className="py-8 text-center text-gray-500 text-sm italic">
                     No se encontraron productos o servicios que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -610,6 +804,69 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                             );
                           })()}
                         </div>
+                      </td>
+
+                      {/* Tasas de Cambio Permitidas - Combobox MultiSelect como en filtros */}
+                      <td className="py-3 px-4 min-w-[210px]">
+                        {productStore?.exchangeRates && productStore.exchangeRates.length > 0 ? (
+                          <SearchableMultiSelect
+                            options={productStore.exchangeRates.map((r) => ({
+                              value: r.id,
+                              label: `1 ${r.fromCurrency} = ${r.rate} ${r.toCurrency}`,
+                              sublabel: `${r.fromCurrency} → ${r.toCurrency}`,
+                            }))}
+                            values={p.allowedExchangeRateIds || []}
+                            onChange={(newRateIds) => {
+                              onUpdateProduct({
+                                ...p,
+                                allowedExchangeRateIds: newRateIds,
+                              });
+                            }}
+                            placeholder="Todas las tasas..."
+                            allLabel="Todas las tasas"
+                            size="sm"
+                          />
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">
+                            Sin tasas en tienda
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Etiquetas - Combobox MultiSelect como en filtros */}
+                      <td className="py-3 px-4 min-w-[210px]">
+                        <SearchableMultiSelect
+                          options={effectiveTagsCatalog.flatMap((g) =>
+                            g.tags.map((t) => ({
+                              value: t.name,
+                              label: t.name,
+                              sublabel: g.name,
+                            }))
+                          )}
+                          values={p.tags || []}
+                          onChange={(newTags) => {
+                            const newTagSelections = newTags.map((tagName) => {
+                              const foundGroup = effectiveTagsCatalog.find((g) =>
+                                g.tags.some((t) => t.name === tagName)
+                              );
+                              return {
+                                groupId: foundGroup?.id,
+                                groupName: foundGroup?.name || 'General',
+                                group: foundGroup?.name || 'General',
+                                tagName,
+                                value: tagName,
+                              };
+                            });
+                            onUpdateProduct({
+                              ...p,
+                              tags: newTags,
+                              tagSelections: newTagSelections,
+                            });
+                          }}
+                          placeholder="Etiquetas..."
+                          allLabel="Todas las etiquetas"
+                          size="sm"
+                        />
                       </td>
 
                       {/* Activo en Marketplace - Toggle Switch Interruptor */}

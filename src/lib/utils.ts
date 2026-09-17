@@ -42,10 +42,12 @@ export function extractProductDisplayTags(product: Product): string[] {
 }
 
 /**
- * Given a USD price and a store's exchange rate, return the CUP equivalent
+ * Given a USD price and a store's exchange rate, return the CUP equivalent.
+ * Las tasas de cambio siempre son números enteros.
  */
 export function calculateCUP(priceUSD: number, rate: number): number {
-  return Math.round(priceUSD * (rate || 330));
+  const integerRate = Math.round(rate || 330);
+  return Math.round(priceUSD * integerRate);
 }
 
 /**
@@ -110,22 +112,23 @@ export function getStoreExchangeRate(
   if (!store || !fromCurr || !toCurr || fromCurr === toCurr) return 1;
   const rates = store.exchangeRates || [];
   const direct = rates.find((r) => r.fromCurrency === fromCurr && r.toCurrency === toCurr);
-  if (direct && direct.rate > 0) return direct.rate;
+  if (direct && direct.rate > 0) return Math.round(direct.rate);
   const inverse = rates.find((r) => r.fromCurrency === toCurr && r.toCurrency === fromCurr);
-  if (inverse && inverse.rate > 0) return 1 / inverse.rate;
+  if (inverse && inverse.rate > 0) return 1 / Math.round(inverse.rate);
 
-  // Fallback for USD <-> CUP legacy rate
+  // Fallback for USD <-> CUP legacy rate (siempre entero)
   if (fromCurr === 'USD' && toCurr === 'CUP' && store.usdToCupRate) {
-    return store.usdToCupRate;
+    return Math.round(store.usdToCupRate);
   }
   if (fromCurr === 'CUP' && toCurr === 'USD' && store.usdToCupRate) {
-    return 1 / store.usdToCupRate;
+    return 1 / Math.round(store.usdToCupRate);
   }
   return undefined;
 }
 
 /**
  * Calculates a product's price in a target currency according to the store's currency settings.
+ * Las tasas de cambio siempre son números enteros.
  */
 export function calculateProductPriceInCurrency(
   product: Product,
@@ -145,7 +148,8 @@ export function calculateProductPriceInCurrency(
     (r) => (r.fromCurrency || '').toUpperCase() === origCurrency && (r.toCurrency || '').toUpperCase() === target
   );
   if (matchedRate && matchedRate.rate > 0) {
-    return Math.round(origPrice * matchedRate.rate * 100) / 100;
+    const integerRate = Math.round(matchedRate.rate);
+    return Math.round(origPrice * integerRate * 100) / 100;
   }
 
   const rate = getStoreExchangeRate(store, origCurrency, target);
@@ -154,7 +158,7 @@ export function calculateProductPriceInCurrency(
   }
 
   if (origCurrency === 'USD' && target === 'CUP') {
-    return calculateCUP(origPrice, store?.usdToCupRate || 330);
+    return calculateCUP(origPrice, Math.round(store?.usdToCupRate || 330));
   }
 
   return origPrice;

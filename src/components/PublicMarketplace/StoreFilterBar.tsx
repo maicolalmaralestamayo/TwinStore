@@ -14,6 +14,7 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Coins,
 } from 'lucide-react';
 import { SearchableMultiSelect } from '../common/SearchableMultiSelect';
 import { interfaz } from '../../data/interfaz';
@@ -119,6 +120,14 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
     sublabel: dm.description || 'Modalidad de entrega/recogida',
   }));
 
+  // MONEDAS ACEPTADAS POR LA TIENDA
+  const currencyOptions = [
+    { value: 'USD', label: 'USD (Dólar estadounidense)', sublabel: 'Moneda extranjera' },
+    { value: 'CUP', label: 'CUP (Peso cubano)', sublabel: 'Moneda nacional' },
+    { value: 'EUR', label: 'EUR (Euro)', sublabel: 'Moneda extranjera' },
+    { value: 'MLC', label: 'MLC (Moneda Libremente Convertible)', sublabel: 'Tarjeta bancaria cubana' },
+  ];
+
   const handleUpdate = <K extends keyof StoreFilterState>(
     key: K,
     value: StoreFilterState[K]
@@ -176,6 +185,7 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
 
   const activeFiltersCount =
     (filters.searchQuery ? 1 : 0) +
+    (filters.currencies?.length || 0) +
     (filters.provinces?.length || 0) +
     (filters.municipalities?.length || 0) +
     (filters.repartos?.length || 0) +
@@ -388,7 +398,23 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Monedas Aceptadas */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                  <Coins className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Monedas aceptadas</span>
+                </label>
+                <SearchableMultiSelect
+                  options={currencyOptions}
+                  values={filters.currencies || []}
+                  onChange={(values) => handleUpdate('currencies', values)}
+                  placeholder="Todas las monedas"
+                  allLabel="Todas las monedas"
+                  searchPlaceholder="Buscar moneda..."
+                />
+              </div>
+
               {/* Tipo de Pago */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">

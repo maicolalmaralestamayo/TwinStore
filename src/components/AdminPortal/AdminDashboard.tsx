@@ -75,21 +75,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'config' | 'stores' | 'products' | 'backup'>('config');
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  const activeStores = stores.filter((s) => s.active);
-  const inactiveStoresCount = stores.length - activeStores.length;
-
-  const activeStoreIds = new Set(activeStores.map((s) => s.id));
-  const activeProducts = products.filter(
-    (p) => p.isAvailable !== false && activeStoreIds.has(p.storeId)
-  );
-  const inactiveProductsCount = products.length - activeProducts.length;
-
-  const rates = activeStores.map((s) => s.usdToCupRate).filter(Boolean);
-  const avgRate =
-    rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 675;
-  const minRate = rates.length > 0 ? Math.min(...rates) : 675;
-  const maxRate = rates.length > 0 ? Math.max(...rates) : 675;
-
   const handleExportBackup = () => {
     if (marketplaceConfig) {
       exportFullJsonBackup(
@@ -215,53 +200,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <LogOut className="w-4 h-4" />
             <span>{interfaz.admin.topButtons.logout}</span>
           </button>
-        </div>
-      </div>
-
-      {/* Top Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            {interfaz.admin.metrics.connectedStores}
-          </span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900">{activeStores.length}</span>
-            <span className="text-xs font-semibold text-emerald-600">{interfaz.admin.metrics.connectedLabel}</span>
-          </div>
-          <div className="mt-1 text-xs text-slate-500 font-medium">
-            <span className="font-semibold text-slate-700">{activeStores.length}</span> {interfaz.admin.metrics.connectedLabel} •{' '}
-            <span className="font-semibold text-rose-600">{inactiveStoresCount}</span> {interfaz.admin.metrics.disconnectedLabel}
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            {interfaz.admin.metrics.productsAndServices}
-          </span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900">{activeProducts.length}</span>
-            <span className="text-xs font-semibold text-emerald-600">{interfaz.admin.metrics.activatedLabel}</span>
-          </div>
-          <div className="mt-1 text-xs text-slate-500 font-medium">
-            <span className="font-semibold text-slate-700">{activeProducts.length}</span> {interfaz.admin.metrics.activatedLabel} •{' '}
-            <span className="font-semibold text-amber-600">{inactiveProductsCount}</span> {interfaz.admin.metrics.deactivatedLabel}
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold uppercase text-slate-400 block mb-1">
-            {interfaz.admin.metrics.avgRate}
-          </span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-indigo-600 font-mono">{avgRate}</span>
-            <span className="text-xs font-bold text-slate-500">{interfaz.admin.metrics.rateUnit}</span>
-          </div>
-          <div className="mt-1 text-xs text-slate-500 font-medium">
-            {interfaz.admin.metrics.rateRangePrefix}{' '}
-            <span className="font-semibold text-slate-800 font-mono">
-              {minRate === maxRate ? `${minRate} CUP` : `${minRate} - ${maxRate} CUP`}
-            </span>
-          </div>
         </div>
       </div>
 
