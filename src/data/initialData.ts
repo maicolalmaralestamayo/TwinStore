@@ -13,6 +13,7 @@ import {
   CurrencyItem,
   StoreExchangeRate,
 } from '../types';
+import { DEFAULT_INTERFAZ } from './defaultInterfaz';
 
 export const INITIAL_CURRENCIES_CATALOG: CurrencyItem[] = [
   {
@@ -506,6 +507,7 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
     { id: 'rate-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 330 },
     { id: 'rate-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
   ],
+  uiTexts: DEFAULT_INTERFAZ,
 };
 
 
@@ -612,7 +614,47 @@ export const INITIAL_STORES: Store[] = [
       province: 'La Habana',
       googleMapsUrl: 'https://maps.google.com/?q=Calle+23+y+H+Vedado+La+Habana',
     },
-    usdToCupRate: 335, // 1 USD = 335 CUP
+    usdToCupRate: 530, // 1 USD = 530 CUP
+    baseCurrency: 'USD',
+    secondaryCurrency: 'CUP',
+    exchangeRates: [
+      { id: 'rate-s1-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 530 },
+      { id: 'rate-s1-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 560 },
+    ],
+    ratePaymentMethods: [
+      {
+        id: 'rpm-s1-usdcup-cash',
+        storeId: 'store-1',
+        exchangeRateId: 'rate-s1-usd-cup',
+        paymentMethodId: 'pm-efectivo',
+        gravamen: 0,
+        notes: 'Efectivo en mano sin recargo (0% gravamen)',
+      },
+      {
+        id: 'rpm-s1-usdcup-transf',
+        storeId: 'store-1',
+        exchangeRateId: 'rate-s1-usd-cup',
+        paymentMethodId: 'pm-transferencia',
+        gravamen: 10,
+        notes: 'Transferencia bancaria (+10% gravamen)',
+      },
+      {
+        id: 'rpm-s1-eurcup-cash',
+        storeId: 'store-1',
+        exchangeRateId: 'rate-s1-eur-cup',
+        paymentMethodId: 'pm-efectivo',
+        gravamen: 0,
+        notes: 'Efectivo Euros',
+      },
+      {
+        id: 'rpm-s1-eurcup-transf',
+        storeId: 'store-1',
+        exchangeRateId: 'rate-s1-eur-cup',
+        paymentMethodId: 'pm-transferencia',
+        gravamen: 10,
+        notes: 'Transferencia bancaria (+10% gravamen)',
+      },
+    ],
     deliveryAvailable: true,
     paymentOptions: {
       transferAccepted: true,

@@ -115,3 +115,30 @@ export async function restoreDbApi(data: { stores?: Store[]; products?: Product[
     return false;
   }
 }
+
+export async function fetchInterfazApi(): Promise<Record<string, any> | null> {
+  try {
+    const res = await fetch('/api/interfaz');
+    if (!res.ok) throw new Error('Error de red al obtener interfaz');
+    const data = await res.json();
+    return data && typeof data === 'object' ? data : null;
+  } catch (e) {
+    console.warn('Fallback a interfaz local:', e);
+    return null;
+  }
+}
+
+export async function saveInterfazApi(texts: Record<string, any>): Promise<boolean> {
+  try {
+    const res = await fetch('/api/interfaz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(texts),
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Error guardando interfaz en SQLite:', e);
+    return false;
+  }
+}
+

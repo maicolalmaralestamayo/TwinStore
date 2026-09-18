@@ -48,7 +48,8 @@ import { StoreDirectoryModal } from './components/PublicMarketplace/StoreDirecto
 import { CartModal } from './components/Cart/CartModal';
 import { AdminLoginModal } from './components/AdminPortal/AdminLoginModal';
 import { AdminDashboard } from './components/AdminPortal/AdminDashboard';
-import { interfaz } from './data/interfaz';
+import { interfaz, setLiveInterfaz } from './data/interfaz';
+import { InterfazProvider } from './context/InterfazContext';
 import {
   MessageCircle,
   ShoppingBag,
@@ -406,6 +407,9 @@ export default function App() {
           setProducts(dbProducts);
         }
         if (dbConfig) {
+          if (dbConfig.uiTexts) {
+            setLiveInterfaz(dbConfig.uiTexts);
+          }
           setMarketplaceConfig((prev) => ({
             ...prev,
             ...dbConfig,
@@ -554,6 +558,9 @@ export default function App() {
   };
 
   const handleUpdateMarketplaceConfig = (newConfig: MarketplaceConfig) => {
+    if (newConfig.uiTexts) {
+      setLiveInterfaz(newConfig.uiTexts);
+    }
     setMarketplaceConfig(newConfig);
     saveConfigApi(newConfig);
   };
@@ -740,7 +747,7 @@ export default function App() {
       if (filters.paymentMethods && filters.paymentMethods.length > 0) {
         const itemCurrency = p.currency || store?.baseCurrency || 'USD';
         const validPayMethods = store
-          ? getStorePaymentMethodsForCurrency(store, itemCurrency, paymentMethodsCatalog)
+          ? getStorePaymentMethodsForCurrency(store, itemCurrency, marketplaceConfig.paymentMethodsCatalog)
           : [
               { id: 'pm-efectivo', name: 'Efectivo', gravamen: 0 },
               { id: 'pm-transferencia', name: 'Transferencia', gravamen: 0 },
@@ -766,7 +773,7 @@ export default function App() {
       } else if (filters.transferOnly) {
         const itemCurrency = p.currency || store?.baseCurrency || 'USD';
         const validPayMethods = store
-          ? getStorePaymentMethodsForCurrency(store, itemCurrency, paymentMethodsCatalog)
+          ? getStorePaymentMethodsForCurrency(store, itemCurrency, marketplaceConfig.paymentMethodsCatalog)
           : [];
         const hasTransfer = validPayMethods.some(
           (pm) => pm.id === 'pm-transferencia' || pm.id.toLowerCase().includes('transfer')
@@ -960,7 +967,7 @@ export default function App() {
           const storePayIdsForTargetCurrencies = Array.from(
             new Set(
               targetCurrencies.flatMap((curr) =>
-                getStorePaymentMethodsForCurrency(s, curr, paymentMethodsCatalog).map((pm) => pm.id)
+                getStorePaymentMethodsForCurrency(s, curr, marketplaceConfig.paymentMethodsCatalog).map((pm) => pm.id)
               )
             )
           );
@@ -1019,7 +1026,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <InterfazProvider initialTexts={marketplaceConfig.uiTexts}>
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       {/* Global Dynamic Theme Injection: affects both public marketplace and admin portal */}
       <style>{`
         :root {
@@ -1695,6 +1703,7 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
         onShowToast={showToast}
       />
-    </div>
+      </div>
+    </InterfazProvider>
   );
 }

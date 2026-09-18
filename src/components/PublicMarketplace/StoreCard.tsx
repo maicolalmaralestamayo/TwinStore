@@ -8,6 +8,10 @@ import {
   formatNumberWithDots,
 } from '../../lib/utils';
 import {
+  getStoreAcceptedCurrencies,
+  getStorePaymentMethodsForCurrency,
+} from '../../lib/cartUtils';
+import {
   MapPin,
   MessageCircle,
   Truck,
@@ -66,21 +70,12 @@ export const StoreCard: React.FC<StoreCardProps> = ({
     store.deliveryAvailable ||
     (store.deliveryMethodIds && store.deliveryMethodIds.includes('dm-mensajeria'));
 
-  // Payment flags
-  const hasCash =
-    !store.paymentMethodIds ||
-    store.paymentMethodIds.length === 0 ||
-    store.paymentMethodIds.includes('pm-efectivo');
-  const hasTransfer =
-    store.paymentOptions?.transferAccepted ||
-    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-transferencia'));
-  const transferFee = store.paymentOptions?.transferFeePercentage;
-  const hasZelle =
-    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-zelle')) ||
-    store.paymentOptions?.acceptedCurrencies?.includes('Zelle');
-  const hasMlc =
-    (store.paymentMethodIds && store.paymentMethodIds.includes('pm-mlc')) ||
-    store.paymentOptions?.acceptedCurrencies?.includes('MLC');
+  // Accepted currencies & relational payment methods
+  const acceptedCurrencies = getStoreAcceptedCurrencies(store);
+  const currencyPaymentList = acceptedCurrencies.map((curr) => ({
+    currency: curr,
+    methods: getStorePaymentMethodsForCurrency(store, curr),
+  }));
 
   return (
     <div
@@ -129,30 +124,18 @@ export const StoreCard: React.FC<StoreCardProps> = ({
           </div>
         </div>
 
-        {/* Tags inferiores sobre la imagen: Métodos de pago aceptados */}
-        <div className="absolute bottom-2.5 inset-x-2.5 z-10 flex flex-wrap items-center gap-1">
-          {hasCash && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-purple-200 border border-purple-400/30 shadow-xs">
-              <Banknote className="w-3 h-3 text-purple-300 shrink-0" />
-              <span>Efectivo</span>
+        {/* Tags inferiores sobre la imagen: Relación Moneda ↔ Forma de Pago aceptada */}
+        <div className="absolute bottom-2.5 inset-x-2.5 z-10 flex flex-wrap items-center gap-1.5">
+          {currencyPaymentList.map((cp) => (
+            <span
+              key={cp.currency}
+              className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-slate-200 border border-slate-700/60 shadow-xs"
+              title={`Para ${cp.currency} acepta: ${cp.methods.map((m) => m.name).join(', ')}`}
+            >
+              <span className="font-extrabold text-amber-300 font-mono">{cp.currency}:</span>
+              <span>{cp.methods.map((m) => m.name).join(', ')}</span>
             </span>
-          )}
-          {hasTransfer && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-indigo-200 border border-indigo-400/30 shadow-xs">
-              <CreditCard className="w-3 h-3 text-indigo-300 shrink-0" />
-              <span>Transferencia{transferFee ? ` (+${transferFee}%)` : ''}</span>
-            </span>
-          )}
-          {hasZelle && (
-            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-violet-200 border border-violet-400/30 shadow-xs">
-              Zelle
-            </span>
-          )}
-          {hasMlc && (
-            <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-950/85 backdrop-blur-md text-amber-200 border border-amber-400/30 shadow-xs">
-              MLC
-            </span>
-          )}
+          ))}
         </div>
       </div>
 

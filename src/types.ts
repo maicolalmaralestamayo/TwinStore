@@ -70,6 +70,15 @@ export interface StoreCurrencyPaymentMethod {
   notes?: string; // Nota descriptiva opcional (ej: 'Solo efectivo en billetes', 'Transfermóvil / EnZona')
 }
 
+export interface StoreRatePaymentMethod {
+  id: string; // ID único del registro relacional
+  storeId?: string; // Llave foránea de la tienda
+  exchangeRateId: string; // Llave foránea de la tasa de cambio de la tienda
+  paymentMethodId: string; // ID del tipo de pago aceptado (ej: 'pm-efectivo', 'pm-transferencia')
+  gravamen: number; // Porcentaje de gravamen para este tipo de pago en esta tasa (ej: 0 para efectivo, 10 para transferencia)
+  notes?: string; // Nota descriptiva opcional
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -81,6 +90,7 @@ export interface Store {
   location: string; // e.g. "La Habana - Vedado", "Santiago de Cuba"
   address?: StoreAddress; // Normalized relational address structure
   exchangeRates?: StoreExchangeRate[]; // Tabla de tasas de cambio relacionadas (1 a muchos con la tienda)
+  ratePaymentMethods?: StoreRatePaymentMethod[]; // Tabla relacional: Tasas de cambio ↔ Tipos de pago aceptados y gravamen (ej: tasa 1 USD a CUP 530 -> efectivo 0% gravamen, transferencia 10% gravamen)
   usdToCupRate?: number; // Compatibilidad de acceso rápido
   baseCurrency?: string; // Compatibilidad
   secondaryCurrency?: string; // Compatibilidad
@@ -306,6 +316,7 @@ export interface MarketplaceConfig {
   secondaryCurrency?: string; // Moneda secundaria global del marketplace (ej: 'CUP')
   globalExchangeRate?: number; // Tasa de cambio global para tiendas con la combinación base/secundaria
   globalExchangeRates?: GlobalExchangeRate[]; // Nomenclador de tasas de cambio globales del marketplace
+  uiTexts?: Record<string, any>; // Textos de la interfaz gestionados y persistidos en la base de datos
 }
 
 export interface CartItem {

@@ -14,6 +14,7 @@ import {
   generateMarketplaceConsolidatedWhatsAppMessage,
   getStoreAcceptedCurrencies,
   getStorePaymentMethods,
+  getStorePaymentMethodsForCurrency,
   getStoreDeliveryMethods,
   StoreCurrencySubtotal,
 } from '../../lib/cartUtils';
@@ -147,8 +148,26 @@ export const CartModal: React.FC<CartModalProps> = ({
     setTimeout(() => setCopiedMaster(false), 2500);
   };
 
-  const handleItemPreferenceChange = (productId: string, prefs: Partial<CartItem>) => {
+  const handleItemPreferenceChange = (
+    productId: string,
+    prefs: Partial<CartItem>,
+    store?: Store
+  ) => {
     if (onUpdateItemPreferences) {
+      if (prefs.paymentCurrency && store) {
+        // Ensure that selected paymentMethodId is valid for the new currency
+        const validMethods = getStorePaymentMethodsForCurrency(
+          store,
+          prefs.paymentCurrency,
+          marketplaceConfig.paymentMethodsCatalog
+        );
+        const currentItem = cartItems.find((c) => c.productId === productId);
+        const currentPmId = prefs.paymentMethodId || currentItem?.paymentMethodId;
+        const isValid = validMethods.some((m) => m.id === currentPmId);
+        if (!isValid && validMethods.length > 0) {
+          prefs.paymentMethodId = validMethods[0].id;
+        }
+      }
       onUpdateItemPreferences(productId, prefs);
     }
   };
@@ -422,9 +441,11 @@ export const CartModal: React.FC<CartModalProps> = ({
                                 <select
                                   value={item.paymentCurrency}
                                   onChange={(e) =>
-                                    handleItemPreferenceChange(product.id, {
-                                      paymentCurrency: e.target.value,
-                                    })
+                                    handleItemPreferenceChange(
+                                      product.id,
+                                      { paymentCurrency: e.target.value },
+                                      store
+                                    )
                                   }
                                   className="text-xs font-bold font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden cursor-pointer"
                                   title="Moneda de pago para este artículo"
@@ -451,24 +472,35 @@ export const CartModal: React.FC<CartModalProps> = ({
                                 </div>
                               </td>
 
-                              {/* 6. Forma de Pago */}
+                              {/* 6. Forma de Pago (filtrada por la moneda seleccionada para este artículo) */}
                               <td className="py-2.5 px-3 whitespace-nowrap">
-                                <select
-                                  value={item.paymentMethod.id}
-                                  onChange={(e) =>
-                                    handleItemPreferenceChange(product.id, {
-                                      paymentMethodId: e.target.value,
-                                    })
-                                  }
-                                  className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden cursor-pointer max-w-[130px]"
-                                  title="Forma de pago"
-                                >
-                                  {storePaymentMethods.map((pm) => (
-                                    <option key={pm.id} value={pm.id}>
-                                      {pm.name} {pm.gravamen > 0 ? `(+${pm.gravamen}%)` : ''}
-                                    </option>
-                                  ))}
-                                </select>
+                                {(() => {
+                                  const itemPaymentMethods = getStorePaymentMethodsForCurrency(
+                                    store,
+                                    item.paymentCurrency,
+                                    marketplaceConfig.paymentMethodsCatalog
+                                  );
+                                  return (
+                                    <select
+                                      value={item.paymentMethod.id}
+                                      onChange={(e) =>
+                                        handleItemPreferenceChange(
+                                          product.id,
+                                          { paymentMethodId: e.target.value },
+                                          store
+                                        )
+                                      }
+                                      className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden cursor-pointer max-w-[140px]"
+                                      title={`Forma de pago aceptada en ${item.paymentCurrency}`}
+                                    >
+                                      {itemPaymentMethods.map((pm) => (
+                                        <option key={pm.id} value={pm.id}>
+                                          {pm.name} {pm.gravamen > 0 ? `(+${pm.gravamen}%)` : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                })()}
                               </td>
 
                               {/* 7. Recogida / Entrega */}
@@ -476,9 +508,11 @@ export const CartModal: React.FC<CartModalProps> = ({
                                 <select
                                   value={item.deliveryMethod.id}
                                   onChange={(e) =>
-                                    handleItemPreferenceChange(product.id, {
-                                      deliveryMethodId: e.target.value,
-                                    })
+                                    handleItemPreferenceChange(
+                                      product.id,
+                                      { deliveryMethodId: e.target.value },
+                                      store
+                                    )
                                   }
                                   className="text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden cursor-pointer max-w-[140px]"
                                   title="Modalidad de entrega / recogida"

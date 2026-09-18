@@ -6,8 +6,10 @@ import {
   getProductPricesInAllowedCurrencies,
   generateWhatsAppOrderUrl,
 } from '../../lib/utils';
+import { getStorePaymentMethodsForCurrency } from '../../lib/cartUtils';
 import {
   MessageCircle,
+  CreditCard,
 } from 'lucide-react';
 import { CartQuantityControl } from '../common/CartQuantityControl';
 import { interfaz } from '../../data/interfaz';
@@ -139,6 +141,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             )}
           </div>
+
+          {/* Formas de pago aceptadas para la moneda de este producto */}
+          {store && (
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 px-0.5">
+              <CreditCard className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span className="truncate">
+                Pago en <strong className="text-slate-700 dark:text-slate-300">{primaryItem.currency}</strong>:{' '}
+                {getStorePaymentMethodsForCurrency(store, primaryItem.currency)
+                  .map((m) => m.name)
+                  .join(', ')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 5. Botones de Acción: Control de Cantidad y Contactar */}

@@ -6,6 +6,10 @@ import {
   generateStoreWhatsAppUrl,
 } from '../../lib/utils';
 import {
+  getStoreAcceptedCurrencies,
+  getStorePaymentMethodsForCurrency,
+} from '../../lib/cartUtils';
+import {
   Eye,
   MessageCircle,
   MapPin,
@@ -153,26 +157,22 @@ export const StoreTableView: React.FC<StoreTableViewProps> = ({
                     </div>
                   </td>
 
-                  {/* Métodos de Pago */}
-                  <td className="py-3 px-4 min-w-[150px]">
-                    <div className="flex flex-col gap-1 text-xs">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px]">
-                          Efectivo
-                        </span>
-                        {store.paymentOptions?.transferAccepted && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium text-[11px] border border-emerald-100">
-                            Transferencia
-                          </span>
-                        )}
-                      </div>
-                      {store.paymentOptions?.transferAccepted &&
-                        store.paymentOptions?.transferFeePercent !== undefined &&
-                        store.paymentOptions.transferFeePercent > 0 && (
-                          <span className="text-[10px] text-amber-700 font-bold">
-                            +{store.paymentOptions.transferFeePercent}% recargo
-                          </span>
-                        )}
+                  {/* Métodos de Pago Relacionados por Moneda */}
+                  <td className="py-3 px-4 min-w-[180px]">
+                    <div className="flex flex-col gap-1.5 text-xs">
+                      {getStoreAcceptedCurrencies(store).map((curr) => {
+                        const methods = getStorePaymentMethodsForCurrency(store, curr);
+                        return (
+                          <div key={curr} className="inline-flex items-center gap-1.5 flex-wrap">
+                            <span className="font-extrabold text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              {curr}:
+                            </span>
+                            <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+                              {methods.map((m) => m.name).join(', ')}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
 

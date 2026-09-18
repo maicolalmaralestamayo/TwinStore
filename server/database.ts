@@ -6,6 +6,7 @@ import {
   INITIAL_PRODUCTS,
   INITIAL_MARKETPLACE_CONFIG,
 } from '../src/data/initialData';
+import { DEFAULT_INTERFAZ } from '../src/data/defaultInterfaz';
 import { Store, Product, MarketplaceConfig, StoreExchangeRate } from '../src/types';
 
 let dbInstance: Database | null = null;
@@ -166,7 +167,14 @@ function initTables(db: Database) {
       paymentMethodsCatalog TEXT,
       deliveryMethodsCatalog TEXT,
       currenciesCatalog TEXT,
-      globalExchangeRates TEXT
+      globalExchangeRates TEXT,
+      uiTexts TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS ui_texts (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      content TEXT,
+      updatedAt TEXT
     );
   `);
 
@@ -187,6 +195,7 @@ function initTables(db: Database) {
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN deliveryMethodsCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN currenciesCatalog TEXT;"); } catch (e) {}
   try { db.run("ALTER TABLE marketplace_config ADD COLUMN globalExchangeRates TEXT;"); } catch (e) {}
+  try { db.run("ALTER TABLE marketplace_config ADD COLUMN uiTexts TEXT;"); } catch (e) {}
   try { db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_code ON products(code);"); } catch (e) {}
   try { db.run("CREATE INDEX IF NOT EXISTS idx_store_rates_storeId ON store_exchange_rates(storeId);"); } catch (e) {}
   try { db.run("CREATE INDEX IF NOT EXISTS idx_prod_rates_productId ON product_allowed_exchange_rates(productId);"); } catch (e) {}
@@ -199,6 +208,22 @@ function initTables(db: Database) {
         const prodId = row[0];
         const newCode = `PRD-${String(idx + 1).padStart(3, '0')}`;
         db.run("UPDATE products SET code = $code WHERE id = $id", { "$code": newCode, "$id": prodId });
+      });
+    }
+  } catch (e) {}
+
+  // Backfill or seed uiTexts in SQLite if missing or empty
+  try {
+    const configRes = db.exec("SELECT uiTexts FROM marketplace_config WHERE id = 'default'");
+    const currentUi = configRes[0]?.values?.[0]?.[0];
+    if (!currentUi || currentUi === '' || currentUi === 'null') {
+      const defaultSerialized = JSON.stringify(DEFAULT_INTERFAZ);
+      db.run("UPDATE marketplace_config SET uiTexts = $uiTexts WHERE id = 'default'", {
+        "$uiTexts": defaultSerialized
+      });
+      db.run("INSERT OR REPLACE INTO ui_texts (id, content, updatedAt) VALUES ('default', $content, $updatedAt)", {
+        "$content": defaultSerialized,
+        "$updatedAt": new Date().toISOString()
       });
     }
   } catch (e) {}
@@ -632,13 +657,13 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
       bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
       accentColor, socialLinks, geoCatalog, departmentsCatalog, tagsCatalog,
       productTypesCatalog, paymentMethodsCatalog, deliveryMethodsCatalog,
-      currenciesCatalog, globalExchangeRates
+      currenciesCatalog, globalExchangeRates, uiTexts
     ) VALUES (
       'default', $name, $slogan, $logoUrl, $defaultStoreLogoUrl, $defaultProductImageUrl,
       $bannerUrl, $bannerTitle, $bannerSubtitle, $primaryColor, $secondaryColor,
       $accentColor, $socialLinks, $geoCatalog, $departmentsCatalog, $tagsCatalog,
       $productTypesCatalog, $paymentMethodsCatalog, $deliveryMethodsCatalog,
-      $currenciesCatalog, $globalExchangeRates
+      $currenciesCatalog, $globalExchangeRates, $uiTexts
     )
   `;
 
@@ -662,10 +687,23 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
     '$paymentMethodsCatalog': JSON.stringify(config.paymentMethodsCatalog || []),
     '$deliveryMethodsCatalog': JSON.stringify(config.deliveryMethodsCatalog || []),
     '$currenciesCatalog': JSON.stringify(config.currenciesCatalog || []),
-    '$globalExchangeRates': JSON.stringify(config.globalExchangeRates || [])
+    '$globalExchangeRates': JSON.stringify(config.globalExchangeRates || []),
+    '$uiTexts': JSON.stringify(config.uiTexts || DEFAULT_INTERFAZ)
   };
 
   db.run(sql, params);
+
+  // Sync to ui_texts table as well
+  try {
+    const serializedUi = JSON.stringify(config.uiTexts || DEFAULT_INTERFAZ);
+    db.run(
+      "INSERT OR REPLACE INTO ui_texts (id, content, updatedAt) VALUES ('default', $content, $updatedAt)",
+      {
+        "$content": serializedUi,
+        "$updatedAt": new Date().toISOString()
+      }
+    );
+  } catch (e) {}
 
   // Sync to normalized relational table global_exchange_rates
   try {
@@ -691,7 +729,16 @@ export function saveConfigToDb(db: Database, config: MarketplaceConfig) {
   }
 }
 
-export function rowToConfig(row: any[]): MarketplaceConfig {
+export function rowToConfig(row: any[], columns?: string[]): MarketplaceConfig {
+  let uiTextsStr: string | undefined;
+  if (columns && Array.isArray(columns)) {
+    const uiIdx = columns.indexOf('uiTexts');
+    if (uiIdx !== -1) uiTextsStr = row[uiIdx];
+  }
+  if (uiTextsStr === undefined && row.length > 20) {
+    uiTextsStr = row[20];
+  }
+
   const [
     id, name, slogan, logoUrl, defaultStoreLogoUrl, defaultProductImageUrl,
     bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
@@ -727,6 +774,13 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
   let globalExchangeRates = INITIAL_MARKETPLACE_CONFIG.globalExchangeRates;
   try { if (globalExchangeRatesStr) globalExchangeRates = JSON.parse(globalExchangeRatesStr); } catch (e) {}
 
+  let uiTexts = INITIAL_MARKETPLACE_CONFIG.uiTexts || DEFAULT_INTERFAZ;
+  try {
+    if (uiTextsStr) {
+      uiTexts = JSON.parse(uiTextsStr);
+    }
+  } catch (e) {}
+
   return {
     name: String(name || 'TwinStore'),
     slogan: String(slogan || ''),
@@ -748,5 +802,6 @@ export function rowToConfig(row: any[]): MarketplaceConfig {
     deliveryMethodsCatalog,
     currenciesCatalog,
     globalExchangeRates,
+    uiTexts,
   };
 }

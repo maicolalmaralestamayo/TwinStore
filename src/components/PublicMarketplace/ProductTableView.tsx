@@ -6,7 +6,8 @@ import {
   getProductPricesInAllowedCurrencies,
   generateWhatsAppOrderUrl,
 } from '../../lib/utils';
-import { MessageCircle } from 'lucide-react';
+import { getStorePaymentMethodsForCurrency } from '../../lib/cartUtils';
+import { MessageCircle, CreditCard } from 'lucide-react';
 import { CartQuantityControl } from '../common/CartQuantityControl';
 import { interfaz } from '../../data/interfaz';
 
@@ -142,9 +143,9 @@ export const ProductTableView: React.FC<ProductTableViewProps> = ({
                     </div>
                   </td>
 
-                  {/* 3. Precios (Moneda original y moneda equivalente permitida) */}
+                  {/* 3. Precios (Moneda original y moneda equivalente permitida) & Formas de pago */}
                   <td className="py-3 px-4 align-middle whitespace-nowrap">
-                    <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 inline-flex flex-col gap-1 min-w-[140px]">
+                    <div className="bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 inline-flex flex-col gap-1 min-w-[150px]">
                       <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100">
                         {formatNumberWithDots(primaryItem.amount)} {primaryItem.currency}
                       </span>
@@ -156,6 +157,16 @@ export const ProductTableView: React.FC<ProductTableViewProps> = ({
                         <span className="text-[11px] font-semibold text-slate-400">
                           Solo {primaryItem.currency}
                         </span>
+                      )}
+                      {store && (
+                        <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
+                          <span>
+                            {getStorePaymentMethodsForCurrency(store, primaryItem.currency)
+                              .map((m) => m.name)
+                              .join(', ')}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </td>

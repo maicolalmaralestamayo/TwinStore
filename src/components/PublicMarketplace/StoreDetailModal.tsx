@@ -9,6 +9,11 @@ import {
   generateStoreWhatsAppUrl,
 } from '../../lib/utils';
 import {
+  getStoreAcceptedCurrencies,
+  getStorePaymentMethodsForCurrency,
+  getAllStoreRatePaymentMethods,
+} from '../../lib/cartUtils';
+import {
   X,
   Store as StoreIcon,
   MapPin,
@@ -372,60 +377,121 @@ export const StoreDetailModal: React.FC<StoreDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Formas de Pago, Gravamen y Monedas Aceptadas */}
+          {/* Formas de Pago por Moneda Aceptada */}
           <div>
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-              Formas de Pago y Gravamen
+              Formas de Pago por Moneda Aceptada
             </span>
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {hasCash && (
-                  <span className="inline-flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                    <Banknote className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    <span>Efectivo (0% gravamen)</span>
-                  </span>
-                )}
-                {hasTransfer && (
-                  <span className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                    <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>Transferencia {transferFee ? `(Gravamen: +${transferFee}%)` : '(Sin gravamen adicional)'}</span>
-                  </span>
-                )}
-                {hasZelle && (
-                  <span className="inline-flex items-center gap-1.5 bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                    <span>Zelle</span>
-                  </span>
-                )}
-                {hasMlc && (
-                  <span className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold px-3 py-1.5 rounded-xl">
-                    <span>MLC</span>
-                  </span>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {getStoreAcceptedCurrencies(store).map((curr) => {
+                  const methods = getStorePaymentMethodsForCurrency(store, curr);
+                  return (
+                    <div
+                      key={curr}
+                      className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs font-mono px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          {curr}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {methods.length} método(s)
+                        </span>
+                      </div>
+                      <div className="space-y-1 pt-1">
+                        {methods.map((m) => (
+                          <div key={m.id} className="flex items-center justify-between text-xs">
+                            <span className="text-slate-800 dark:text-slate-200 font-semibold flex items-center gap-1">
+                              <CreditCard className="w-3 h-3 text-indigo-500" />
+                              {m.name}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold font-mono px-1.5 py-0.5 rounded ${
+                                m.gravamen > 0
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                              }`}
+                            >
+                              {m.gravamen > 0 ? `+${m.gravamen}%` : '0%'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {store.paymentOptions?.acceptedCurrencies && store.paymentOptions.acceptedCurrencies.length > 0 && (
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Monedas aceptadas:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {store.paymentOptions.acceptedCurrencies.map((cur) => (
-                      <span
-                        key={cur}
-                        className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold"
-                      >
-                        {cur}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {store.paymentOptions?.notes && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic pt-1 border-t border-slate-200 dark:border-slate-700">
                   Nota del comercio: {store.paymentOptions.notes}
                 </p>
               )}
             </div>
           </div>
+
+          {/* Tipos de Pago Aceptados por Tasa de Cambio */}
+          {store.exchangeRates && store.exchangeRates.length > 0 && (
+            <div>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+                Tipos de Pago Aceptados por Tasa de Cambio
+              </span>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="space-y-2.5">
+                  {getAllStoreRatePaymentMethods(store, paymentMethodsCatalog).map(
+                    ({ exchangeRate, methods }, idx) => (
+                      <div
+                        key={exchangeRate.id || idx}
+                        className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+                              Tasa {idx + 1}
+                            </span>
+                            <span className="text-xs font-black font-mono text-slate-900 dark:text-white">
+                              1 {exchangeRate.fromCurrency} = {formatNumberWithDots(exchangeRate.rate)} {exchangeRate.toCurrency}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {methods.length} forma(s) de pago
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          {methods.map((m) => (
+                            <div
+                              key={m.id}
+                              className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/60 text-xs"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                                <CreditCard className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                <span className="text-slate-800 dark:text-slate-200 font-bold truncate">
+                                  {m.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span
+                                  className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full ${
+                                    m.gravamen > 0
+                                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                      : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                  }`}
+                                >
+                                  {m.gravamen > 0 ? `+${m.gravamen}% gravamen` : '0% gravamen'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Ubicación y Dirección Desglosada */}
           <div>

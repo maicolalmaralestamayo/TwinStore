@@ -10,6 +10,7 @@ import {
   getProductPricesInAllowedCurrencies,
   getProductAllowedExchangeRates,
 } from '../../lib/utils';
+import { getStorePaymentMethodsForCurrency } from '../../lib/cartUtils';
 import {
   X,
   MessageCircle,
@@ -119,43 +120,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     return Object.entries(groupsMap).map(([group, tags]) => ({ group, tags }));
   }, [product?.tagSelections]);
 
-  // Tipo de pago y gravamen
-  // Resolve payment methods with their gravamen from store or catalog
+  // Tipo de pago y gravamen para la moneda del producto
+  const productCurrency = product?.currency || store?.baseCurrency || 'USD';
   const storePaymentMethodsWithGravamen = useMemo(() => {
     if (!store) return [];
-    if (store.paymentMethodIds && store.paymentMethodIds.length > 0) {
-      return store.paymentMethodIds
-        .map((pmId) => {
-          const item = paymentMethodsCatalog.find((pm) => pm.id === pmId);
-          if (!item) return null;
-          let grav = item.gravamen ?? 0;
-          if (item.id === 'pm-transferencia' && store.paymentOptions?.transferFeePercentage !== undefined) {
-            grav = store.paymentOptions.transferFeePercentage;
-          }
-          return {
-            id: item.id,
-            name: item.name,
-            gravamen: grav,
-            description: item.description,
-          };
-        })
-        .filter(Boolean) as { id: string; name: string; gravamen: number; description?: string }[];
-    }
-
-    // Fallback if no paymentMethodIds
-    const methods = [
-      { id: 'cash', name: 'Efectivo', gravamen: 0, description: 'Pago directo en mano' },
-    ];
-    if (store.paymentOptions?.transferAccepted) {
-      methods.push({
-        id: 'transfer',
-        name: 'Transferencia Bancaria',
-        gravamen: store.paymentOptions.transferFeePercentage || 5,
-        description: 'Transfermóvil / EnZona',
-      });
-    }
-    return methods;
-  }, [store, paymentMethodsCatalog]);
+    return getStorePaymentMethodsForCurrency(store, productCurrency, paymentMethodsCatalog);
+  }, [store, productCurrency, paymentMethodsCatalog]);
 
   // Tipo de mensajería
   const storeDeliveryMethods = useMemo(() => {
@@ -627,7 +597,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                <span>Tipo de Pago y Gravamen</span>
+                <span>Tipo de Pago y Gravamen (para {productCurrency})</span>
               </span>
 
               <div className="space-y-1.5">

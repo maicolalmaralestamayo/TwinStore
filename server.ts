@@ -13,6 +13,7 @@ import {
   saveConfigToDb,
   rowToConfig,
 } from "./server/database.ts";
+import { DEFAULT_INTERFAZ } from "./src/data/defaultInterfaz.ts";
 
 dotenv.config();
 
@@ -26,14 +27,48 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "TwinStore API (SQLite Powered: twinstore.sqlite)" });
 });
 
-// API route: Get UI Strings from interfaz.json
-app.get("/api/interfaz", (req, res) => {
+// API route: Get UI Strings from SQLite database (no longer from a file)
+app.get("/api/interfaz", async (req, res) => {
   try {
-    const targetPath = path.join(process.cwd(), "src", "data", "interfaz.json");
-    const content = fs.readFileSync(targetPath, "utf-8");
-    res.json(JSON.parse(content));
+    const db = await getDb();
+    const result = db.exec("SELECT uiTexts FROM marketplace_config WHERE id = 'default'");
+    if (result[0]?.values?.[0]?.[0]) {
+      const textsStr = result[0].values[0][0] as string;
+      if (textsStr && textsStr !== "null") {
+        return res.json(JSON.parse(textsStr));
+      }
+    }
+    const uiRes = db.exec("SELECT content FROM ui_texts WHERE id = 'default'");
+    if (uiRes[0]?.values?.[0]?.[0]) {
+      const textsStr = uiRes[0].values[0][0] as string;
+      if (textsStr && textsStr !== "null") {
+        return res.json(JSON.parse(textsStr));
+      }
+    }
+    res.json(DEFAULT_INTERFAZ);
   } catch (err: any) {
-    res.status(500).json({ error: "Failed to read interfaz.json", details: err.message });
+    res.status(500).json({ error: "Failed to read UI texts from SQLite database", details: err.message });
+  }
+});
+
+// API route: Update UI Strings directly in SQLite database
+app.post("/api/interfaz", async (req, res) => {
+  try {
+    const newTexts = req.body;
+    if (!newTexts || typeof newTexts !== "object") {
+      return res.status(400).json({ error: "Invalid UI texts payload" });
+    }
+    const db = await getDb();
+    const serialized = JSON.stringify(newTexts);
+    db.run("UPDATE marketplace_config SET uiTexts = $uiTexts WHERE id = 'default'", { "$uiTexts": serialized });
+    db.run("INSERT OR REPLACE INTO ui_texts (id, content, updatedAt) VALUES ('default', $content, $updatedAt)", {
+      "$content": serialized,
+      "$updatedAt": new Date().toISOString()
+    });
+    persistDb();
+    res.json({ success: true, message: "Textos de la interfaz guardados en la BD SQLite" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to save UI texts to SQLite database", details: err.message });
   }
 });
 
@@ -148,7 +183,7 @@ app.get("/api/config", async (req, res) => {
     if (!result[0] || !result[0].values || !result[0].values[0]) {
       return res.json({});
     }
-    const config = rowToConfig(result[0].values[0]);
+    const config = rowToConfig(result[0].values[0], result[0].columns);
     res.json(config);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

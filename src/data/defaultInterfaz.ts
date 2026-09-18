@@ -1,4 +1,5 @@
-{
+// Textos predeterminados de la interfaz para inicializar la base de datos
+export const DEFAULT_INTERFAZ = {
   "header": {
     "avgRateLabel": "Tasa promedio:",
     "productsBadge": "Productos y servicios:",
@@ -781,4 +782,6 @@
     "codeSent": "Código enviado por correo",
     "passwordChangedSuccess": "Contraseña de CEO actualizada con éxito"
   }
-}
+} as const;
+
+export type InterfazType = typeof DEFAULT_INTERFAZ;

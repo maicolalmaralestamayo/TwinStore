@@ -7,6 +7,8 @@ import {
   PaymentMethodItem,
   DeliveryMethodItem,
   StoreCurrencyPaymentMethod,
+  StoreRatePaymentMethod,
+  StoreExchangeRate,
 } from '../types';
 import {
   calculateProductPriceInCurrency,
@@ -189,7 +191,7 @@ export function getStoreCurrencyPaymentMethods(
     return store.currencyPaymentMethods;
   }
 
-  // Intelligent Cuban market default:
+  // Generic fallback:
   const list: StoreCurrencyPaymentMethod[] = [];
   const acceptedCurrencies = getStoreAcceptedCurrencies(store);
   const hasCash =
@@ -203,53 +205,23 @@ export function getStoreCurrencyPaymentMethods(
 
   acceptedCurrencies.forEach((curr) => {
     const c = curr.toUpperCase().trim();
-    if (c === 'USD' || c === 'EUR') {
-      if (hasCash) {
-        list.push({
-          id: `cpm-${store.id}-${c}-cash`,
-          storeId: store.id,
-          currency: c,
-          paymentMethodId: 'pm-efectivo',
-          notes: 'Pago en mano / billetes sin roturas',
-        });
-      }
-    } else if (c === 'CUP') {
-      if (hasCash) {
-        list.push({
-          id: `cpm-${store.id}-cup-cash`,
-          storeId: store.id,
-          currency: 'CUP',
-          paymentMethodId: 'pm-efectivo',
-          notes: 'Efectivo en mano',
-        });
-      }
-      if (hasTransfer) {
-        list.push({
-          id: `cpm-${store.id}-cup-transf`,
-          storeId: store.id,
-          currency: 'CUP',
-          paymentMethodId: 'pm-transferencia',
-          notes: 'Transfermóvil / EnZona',
-        });
-      }
-    } else {
-      if (hasCash) {
-        list.push({
-          id: `cpm-${store.id}-${c}-cash`,
-          storeId: store.id,
-          currency: c,
-          paymentMethodId: 'pm-efectivo',
-        });
-      }
-      if (hasTransfer && c === 'MLC') {
-        list.push({
-          id: `cpm-${store.id}-${c}-transf`,
-          storeId: store.id,
-          currency: c,
-          paymentMethodId: 'pm-transferencia',
-          notes: 'Transferencia magnética MLC',
-        });
-      }
+    if (hasCash) {
+      list.push({
+        id: `cpm-${store.id}-${c}-cash`,
+        storeId: store.id,
+        currency: c,
+        paymentMethodId: 'pm-efectivo',
+        notes: 'Pago en mano / efectivo',
+      });
+    }
+    if (hasTransfer) {
+      list.push({
+        id: `cpm-${store.id}-${c}-transf`,
+        storeId: store.id,
+        currency: c,
+        paymentMethodId: 'pm-transferencia',
+        notes: 'Transferencia bancaria / electrónica',
+      });
     }
   });
 
@@ -298,6 +270,109 @@ export function getStorePaymentMethodsForCurrency(
 
   // Fallback to all store payment methods if no specific currency match found
   return getStorePaymentMethods(store, paymentMethodsCatalog);
+}
+
+/**
+ * Resolves available payment methods and gravámenes accepted for a specific exchange rate of the store.
+ * e.g. For Tasa 1 (USD a CUP 530): Efectivo 0% gravamen, Transferencia 10% gravamen.
+ */
+export function getStorePaymentMethodsForRate(
+  store: Store | undefined,
+  exchangeRateId: string,
+  paymentMethodsCatalog?: PaymentMethodItem[]
+): { id: string; name: string; gravamen: number; description?: string; notes?: string; paymentMethodId: string }[] {
+  if (!store || !exchangeRateId) return [];
+
+  const rpmList = (store.ratePaymentMethods || []).filter(
+    (rpm) => rpm.exchangeRateId === exchangeRateId
+  );
+
+  if (rpmList.length > 0) {
+    return rpmList.map((rpm) => {
+      const catalogItem = paymentMethodsCatalog?.find((pm) => pm.id === rpm.paymentMethodId);
+      const isCash = rpm.paymentMethodId === 'pm-efectivo';
+      const isTransf = rpm.paymentMethodId === 'pm-transferencia';
+      const name =
+        catalogItem?.name ||
+        (isCash ? 'Efectivo' : isTransf ? 'Transferencia Bancaria' : rpm.paymentMethodId);
+      return {
+        id: rpm.paymentMethodId,
+        paymentMethodId: rpm.paymentMethodId,
+        name,
+        gravamen: rpm.gravamen !== undefined ? rpm.gravamen : (catalogItem?.gravamen ?? 0),
+        description: catalogItem?.description || rpm.notes,
+        notes: rpm.notes,
+      };
+    });
+  }
+
+  // Fallback if rate has no explicit ratePaymentMethods configured yet
+  const defaultFee = store.paymentOptions?.transferFeePercentage ?? 10;
+  return [
+    {
+      id: 'pm-efectivo',
+      paymentMethodId: 'pm-efectivo',
+      name: 'Efectivo',
+      gravamen: 0,
+      description: 'Pago en mano al recibir',
+      notes: 'Sin gravamen adicional (0%)',
+    },
+    {
+      id: 'pm-transferencia',
+      paymentMethodId: 'pm-transferencia',
+      name: 'Transferencia Bancaria',
+      gravamen: defaultFee,
+      description: 'Transfermóvil / EnZona',
+      notes: `Gravamen (+${defaultFee}%)`,
+    },
+  ];
+}
+
+/**
+ * Groups all store exchange rates with their corresponding accepted payment methods and gravamen.
+ */
+export function getAllStoreRatePaymentMethods(
+  store: Store | undefined,
+  paymentMethodsCatalog?: PaymentMethodItem[]
+): {
+  exchangeRate: StoreExchangeRate;
+  methods: { id: string; name: string; gravamen: number; notes?: string }[];
+}[] {
+  if (!store || !store.exchangeRates || store.exchangeRates.length === 0) return [];
+
+  return store.exchangeRates.map((rate) => ({
+    exchangeRate: rate,
+    methods: getStorePaymentMethodsForRate(store, rate.id, paymentMethodsCatalog),
+  }));
+}
+
+/**
+ * Returns available payment methods for a specific cart item based on:
+ * - If product was converted using an exchange rate -> payment methods configured for that rate
+ * - If product is in its native currency -> payment methods configured for that currency
+ */
+export function getItemAvailablePaymentMethods(
+  store: Store | undefined,
+  product: Product | undefined,
+  paymentCurrency: string,
+  paymentMethodsCatalog?: PaymentMethodItem[]
+): { id: string; name: string; gravamen: number; description?: string; notes?: string }[] {
+  if (!store) {
+    return [{ id: 'pm-efectivo', name: 'Efectivo', gravamen: 0, description: 'Pago directo en mano' }];
+  }
+  const prodCurr = (product?.currency || 'USD').toUpperCase();
+  const payCurr = (paymentCurrency || store.baseCurrency || 'USD').toUpperCase();
+
+  if (prodCurr !== payCurr && store.exchangeRates && store.exchangeRates.length > 0) {
+    const matchedRate = store.exchangeRates.find(
+      (r) => (r.fromCurrency || '').toUpperCase() === prodCurr && (r.toCurrency || '').toUpperCase() === payCurr
+    );
+    if (matchedRate) {
+      return getStorePaymentMethodsForRate(store, matchedRate.id, paymentMethodsCatalog);
+    }
+  }
+
+  return getStorePaymentMethodsForCurrency(store, payCurr, paymentMethodsCatalog);
 }
 
 /**
@@ -412,9 +487,10 @@ export function calculateStoreCartGroup(
           ? preferences.selectedCurrency
           : defaultCurrency;
 
-      // Determine valid payment methods for THIS specific currency
-      const currencyPaymentMethods = getStorePaymentMethodsForCurrency(
+      // Determine valid payment methods for THIS specific item & currency (rate-aware)
+      const currencyPaymentMethods = getItemAvailablePaymentMethods(
         store,
+        product,
         paymentCurrency,
         paymentMethodsCatalog
       );

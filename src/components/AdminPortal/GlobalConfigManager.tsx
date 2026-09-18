@@ -67,7 +67,9 @@ import {
   SlidersHorizontal,
   ArrowRightLeft,
   Landmark,
+  Type,
 } from 'lucide-react';
+import { UiTextsManager } from './UiTextsManager';
 import { interfaz } from '../../data/interfaz';
 
 interface GlobalConfigManagerProps {
@@ -86,7 +88,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   onUpdateStores,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
-    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel' | 'currencies'
+    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel' | 'currencies' | 'uiTexts'
   >('identity');
 
   // Business Model Nomenclators State
@@ -1470,6 +1472,19 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           >
             <Coins className="w-4 h-4" />
             <span>Monedas y Tasas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('uiTexts')}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+              activeSubTab === 'uiTexts'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Type className="w-4 h-4" />
+            <span>Textos de Interfaz</span>
           </button>
         </div>
       </div>
@@ -3644,6 +3659,41 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             </button>
           </div>
         </form>
+      )}
+
+      {activeSubTab === 'uiTexts' && (
+        <UiTextsManager
+          initialTexts={config.uiTexts}
+          onSave={(newTexts) => {
+            onUpdateConfig({
+              ...config,
+              name,
+              slogan,
+              bannerTitle,
+              bannerSubtitle,
+              logoUrl,
+              bannerUrl,
+              defaultStoreLogoUrl,
+              defaultProductImageUrl,
+              primaryColor,
+              secondaryColor,
+              accentColor,
+              socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+              geoCatalog,
+              departmentsCatalog,
+              tagsCatalog,
+              productTypesCatalog,
+              paymentMethodsCatalog,
+              deliveryMethodsCatalog,
+              currenciesCatalog,
+              globalExchangeRates,
+              uiTexts: newTexts,
+            });
+          }}
+          onShowToast={(msg, type) => {
+            onShowToast('Textos de Interfaz', msg, type || 'info');
+          }}
+        />
       )}
     </div>
   );

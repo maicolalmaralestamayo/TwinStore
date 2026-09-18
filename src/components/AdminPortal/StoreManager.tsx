@@ -10,6 +10,7 @@ import {
   CurrencyItem,
   StoreFilterState,
   StoreCurrencyPaymentMethod,
+  StoreRatePaymentMethod,
 } from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
 import {
@@ -38,6 +39,7 @@ import {
   Banknote,
   Layers,
   Sparkles,
+  Globe,
 } from 'lucide-react';
 import { getStoreLogoUrl } from '../../lib/utils';
 import { getStoreCurrencyPaymentMethods } from '../../lib/cartUtils';
@@ -146,6 +148,16 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [newCpmPaymentMethodId, setNewCpmPaymentMethodId] = useState<string>('pm-efectivo');
   const [newCpmNotes, setNewCpmNotes] = useState<string>('');
 
+  // Form State - Relational Exchange Rate ↔ Accepted Payment Methods (con Gravamen)
+  const [ratePaymentMethods, setRatePaymentMethods] = useState<StoreRatePaymentMethod[]>([]);
+  const [newRpmExchangeRateId, setNewRpmExchangeRateId] = useState<string>('');
+  const [newRpmPaymentMethodId, setNewRpmPaymentMethodId] = useState<string>('pm-efectivo');
+  const [newRpmGravamen, setNewRpmGravamen] = useState<number>(0);
+  const [newRpmNotes, setNewRpmNotes] = useState<string>('');
+  const [rateAddForms, setRateAddForms] = useState<
+    Record<string, { paymentMethodId: string; gravamen: number; notes: string }>
+  >({});
+
   const toggleDeliveryMethod = (id: string) => {
     setDeliveryMethodIds((prev) => {
       const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
@@ -203,35 +215,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     );
   };
 
-  const handleApplyCubaPreset = () => {
-    const preset: StoreCurrencyPaymentMethod[] = [
-      {
-        id: `cpm-preset-usd-cash-${Date.now()}`,
-        currency: 'USD',
-        paymentMethodId: 'pm-efectivo',
-        notes: 'Pago en mano en billetes de dólar',
-      },
-      {
-        id: `cpm-preset-cup-cash-${Date.now()}`,
-        currency: 'CUP',
-        paymentMethodId: 'pm-efectivo',
-        notes: 'Pago en mano en CUP',
-      },
-      {
-        id: `cpm-preset-cup-transf-${Date.now()}`,
-        currency: 'CUP',
-        paymentMethodId: 'pm-transferencia',
-        notes: 'Transfermóvil / EnZona',
-      },
-    ];
-    setCurrencyPaymentMethods(preset);
-    setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
-    setTransferAccepted(true);
-    onShowToast('Regla Cubana Aplicada', 'USD en Efectivo, CUP en Efectivo y Transferencia');
-  };
-
   const handleApplyCashOnlyPreset = () => {
-    const acceptedCurrs = ['USD', 'CUP'];
+    const acceptedCurrs = exchangeRates.length > 0
+      ? Array.from(new Set(exchangeRates.flatMap((r) => [r.fromCurrency, r.toCurrency])))
+      : [baseCurrency || 'USD'];
     const preset: StoreCurrencyPaymentMethod[] = acceptedCurrs.map((curr) => ({
       id: `cpm-cash-${curr}-${Date.now()}`,
       currency: curr,
@@ -241,7 +228,136 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setCurrencyPaymentMethods(preset);
     setPaymentMethodIds(['pm-efectivo']);
     setTransferAccepted(false);
-    onShowToast('Solo Efectivo', 'Se configuró cobro en mano para todas las monedas');
+    onShowToast('Solo Efectivo', 'Se configuró cobro en mano');
+  };
+
+  // Agregar tipo de pago directamente a una tasa específica desde la tabla
+  const handleAddPaymentToRate = (rateId: string) => {
+    const defaultPmId = paymentMethodsCatalog[0]?.id || 'pm-efectivo';
+    const formData = rateAddForms[rateId] || {
+      paymentMethodId: defaultPmId,
+      gravamen: 0,
+      notes: '',
+    };
+    if (!formData.paymentMethodId) {
+      onShowToast('Selecciona forma de pago', 'Debes elegir qué forma de pago agregar', 'error');
+      return;
+    }
+    const exists = ratePaymentMethods.some(
+      (rpm) => rpm.exchangeRateId === rateId && rpm.paymentMethodId === formData.paymentMethodId
+    );
+    if (exists) {
+      onShowToast(
+        'Ya existe',
+        'Esta forma de pago ya está agregada a esta tasa. Puedes editar su gravamen o notas en la tabla.',
+        'info'
+      );
+      return;
+    }
+    const targetRate = exchangeRates.find((r) => r.id === rateId);
+    const pm = paymentMethodsCatalog.find((p) => p.id === formData.paymentMethodId);
+    const newEntry: StoreRatePaymentMethod = {
+      id: `rpm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      storeId: editingStore?.id,
+      exchangeRateId: rateId,
+      paymentMethodId: formData.paymentMethodId,
+      gravamen: Number(formData.gravamen) || 0,
+      notes: formData.notes?.trim() || undefined,
+    };
+    setRatePaymentMethods((prev) => [...prev, newEntry]);
+    setRateAddForms((prev) => ({
+      ...prev,
+      [rateId]: {
+        ...formData,
+        notes: '',
+      },
+    }));
+    onShowToast(
+      'Tipo de pago agregado',
+      `${pm?.name || formData.paymentMethodId} vinculado a 1 ${targetRate?.fromCurrency} = ${targetRate?.rate} ${targetRate?.toCurrency} con ${formData.gravamen}% gravamen`
+    );
+  };
+
+  // Handlers para la tabla relacional Tasa ↔ Tipos de Pago Aceptados (con Gravamen)
+  const handleAddRatePaymentMethod = () => {
+    const targetRateId = newRpmExchangeRateId || exchangeRates[0]?.id;
+    if (!targetRateId) {
+      onShowToast('Sin tasa seleccionada', 'Primero registra o selecciona una tasa de cambio', 'error');
+      return;
+    }
+    if (!newRpmPaymentMethodId) {
+      onShowToast('Selecciona forma de pago', 'Debes elegir qué forma de pago asociar', 'error');
+      return;
+    }
+    const exists = ratePaymentMethods.some(
+      (rpm) => rpm.exchangeRateId === targetRateId && rpm.paymentMethodId === newRpmPaymentMethodId
+    );
+    if (exists) {
+      onShowToast('Relación ya existe', 'Esta forma de pago ya está asociada a esta tasa. Puedes editar su gravamen o notas.', 'info');
+      return;
+    }
+    const targetRate = exchangeRates.find((r) => r.id === targetRateId);
+    const newEntry: StoreRatePaymentMethod = {
+      id: `rpm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      storeId: editingStore?.id,
+      exchangeRateId: targetRateId,
+      paymentMethodId: newRpmPaymentMethodId,
+      gravamen: Number(newRpmGravamen) || 0,
+      notes: newRpmNotes.trim() || undefined,
+    };
+    setRatePaymentMethods((prev) => [...prev, newEntry]);
+    setNewRpmNotes('');
+    onShowToast(
+      'Tipo de pago asociado',
+      `Asociado a ${targetRate ? `${targetRate.fromCurrency} → ${targetRate.toCurrency}` : 'tasa'} con ${newRpmGravamen}% gravamen`
+    );
+  };
+
+  const handleRemoveRatePaymentMethod = (id: string) => {
+    setRatePaymentMethods((prev) => prev.filter((rpm) => rpm.id !== id));
+  };
+
+  const handleUpdateRpmGravamen = (id: string, gravamen: number) => {
+    setRatePaymentMethods((prev) =>
+      prev.map((rpm) => (rpm.id === id ? { ...rpm, gravamen } : rpm))
+    );
+  };
+
+  const handleUpdateRpmNotes = (id: string, notes: string) => {
+    setRatePaymentMethods((prev) =>
+      prev.map((rpm) => (rpm.id === id ? { ...rpm, notes } : rpm))
+    );
+  };
+
+  const handleApplyDefaultRatePayments = () => {
+    if (exchangeRates.length === 0) {
+      onShowToast('Sin tasas', 'Primero crea al menos una tasa de cambio', 'info');
+      return;
+    }
+    const newRpms: StoreRatePaymentMethod[] = [];
+    exchangeRates.forEach((rate, idx) => {
+      newRpms.push({
+        id: `rpm-auto-${rate.id}-cash-${Date.now()}-${idx}`,
+        storeId: editingStore?.id,
+        exchangeRateId: rate.id,
+        paymentMethodId: 'pm-efectivo',
+        gravamen: 0,
+        notes: 'Efectivo cero gravamen (0%)',
+      });
+      newRpms.push({
+        id: `rpm-auto-${rate.id}-transf-${Date.now()}-${idx}`,
+        storeId: editingStore?.id,
+        exchangeRateId: rate.id,
+        paymentMethodId: 'pm-transferencia',
+        gravamen: 10,
+        notes: 'Transferencia 10% de gravamen (+10%)',
+      });
+    });
+    setRatePaymentMethods(newRpms);
+    onShowToast(
+      'Regla aplicada',
+      'Efectivo 0% gravamen y Transferencia 10% gravamen configurados para todas las tasas'
+    );
   };
 
   // Reset page on filter search
@@ -304,29 +420,52 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setLogoUrl(defaultStoreLogo);
     setImages([]);
     setNewImageUrl('');
-    setWhatsappPhone('+5354292049');
+    setWhatsappPhone('');
 
     const defaultBase = marketplaceConfig?.baseCurrency || 'USD';
     const defaultSec = marketplaceConfig?.secondaryCurrency !== undefined ? marketplaceConfig.secondaryCurrency : 'CUP';
-    const defaultRate = marketplaceConfig?.globalExchangeRate || 675;
+    const defaultRate = marketplaceConfig?.globalExchangeRate || 1;
 
     setBaseCurrency(defaultBase);
     setSecondaryCurrency(defaultSec);
+    const defaultRateId = `rate-new-${defaultBase}-${defaultSec}`;
     if (defaultSec) {
       setExchangeRates([
         {
-          id: `rate-new-${defaultBase}-${defaultSec}`,
+          id: defaultRateId,
           fromCurrency: defaultBase,
           toCurrency: defaultSec,
           rate: defaultRate,
         },
       ]);
+      setRatePaymentMethods([
+        {
+          id: `rpm-new-cash-${Date.now()}`,
+          exchangeRateId: defaultRateId,
+          paymentMethodId: 'pm-efectivo',
+          gravamen: 0,
+          notes: 'Efectivo (0% gravamen)',
+        },
+        {
+          id: `rpm-new-transf-${Date.now()}`,
+          exchangeRateId: defaultRateId,
+          paymentMethodId: 'pm-transferencia',
+          gravamen: 10,
+          notes: 'Transferencia (10% gravamen)',
+        },
+      ]);
+      setNewRpmExchangeRateId(defaultRateId);
     } else {
       setExchangeRates([]);
+      setRatePaymentMethods([]);
+      setNewRpmExchangeRateId('');
     }
+    setNewRpmPaymentMethodId('pm-efectivo');
+    setNewRpmGravamen(0);
+    setNewRpmNotes('');
     setNewRateFrom(defaultBase);
-    setNewRateTo(defaultSec || 'CUP');
-    setNewRateValue(defaultRate);
+    setNewRateTo(defaultSec || 'EUR');
+    setNewRateValue(defaultRate > 1 ? defaultRate : '');
     setUsdToCupRate(defaultRate);
     setActive(true);
 
@@ -336,9 +475,12 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setApartment('');
     setCrossStreet1('');
     setCrossStreet2('');
-    setProvince('La Habana');
-    setMunicipality('Marianao');
-    setNeighborhood('Zamora');
+    const firstProv = geoCatalog?.[0];
+    const firstMun = firstProv?.municipalities?.[0];
+    const firstRep = firstMun?.repartos?.[0];
+    setProvince(firstProv?.name || '');
+    setMunicipality(firstMun?.name || '');
+    setNeighborhood(firstRep?.name || '');
     setGoogleMapsUrl('');
 
     setDeliveryMethodIds(['dm-mensajeria', 'dm-recogida']);
@@ -346,27 +488,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
     setTransferAccepted(true);
     setTransferFeePercentage(10);
-    setCurrencyPaymentMethods([
-      {
-        id: `cpm-new-usd-cash-${Date.now()}`,
-        currency: 'USD',
-        paymentMethodId: 'pm-efectivo',
-        notes: 'Pago en mano en billetes de dólar',
-      },
-      {
-        id: `cpm-new-cup-cash-${Date.now()}`,
-        currency: 'CUP',
-        paymentMethodId: 'pm-efectivo',
-        notes: 'Pago en mano en CUP',
-      },
-      {
-        id: `cpm-new-cup-transf-${Date.now()}`,
-        currency: 'CUP',
-        paymentMethodId: 'pm-transferencia',
-        notes: 'Transfermóvil / EnZona',
-      },
-    ]);
-    setNewCpmCurrency('USD');
+    setCurrencyPaymentMethods([]);
+    setNewCpmCurrency(defaultBase);
     setNewCpmPaymentMethodId('pm-efectivo');
     setNewCpmNotes('');
 
@@ -464,12 +587,111 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setNewCpmPaymentMethodId(defaultPay[0] || 'pm-efectivo');
     setNewCpmNotes('');
 
+    // Cargar o inicializar relación de tipos de pagos aceptados por tasa (con gravamen)
+    let initialRpms = store.ratePaymentMethods ? [...store.ratePaymentMethods] : [];
+    if (initialRpms.length === 0 && ratesList.length > 0) {
+      ratesList.forEach((r, idx) => {
+        initialRpms.push({
+          id: `rpm-init-${r.id}-cash-${idx}`,
+          storeId: store.id,
+          exchangeRateId: r.id,
+          paymentMethodId: 'pm-efectivo',
+          gravamen: 0,
+          notes: 'Efectivo cero gravamen (0%)',
+        });
+        initialRpms.push({
+          id: `rpm-init-${r.id}-transf-${idx}`,
+          storeId: store.id,
+          exchangeRateId: r.id,
+          paymentMethodId: 'pm-transferencia',
+          gravamen: store.paymentOptions?.transferFeePercentage ?? 10,
+          notes: `Transferencia (+${store.paymentOptions?.transferFeePercentage ?? 10}% gravamen)`,
+        });
+      });
+    }
+    setRatePaymentMethods(initialRpms);
+    setNewRpmExchangeRateId(ratesList[0]?.id || '');
+    setNewRpmPaymentMethodId('pm-efectivo');
+    setNewRpmGravamen(0);
+    setNewRpmNotes('');
+
     setIsModalOpen(true);
+  };
+
+  const handleFetchFromGlobalConfig = () => {
+    if (!newRateFrom || !newRateTo) {
+      onShowToast('Selecciona monedas', 'Selecciona primero las dos monedas', 'info');
+      return;
+    }
+    if (newRateFrom === newRateTo) {
+      setNewRateValue(1);
+      onShowToast('Misma moneda', `La tasa de cambio entre ${newRateFrom} y ${newRateTo} es 1`, 'info');
+      return;
+    }
+
+    const globalList = marketplaceConfig?.globalExchangeRates || [];
+    // 1. Coincidencia directa en globalExchangeRates
+    const direct = globalList.find(
+      (r) => r.fromCurrency === newRateFrom && r.toCurrency === newRateTo
+    );
+    if (direct && direct.rate > 0) {
+      setNewRateValue(direct.rate);
+      onShowToast(
+        'Tasa global obtenida',
+        `1 ${newRateFrom} = ${direct.rate} ${newRateTo} (tomada de la configuración global)`
+      );
+      return;
+    }
+
+    // 2. Coincidencia inversa en globalExchangeRates
+    const inverse = globalList.find(
+      (r) => r.fromCurrency === newRateTo && r.toCurrency === newRateFrom
+    );
+    if (inverse && inverse.rate > 0) {
+      const invVal = Number((1 / inverse.rate).toFixed(6));
+      setNewRateValue(invVal);
+      onShowToast(
+        'Tasa global calculada (inversa)',
+        `1 ${newRateFrom} = ${invVal} ${newRateTo} (inversa de 1 ${newRateTo} = ${inverse.rate} ${newRateFrom})`
+      );
+      return;
+    }
+
+    // 3. Coincidencia con tasa base / secundaria del marketplace
+    const base = marketplaceConfig?.baseCurrency || 'USD';
+    const sec = marketplaceConfig?.secondaryCurrency;
+    const gRate = marketplaceConfig?.globalExchangeRate;
+
+    if (gRate && gRate > 0) {
+      if (newRateFrom === base && newRateTo === sec) {
+        setNewRateValue(gRate);
+        onShowToast(
+          'Tasa global obtenida',
+          `1 ${newRateFrom} = ${gRate} ${newRateTo} (tasa base del marketplace)`
+        );
+        return;
+      }
+      if (sec && newRateFrom === sec && newRateTo === base) {
+        const invVal = Number((1 / gRate).toFixed(6));
+        setNewRateValue(invVal);
+        onShowToast(
+          'Tasa global calculada (inversa)',
+          `1 ${newRateFrom} = ${invVal} ${newRateTo} (inversa de la tasa base global)`
+        );
+        return;
+      }
+    }
+
+    onShowToast(
+      'Sin tasa global',
+      `No se encontró una tasa global configurada para ${newRateFrom} → ${newRateTo}`,
+      'info'
+    );
   };
 
   const handleAddStoreRate = () => {
     if (!newRateFrom || !newRateTo || !newRateValue || Number(newRateValue) <= 0) {
-      onShowToast('Datos incompletos', 'Selecciona las monedas y una tasa mayor a 0', 'error');
+      onShowToast('Datos incompletos', 'Selecciona las dos monedas e indica una tasa mayor a 0', 'error');
       return;
     }
     if (newRateFrom === newRateTo) {
@@ -486,19 +708,29 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       setExchangeRates(updated);
       onShowToast('Tasa actualizada', `1 ${newRateFrom} = ${val} ${newRateTo}`);
     } else {
+      const newRateId = `rate-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const newRateItem: StoreExchangeRate = {
-        id: `rate-${Date.now()}`,
+        id: newRateId,
+        storeId: editingStore?.id,
         fromCurrency: newRateFrom,
         toCurrency: newRateTo,
         rate: val,
       };
       setExchangeRates([...exchangeRates, newRateItem]);
-      onShowToast('Tasa añadida', `1 ${newRateFrom} = ${val} ${newRateTo}`);
+      onShowToast(
+        'Tasa agregada',
+        `1 ${newRateFrom} = ${val} ${newRateTo}. Lista abajo en la tabla para agregar tipos de pago y gravámenes.`
+      );
     }
   };
 
   const handleRemoveStoreRate = (rateId: string) => {
     setExchangeRates((prev) => prev.filter((r) => r.id !== rateId));
+    setRatePaymentMethods((prev) => prev.filter((rpm) => rpm.exchangeRateId !== rateId));
+    if (newRpmExchangeRateId === rateId) {
+      const remaining = exchangeRates.filter((r) => r.id !== rateId);
+      setNewRpmExchangeRateId(remaining[0]?.id || '');
+    }
   };
 
   const handleUpdateStoreRate = (rateId: string, newRate: number) => {
@@ -594,19 +826,19 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const finalName = name.trim() || 'TwinStore';
-    const finalSlogan = slogan.trim() || '...más cerca de ti';
-    const finalPhone = whatsappPhone.trim() || '+5354292049';
-    const finalStreet = street.trim() || '122-A';
-    const finalNumber = number.trim() || '3521 Altos';
-    const finalBuilding = building.trim() || 'Corona';
-    const finalApartment = apartment.trim() || '6';
-    const finalCross1 = crossStreet1.trim() || '35';
-    const finalCross2 = crossStreet2.trim() || '37';
-    const finalProv = province.trim() || 'La Habana';
-    const finalMun = municipality.trim() || 'Marianao';
-    const finalRep = neighborhood.trim() || 'Zamora';
-    const finalMapsUrl = googleMapsUrl.trim() || 'https://maps.app.goo.gl/AMR1nYyYXtXH2H6BA';
+    const finalName = name.trim() || 'Nueva Tienda';
+    const finalSlogan = slogan.trim();
+    const finalPhone = whatsappPhone.trim();
+    const finalStreet = street.trim();
+    const finalNumber = number.trim();
+    const finalBuilding = building.trim();
+    const finalApartment = apartment.trim();
+    const finalCross1 = crossStreet1.trim();
+    const finalCross2 = crossStreet2.trim();
+    const finalProv = province.trim() || geoCatalog[0]?.name || '';
+    const finalMun = municipality.trim() || geoCatalog[0]?.municipalities[0]?.name || '';
+    const finalRep = neighborhood.trim() || geoCatalog[0]?.municipalities[0]?.repartos[0]?.name || '';
+    const finalMapsUrl = googleMapsUrl.trim();
 
     const formattedLocation = `${finalRep ? `${finalRep}, ` : ''}${finalMun} - ${finalProv}`;
 
@@ -679,6 +911,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         paymentMethodIds: finalPaymentMethodIds,
         deliveryMethodIds,
         currencyPaymentMethods,
+        ratePaymentMethods,
         badge: editingStore.badge || 'Verificada',
         active,
       });
@@ -702,6 +935,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         paymentMethodIds: finalPaymentMethodIds,
         deliveryMethodIds,
         currencyPaymentMethods,
+        ratePaymentMethods,
         badge: 'Verificada',
         active,
         rating: 4.8,
@@ -1676,21 +1910,12 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                           <span>Tabla Relacional: Moneda ↔ Formas de Pago Aceptadas</span>
                         </h4>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          En Cuba, las divisas (USD, EUR) casi siempre se cobran en efectivo, mientras que el CUP admite efectivo y transferencias (Transfermóvil/EnZona). Define aquí la relación exacta para esta tienda.
+                          Define qué formas de pago acepta esta tienda para cada moneda o transacción comercial.
                         </p>
                       </div>
 
                       {/* Botones de configuración rápida */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={handleApplyCubaPreset}
-                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                          title="Aplica la regla habitual de Cuba: USD en efectivo, CUP en efectivo y transferencia"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Regla Típica Cuba</span>
-                        </button>
                         <button
                           type="button"
                           onClick={handleApplyCashOnlyPreset}
@@ -1718,7 +1943,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                           {currencyPaymentMethods.length === 0 ? (
                             <tr>
                               <td colSpan={4} className="py-6 text-center text-gray-400 italic">
-                                No hay relaciones moneda-pago configuradas. Pulsa en "Regla Típica Cuba" o añade una debajo.
+                                No hay relaciones moneda-pago configuradas. Añade una debajo o selecciona "Solo Efectivo".
                               </td>
                             </tr>
                           ) : (
@@ -1891,50 +2116,54 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                 </div>
               )}
 
-              {/* TAB 4: STORE EXCHANGE RATES (RELACIÓN 1 A MUCHOS) */}
+              {/* TAB 4: STORE EXCHANGE RATES AND PAYMENT METHODS WITH GRAVAMEN */}
               {activeTab === 'currency' && (
                 <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+                  {/* Encabezado */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
                     <div>
                       <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         <Coins className="w-4 h-4 text-emerald-600" />
-                        <span>Tasas de Cambio de la Tienda</span>
+                        <span>Configuración de Tasas y Tipos de Pago de la Tienda</span>
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Esta tienda puede vender en cualquier moneda según cada producto. Define aquí las tasas de cambio de la tienda para calcular cobros en monedas alternas.
+                        Agrega las tasas de cambio de la tienda y vincula a cada una los tipos de pago aceptados con sus respectivos gravámenes.
                       </p>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleImportMarketplaceRates}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                      title="Copiar tasas globales configuradas en el marketplace"
+                      className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-2xs"
+                      title="Copiar todas las tasas globales configuradas en el marketplace"
                     >
                       <ArrowRightLeft className="w-3.5 h-3.5" />
-                      <span>Copiar Tasas Globales del Marketplace</span>
+                      <span>Copiar Todas las Tasas Globales</span>
                     </button>
                   </div>
 
-                  {/* MINI-FORM PARA AGREGAR NUEVA TASA */}
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <h5 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Registrar Nueva Tasa de Cambio para la Tienda</span>
-                    </h5>
-                    <p className="text-[11px] text-slate-500">
-                      Cada tienda puede definir de forma independiente las tasas que considere oportunas.
-                    </p>
+                  {/* FORMULARIO: DOS SELECTORES DE MONEDAS, UNA CAJA DE TEXTO Y DOS BOTONES */}
+                  <div className="bg-slate-50/90 p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Definir Tasa de Cambio</span>
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        1 {newRateFrom} = {newRateValue !== '' ? newRateValue : '?'} {newRateTo}
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                      <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                          1ª Moneda (Origen / Producto)
+                      {/* 1er Selector de Moneda */}
+                      <div className="sm:col-span-3">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          1ª Moneda (Origen)
                         </label>
                         <select
                           value={newRateFrom}
                           onChange={(e) => setNewRateFrom(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
                         >
                           {currenciesCatalog
                             .filter((c) => c.active !== false)
@@ -1946,14 +2175,15 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                         </select>
                       </div>
 
-                      <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                          2ª Moneda (Destino de Cobro)
+                      {/* 2do Selector de Moneda */}
+                      <div className="sm:col-span-3">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          2ª Moneda (Destino)
                         </label>
                         <select
                           value={newRateTo}
                           onChange={(e) => setNewRateTo(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
                         >
                           {currenciesCatalog
                             .filter((c) => c.active !== false && c.code !== newRateFrom)
@@ -1965,103 +2195,304 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                         </select>
                       </div>
 
+                      {/* Caja de texto para la tasa */}
                       <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
-                          Tasa (1 {newRateFrom} = X {newRateTo})
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          Tasa
                         </label>
                         <input
                           type="number"
-                          min="0.0001"
+                          min="0.000001"
                           step="any"
                           value={newRateValue}
                           onChange={(e) =>
                             setNewRateValue(e.target.value === '' ? '' : Number(e.target.value))
                           }
-                          placeholder="335"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 font-mono"
+                          placeholder="ej. 530"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold font-mono text-slate-900 outline-none focus:border-emerald-500 shadow-2xs"
                         />
                       </div>
 
-                      <div className="sm:col-span-2">
+                      {/* Dos botones: Adicionar Tasa y Tomar de la Configuración Global */}
+                      <div className="sm:col-span-4 flex flex-col sm:flex-row gap-2">
                         <button
                           type="button"
                           onClick={handleAddStoreRate}
-                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0"
+                          title="Añadir esta tasa a la tabla inferior"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          <span>Guardar Tasa</span>
+                          <span>Adicionar Tasa</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleFetchFromGlobalConfig}
+                          className="flex-1 py-2 px-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0 text-center"
+                          title="Obtener la tasa configurada globalmente para este par de monedas"
+                        >
+                          <Globe className="w-3.5 h-3.5" />
+                          <span>Tomar de Global</span>
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* LISTA DE TASAS DE LA TIENDA */}
+                  {/* TABLA DE TASAS QUE LAS LISTA ABAJO Y PERMITE AGREGAR TIPOS DE PAGO CON GRAVAMEN */}
                   <div className="space-y-3">
-                    <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center justify-between">
-                      <span>Tasas Registradas en Esta Tienda ({exchangeRates.length})</span>
-                      <span className="text-[11px] font-normal text-slate-400">
-                        Cada producto podrá seleccionar cuáles de estas tasas admite
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-emerald-600" />
+                        <span>Tabla de Tasas y Tipos de Pago Aceptados ({exchangeRates.length})</span>
+                      </h5>
+                      <span className="text-[11px] text-slate-500">
+                        Cada tasa lista sus tipos de pago aceptados y su gravamen (%)
                       </span>
-                    </h5>
+                    </div>
 
                     {exchangeRates.length === 0 ? (
                       <div className="p-8 rounded-2xl border-2 border-dashed border-slate-200 text-center space-y-2 bg-slate-50/50">
                         <Coins className="w-8 h-8 text-slate-300 mx-auto" />
                         <p className="text-xs font-bold text-slate-600">
-                          Esta tienda aún no tiene tasas de cambio registradas.
+                          No hay tasas añadidas en esta tienda.
                         </p>
                         <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-                          Agrega una tasa arriba o haz clic en "Copiar Tasas Globales del Marketplace" para importar las tasas vigentes.
+                          Usa los selectores de arriba para definir las monedas, escribe la tasa (o pulsa "Tomar de Global") y presiona "Adicionar Tasa".
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {exchangeRates.map((rateItem) => (
-                          <div
-                            key={rateItem.id}
-                            className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3 hover:border-slate-300 transition-colors"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-black px-2 py-0.5 rounded-lg bg-slate-900 text-white text-xs shadow-2xs">
-                                  {rateItem.fromCurrency}
-                                </span>
-                                <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="font-mono font-black px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 text-xs border border-indigo-200">
-                                  {rateItem.toCurrency}
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                                1 {rateItem.fromCurrency} = {rateItem.rate} {rateItem.toCurrency}
-                              </p>
-                            </div>
+                      <div className="space-y-4">
+                        {exchangeRates.map((rateItem, rIdx) => {
+                          const associatedRpms = ratePaymentMethods.filter(
+                            (rpm) => rpm.exchangeRateId === rateItem.id
+                          );
+                          const addForm = rateAddForms[rateItem.id] || {
+                            paymentMethodId: paymentMethodsCatalog[0]?.id || 'pm-efectivo',
+                            gravamen: 0,
+                            notes: '',
+                          };
 
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1">
-                                <span className="text-[10px] font-bold text-slate-500">Tasa:</span>
-                                <input
-                                  type="number"
-                                  min="0.0001"
-                                  step="any"
-                                  value={rateItem.rate}
-                                  onChange={(e) =>
-                                    handleUpdateStoreRate(rateItem.id, Number(e.target.value) || 1)
-                                  }
-                                  className="w-16 text-center font-mono font-black text-xs text-slate-900 outline-none bg-transparent"
-                                />
+                          return (
+                            <div
+                              key={rateItem.id}
+                              className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs transition-all hover:border-slate-300"
+                            >
+                              {/* Header de la Tasa en la Tabla */}
+                              <div className="p-3.5 bg-slate-50/90 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <span className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] uppercase tracking-wider">
+                                    Tasa {rIdx + 1}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono font-black text-sm text-slate-900">
+                                      1 {rateItem.fromCurrency}
+                                    </span>
+                                    <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400" />
+                                    <span className="font-mono font-black text-sm text-indigo-700">
+                                      {rateItem.rate} {rateItem.toCurrency}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Valor:</span>
+                                    <input
+                                      type="number"
+                                      min="0.000001"
+                                      step="any"
+                                      value={rateItem.rate}
+                                      onChange={(e) =>
+                                        handleUpdateStoreRate(rateItem.id, Number(e.target.value) || 1)
+                                      }
+                                      className="w-20 text-center font-mono font-black text-xs text-slate-900 outline-none"
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-400">{rateItem.toCurrency}</span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStoreRate(rateItem.id)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title="Eliminar tasa"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveStoreRate(rateItem.id)}
-                                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                title="Eliminar tasa de cambio"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {/* Tipos de Pago de la Tasa */}
+                              <div className="p-3.5 space-y-3">
+                                <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                                  <span className="flex items-center gap-1.5">
+                                    <CreditCard className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>Tipos de pago aceptados para esta tasa ({associatedRpms.length}):</span>
+                                  </span>
+                                </div>
+
+                                {/* Tabla/Lista de Tipos de Pago para esta tasa */}
+                                {associatedRpms.length === 0 ? (
+                                  <div className="p-3 rounded-xl bg-amber-50/60 border border-dashed border-amber-200 text-amber-800 text-xs">
+                                    Aún no hay tipos de pago asociados a esta tasa. Agrega uno usando el formulario inferior.
+                                  </div>
+                                ) : (
+                                  <div className="overflow-x-auto rounded-xl border border-slate-100">
+                                    <table className="w-full text-left text-xs">
+                                      <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                        <tr>
+                                          <th className="py-2 px-3">Tipo de Pago</th>
+                                          <th className="py-2 px-3 text-center">Gravamen</th>
+                                          <th className="py-2 px-3">Notas / Condiciones</th>
+                                          <th className="py-2 px-3 text-right">Acción</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {associatedRpms.map((rpm) => {
+                                          const pmObj = paymentMethodsCatalog.find(
+                                            (p) => p.id === rpm.paymentMethodId
+                                          );
+                                          return (
+                                            <tr key={rpm.id} className="hover:bg-slate-50/50">
+                                              <td className="py-2 px-3 font-bold text-slate-800">
+                                                <div className="flex items-center gap-1.5">
+                                                  <CreditCard className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                                  <span>{pmObj?.name || rpm.paymentMethodId}</span>
+                                                </div>
+                                              </td>
+                                              <td className="py-2 px-3 text-center">
+                                                <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5">
+                                                  <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.5"
+                                                    value={rpm.gravamen ?? 0}
+                                                    onChange={(e) =>
+                                                      handleUpdateRpmGravamen(rpm.id, Number(e.target.value) || 0)
+                                                    }
+                                                    className="w-12 text-center font-mono font-black text-xs text-slate-900 outline-none bg-transparent"
+                                                  />
+                                                  <span className="text-[11px] font-bold text-slate-500">%</span>
+                                                </div>
+                                              </td>
+                                              <td className="py-2 px-3">
+                                                <input
+                                                  type="text"
+                                                  value={rpm.notes || ''}
+                                                  onChange={(e) => handleUpdateRpmNotes(rpm.id, e.target.value)}
+                                                  placeholder="Sin condición adicional"
+                                                  className="w-full px-2 py-1 rounded-lg border border-transparent hover:border-slate-200 focus:border-emerald-500 bg-transparent text-xs text-slate-700 outline-none"
+                                                />
+                                              </td>
+                                              <td className="py-2 px-3 text-right">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveRatePaymentMethod(rpm.id)}
+                                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                                  title="Eliminar forma de pago de esta tasa"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+
+                                {/* Formulario para agregar tipo de pago a esta tasa */}
+                                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                                  <div className="sm:col-span-4">
+                                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-0.5">
+                                      Forma de Pago
+                                    </label>
+                                    <select
+                                      value={addForm.paymentMethodId}
+                                      onChange={(e) => {
+                                        const pmId = e.target.value;
+                                        setRateAddForms((prev) => ({
+                                          ...prev,
+                                          [rateItem.id]: {
+                                            ...addForm,
+                                            paymentMethodId: pmId,
+                                            gravamen: pmId === 'pm-efectivo' ? 0 : (pmId === 'pm-transferencia' ? 10 : addForm.gravamen),
+                                          },
+                                        }));
+                                      }}
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-800 outline-none focus:border-emerald-500"
+                                    >
+                                      {paymentMethodsCatalog.map((pm) => (
+                                        <option key={pm.id} value={pm.id}>
+                                          {pm.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="sm:col-span-3">
+                                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-0.5">
+                                      Gravamen (%)
+                                    </label>
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.5"
+                                        value={addForm.gravamen}
+                                        onChange={(e) =>
+                                          setRateAddForms((prev) => ({
+                                            ...prev,
+                                            [rateItem.id]: {
+                                              ...addForm,
+                                              gravamen: Number(e.target.value) || 0,
+                                            },
+                                          }))
+                                        }
+                                        className="w-full px-2.5 py-1.5 pr-6 rounded-lg border border-slate-300 bg-white text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-500 text-center"
+                                      />
+                                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="sm:col-span-3">
+                                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-0.5">
+                                      Condición (Opcional)
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={addForm.notes}
+                                      onChange={(e) =>
+                                        setRateAddForms((prev) => ({
+                                          ...prev,
+                                          [rateItem.id]: {
+                                            ...addForm,
+                                            notes: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                      placeholder="ej. Billetes limpios..."
+                                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs text-slate-800 outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+
+                                  <div className="sm:col-span-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddPaymentToRate(rateItem.id)}
+                                      className="w-full py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                      <span>Agregar</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
