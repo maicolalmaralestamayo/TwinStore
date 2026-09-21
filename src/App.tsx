@@ -17,7 +17,7 @@ import {
   INITIAL_CATEGORIES,
   INITIAL_MARKETPLACE_CONFIG,
 } from './data/initialData';
-import { calculateCUP, generateStoreWhatsAppUrl, formatNormalizedAddressText } from './lib/utils';
+import { calculateProductPriceInCurrency, calculateCUP, generateStoreWhatsAppUrl, formatNormalizedAddressText } from './lib/utils';
 import {
   getStorePaymentMethodsForCurrency,
   getStoreAcceptedCurrencies,
@@ -32,6 +32,8 @@ import {
   fetchConfigApi,
   saveConfigApi,
   restoreDbApi,
+  fetchInterfazApi,
+  saveInterfazApi,
 } from './lib/api';
 import { Header } from './components/Header';
 import { ThemeImage } from './components/common/ThemeImage';
@@ -394,10 +396,11 @@ export default function App() {
     let isMounted = true;
     async function loadSqliteData() {
       try {
-        const [dbStores, dbProducts, dbConfig] = await Promise.all([
+        const [dbStores, dbProducts, dbConfig, dbInterfaz] = await Promise.all([
           fetchStoresApi(),
           fetchProductsApi(),
           fetchConfigApi(),
+          fetchInterfazApi(),
         ]);
         if (!isMounted) return;
         if (dbStores && dbStores.length > 0) {
@@ -406,13 +409,15 @@ export default function App() {
         if (dbProducts && dbProducts.length > 0) {
           setProducts(dbProducts);
         }
+        const effectiveUiTexts = dbInterfaz || dbConfig?.uiTexts;
+        if (effectiveUiTexts) {
+          setLiveInterfaz(effectiveUiTexts);
+        }
         if (dbConfig) {
-          if (dbConfig.uiTexts) {
-            setLiveInterfaz(dbConfig.uiTexts);
-          }
           setMarketplaceConfig((prev) => ({
             ...prev,
             ...dbConfig,
+            uiTexts: effectiveUiTexts || prev.uiTexts,
             geoCatalog:
               Array.isArray(dbConfig.geoCatalog) && dbConfig.geoCatalog.length > 0
                 ? dbConfig.geoCatalog
@@ -425,6 +430,11 @@ export default function App() {
               Array.isArray(dbConfig.tagsCatalog) && dbConfig.tagsCatalog.length > 0
                 ? dbConfig.tagsCatalog
                 : prev.tagsCatalog,
+          }));
+        } else if (effectiveUiTexts) {
+          setMarketplaceConfig((prev) => ({
+            ...prev,
+            uiTexts: effectiveUiTexts,
           }));
         }
       } catch (err) {
@@ -560,6 +570,7 @@ export default function App() {
   const handleUpdateMarketplaceConfig = (newConfig: MarketplaceConfig) => {
     if (newConfig.uiTexts) {
       setLiveInterfaz(newConfig.uiTexts);
+      saveInterfazApi(newConfig.uiTexts);
     }
     setMarketplaceConfig(newConfig);
     saveConfigApi(newConfig);
@@ -700,12 +711,8 @@ export default function App() {
         return false;
       }
 
-      // 5. Price filter (evaluated in USD or CUP based on the product's store rate!)
-      const storeRate = store?.usdToCupRate || 330;
-      const evalPrice =
-        filters.priceCurrency === 'USD'
-          ? p.priceUSD
-          : calculateCUP(p.priceUSD, storeRate);
+      // 5. Price filter (evaluated in selected currency)
+      const evalPrice = calculateProductPriceInCurrency(p, store, filters.priceCurrency || 'USD');
 
       if (filters.minPrice !== '' && evalPrice < Number(filters.minPrice)) {
         return false;
@@ -761,7 +768,7 @@ export default function App() {
             return (
               allPayIds.includes('pm-transferencia') ||
               allPayIds.includes('transfer') ||
-              Boolean(store?.paymentOptions?.transferAccepted && itemCurrency.toUpperCase() === 'CUP')
+              Boolean(store?.paymentOptions?.transferAccepted)
             );
           }
           if (selected === 'cash' || selected === 'pm-efectivo') {
@@ -858,14 +865,14 @@ export default function App() {
     }).sort((a, b) => {
       const storeA = stores.find((s) => s.id === a.storeId);
       const storeB = stores.find((s) => s.id === b.storeId);
-      const cupA = calculateCUP(a.priceUSD, storeA?.usdToCupRate || 330);
-      const cupB = calculateCUP(b.priceUSD, storeB?.usdToCupRate || 330);
+      const priceA = calculateProductPriceInCurrency(a, storeA, filters.priceCurrency || 'USD');
+      const priceB = calculateProductPriceInCurrency(b, storeB, filters.priceCurrency || 'USD');
 
       if (filters.sortBy === 'price_asc') {
-        return filters.priceCurrency === 'USD' ? a.priceUSD - b.priceUSD : cupA - cupB;
+        return priceA - priceB;
       }
       if (filters.sortBy === 'price_desc') {
-        return filters.priceCurrency === 'USD' ? b.priceUSD - a.priceUSD : cupB - cupA;
+        return priceB - priceA;
       }
       if (filters.sortBy === 'newest') {
         return b.createdAt.localeCompare(a.createdAt);
@@ -1194,6 +1201,7 @@ export default function App() {
                   offerTypesCatalog={marketplaceConfig.offerTypesCatalog}
                   paymentMethodsCatalog={marketplaceConfig.paymentMethodsCatalog}
                   deliveryMethodsCatalog={marketplaceConfig.deliveryMethodsCatalog}
+                  currenciesCatalog={marketplaceConfig.currenciesCatalog}
                   stores={stores}
                   filters={filters}
                   onFilterChange={handleFilterChange}
@@ -1366,6 +1374,7 @@ export default function App() {
                   geoCatalog={marketplaceConfig.geoCatalog}
                   paymentMethodsCatalog={marketplaceConfig.paymentMethodsCatalog}
                   deliveryMethodsCatalog={marketplaceConfig.deliveryMethodsCatalog}
+                  currenciesCatalog={marketplaceConfig.currenciesCatalog}
                   filters={storeFilters}
                   onFilterChange={handleStoreFilterChange}
                   onReset={() => handleStoreFilterChange(DEFAULT_STORE_FILTERS)}

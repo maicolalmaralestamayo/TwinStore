@@ -18,6 +18,7 @@ import {
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
   INITIAL_CURRENCIES_CATALOG,
+  INITIAL_PAYMENT_PLATFORMS_CATALOG,
 } from '../../data/initialData';
 import {
   Plus,
@@ -40,6 +41,7 @@ import {
   Layers,
   Sparkles,
   Globe,
+  Store as StoreIcon,
 } from 'lucide-react';
 import { getStoreLogoUrl } from '../../lib/utils';
 import { getStoreCurrencyPaymentMethods } from '../../lib/cartUtils';
@@ -96,10 +98,14 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     marketplaceConfig?.currenciesCatalog && marketplaceConfig.currenciesCatalog.length > 0
       ? marketplaceConfig.currenciesCatalog
       : INITIAL_CURRENCIES_CATALOG;
+  const paymentPlatformsCatalog =
+    marketplaceConfig?.paymentPlatformsCatalog && marketplaceConfig.paymentPlatformsCatalog.length > 0
+      ? marketplaceConfig.paymentPlatformsCatalog
+      : INITIAL_PAYMENT_PLATFORMS_CATALOG;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
-  const [activeTab, setActiveTab] = useState<'general' | 'address' | 'payment' | 'currency'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'address' | 'delivery' | 'rates'>('general');
 
   const [storeFilters, setStoreFilters] = useState<StoreFilterState>(DEFAULT_STORE_FILTERS);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
@@ -107,11 +113,11 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
 
   // Form State - Currency & Exchange Rates
   const [baseCurrency, setBaseCurrency] = useState<string>('USD');
-  const [secondaryCurrency, setSecondaryCurrency] = useState<string>('CUP');
+  const [secondaryCurrency, setSecondaryCurrency] = useState<string>('EUR');
   const [exchangeRates, setExchangeRates] = useState<StoreExchangeRate[]>([]);
   const [newRateFrom, setNewRateFrom] = useState<string>('USD');
-  const [newRateTo, setNewRateTo] = useState<string>('CUP');
-  const [newRateValue, setNewRateValue] = useState<number | ''>(330);
+  const [newRateTo, setNewRateTo] = useState<string>('EUR');
+  const [newRateValue, setNewRateValue] = useState<number | ''>(0.92);
 
   // Form State - General
   const [name, setName] = useState('');
@@ -119,8 +125,8 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [logoUrl, setLogoUrl] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
-  const [whatsappPhone, setWhatsappPhone] = useState('+5354292049');
-  const [usdToCupRate, setUsdToCupRate] = useState<number>(675);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [usdToCupRate, setUsdToCupRate] = useState<number>(1);
   const [active, setActive] = useState(true);
 
   // Form State - Address
@@ -130,14 +136,23 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
   const [apartment, setApartment] = useState('');
   const [crossStreet1, setCrossStreet1] = useState('');
   const [crossStreet2, setCrossStreet2] = useState('');
-  const [neighborhood, setNeighborhood] = useState('Zamora');
-  const [municipality, setMunicipality] = useState('Marianao');
-  const [province, setProvince] = useState('La Habana');
+  const initialProv = marketplaceConfig?.geoCatalog?.[0]?.name || INITIAL_GEO_CATALOG?.[0]?.name || '';
+  const initialMun = marketplaceConfig?.geoCatalog?.[0]?.municipalities?.[0]?.name || INITIAL_GEO_CATALOG?.[0]?.municipalities?.[0]?.name || '';
+  const initialRep = marketplaceConfig?.geoCatalog?.[0]?.municipalities?.[0]?.repartos?.[0]?.name || INITIAL_GEO_CATALOG?.[0]?.municipalities?.[0]?.repartos?.[0]?.name || '';
+  const [neighborhood, setNeighborhood] = useState(initialRep);
+  const [municipality, setMunicipality] = useState(initialMun);
+  const [province, setProvince] = useState(initialProv);
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
 
   // Form State - Dynamic Delivery & Payment Nomenclators
   const [deliveryMethodIds, setDeliveryMethodIds] = useState<string[]>(['dm-mensajeria', 'dm-recogida']);
   const [paymentMethodIds, setPaymentMethodIds] = useState<string[]>(['pm-efectivo', 'pm-transferencia']);
+  const [paymentPlatformIds, setPaymentPlatformIds] = useState<string[]>([
+    'pp-banmet',
+    'pp-zelle',
+    'pp-paypal',
+    'pp-clasica',
+  ]);
   const [deliveryAvailable, setDeliveryAvailable] = useState(true);
   const [transferAccepted, setTransferAccepted] = useState(true);
   const [transferFeePercentage, setTransferFeePercentage] = useState<number>(10);
@@ -423,7 +438,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setWhatsappPhone('');
 
     const defaultBase = marketplaceConfig?.baseCurrency || 'USD';
-    const defaultSec = marketplaceConfig?.secondaryCurrency !== undefined ? marketplaceConfig.secondaryCurrency : 'CUP';
+    const defaultSec = marketplaceConfig?.secondaryCurrency !== undefined ? marketplaceConfig.secondaryCurrency : 'EUR';
     const defaultRate = marketplaceConfig?.globalExchangeRate || 1;
 
     setBaseCurrency(defaultBase);
@@ -486,6 +501,11 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setDeliveryMethodIds(['dm-mensajeria', 'dm-recogida']);
     setDeliveryAvailable(true);
     setPaymentMethodIds(['pm-efectivo', 'pm-transferencia']);
+    setPaymentPlatformIds(
+      paymentPlatformsCatalog.length > 0
+        ? paymentPlatformsCatalog.map((p) => p.id)
+        : ['pp-banmet', 'pp-zelle', 'pp-paypal', 'pp-clasica']
+    );
     setTransferAccepted(true);
     setTransferFeePercentage(10);
     setCurrencyPaymentMethods([]);
@@ -508,11 +528,11 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     setImages(initialImgs);
     setNewImageUrl('');
     setWhatsappPhone(store.whatsappPhone || '');
-    setUsdToCupRate(store.usdToCupRate || 335);
+    setUsdToCupRate(store.usdToCupRate || 1);
     setActive(store.active);
 
     const sBase = store.baseCurrency || 'USD';
-    const sSec = store.secondaryCurrency !== undefined ? store.secondaryCurrency : (sBase === 'USD' ? 'CUP' : '');
+    const sSec = store.secondaryCurrency !== undefined ? store.secondaryCurrency : (sBase === 'USD' ? 'EUR' : '');
     setBaseCurrency(sBase);
     setSecondaryCurrency(sSec);
 
@@ -522,13 +542,13 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         id: `rate-${store.id}-${sBase}-${sSec}`,
         fromCurrency: sBase,
         toCurrency: sSec,
-        rate: store.usdToCupRate || 335,
+        rate: store.usdToCupRate || 1,
       });
     }
     setExchangeRates(ratesList);
     setNewRateFrom(sBase);
-    setNewRateTo(sSec || 'CUP');
-    setNewRateValue(store.usdToCupRate || 335);
+    setNewRateTo(sSec || 'EUR');
+    setNewRateValue(store.usdToCupRate || 1);
 
     const addr = store.address || ({} as StoreAddress);
     setStreet(addr.street || '');
@@ -574,6 +594,13 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         ? ['pm-efectivo', 'pm-transferencia']
         : ['pm-efectivo'];
     setPaymentMethodIds(defaultPay);
+    setPaymentPlatformIds(
+      store.paymentPlatformIds && store.paymentPlatformIds.length > 0
+        ? store.paymentPlatformIds
+        : paymentPlatformsCatalog.length > 0
+        ? paymentPlatformsCatalog.map((p) => p.id)
+        : ['pp-banmet', 'pp-zelle', 'pp-paypal', 'pp-clasica']
+    );
     setTransferAccepted(
       pay.transferAccepted !== undefined
         ? pay.transferAccepted
@@ -867,7 +894,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       new Set([
         ...currencyPaymentMethods.map((cpm) => cpm.currency),
         baseCurrency || 'USD',
-        secondaryCurrency || 'CUP',
+        secondaryCurrency || 'EUR',
       ])
     ).filter(Boolean);
 
@@ -886,10 +913,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
     const finalGallery = images.length > 0 ? images : [finalMainLogo];
 
     const finalRates = [...exchangeRates];
-    const usdCupRateItem = finalRates.find(
-      (r) => r.fromCurrency === 'USD' && r.toCurrency === 'CUP'
-    );
-    const primaryRateNum = usdCupRateItem ? usdCupRateItem.rate : (Number(usdToCupRate) || 335);
+    const primaryRateItem = finalRates.find(
+      (r) => r.fromCurrency === (baseCurrency || 'USD') && r.toCurrency === secondaryCurrency
+    ) || finalRates[0];
+    const primaryRateNum = primaryRateItem ? primaryRateItem.rate : (Number(usdToCupRate) || 1);
 
     if (editingStore) {
       onUpdateStore({
@@ -909,6 +936,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         deliveryAvailable,
         paymentOptions: normalizedPayment,
         paymentMethodIds: finalPaymentMethodIds,
+        paymentPlatformIds: paymentPlatformIds,
         deliveryMethodIds,
         currencyPaymentMethods,
         ratePaymentMethods,
@@ -933,6 +961,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
         deliveryAvailable,
         paymentOptions: normalizedPayment,
         paymentMethodIds: finalPaymentMethodIds,
+        paymentPlatformIds: paymentPlatformIds,
         deliveryMethodIds,
         currencyPaymentMethods,
         ratePaymentMethods,
@@ -1029,7 +1058,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       updated.includes('pm-transferencia') ||
       updated.some((id) => id.toLowerCase().includes('transfer'));
     const pay = store.paymentOptions || {
-      acceptedCurrencies: ['USD', 'CUP'],
+      acceptedCurrencies: [store.baseCurrency || 'USD', store.secondaryCurrency || 'EUR'].filter(Boolean),
       transferFeePercentage: 10,
       transferAccepted: true,
     };
@@ -1220,8 +1249,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                       {/* Ubicación (Provincia, Municipio y Reparto Combo Dropdowns) */}
                       <td className="py-3 px-4 min-w-[220px]">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <div>
                             <select
                               value={storeProv}
                               onChange={(e) => handleInlineLocationChange(store, e.target.value, storeMun, storeRep)}
@@ -1266,75 +1294,52 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                         </div>
                       </td>
 
-                      {/* Monedas y Tasas - Base / Secundaria & Tasa de Cambio */}
-                      <td className="py-3 px-4 min-w-[160px]">
+                      {/* Monedas y Tasas de Cambio */}
+                      <td className="py-3 px-4 min-w-[170px]">
                         <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md bg-slate-900 text-white shadow-2xs">
-                              {store.baseCurrency || 'USD'}
-                            </span>
-                            {store.secondaryCurrency ? (
-                              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                                + {store.secondaryCurrency}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-slate-400 font-medium italic">
-                                (Solo base)
-                              </span>
-                            )}
-                          </div>
-
-                          {store.secondaryCurrency ? (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200">
-                              <span className="text-[11px] font-bold text-emerald-900 shrink-0">
-                                1 {store.baseCurrency || 'USD'} =
-                              </span>
-                              <input
-                                type="number"
-                                min="0.0001"
-                                step="any"
-                                value={
-                                  store.exchangeRates?.find(
-                                    (r) =>
-                                      r.fromCurrency === (store.baseCurrency || 'USD') &&
-                                      r.toCurrency === store.secondaryCurrency
-                                  )?.rate || store.usdToCupRate || 330
-                                }
-                                onChange={(e) => {
-                                  const newRateVal = Number(e.target.value) || 1;
-                                  const b = store.baseCurrency || 'USD';
-                                  const s = store.secondaryCurrency;
-                                  const existingRates = store.exchangeRates ? [...store.exchangeRates] : [];
-                                  const rIdx = existingRates.findIndex(
-                                    (r) => r.fromCurrency === b && r.toCurrency === s
-                                  );
-                                  if (rIdx >= 0) {
-                                    existingRates[rIdx].rate = newRateVal;
-                                  } else if (s) {
-                                    existingRates.push({
-                                      id: `rate-${store.id}-${b}-${s}`,
-                                      fromCurrency: b,
-                                      toCurrency: s,
-                                      rate: newRateVal,
-                                    });
-                                  }
-                                  onUpdateStore({
-                                    ...store,
-                                    usdToCupRate: (b === 'USD' && s === 'CUP') ? newRateVal : store.usdToCupRate,
-                                    exchangeRates: existingRates,
-                                  });
-                                }}
-                                className="w-14 px-1 py-0.5 rounded border border-emerald-300 bg-white text-center font-black text-xs text-emerald-900 focus:ring-2 focus:ring-emerald-500 outline-none"
-                                title="Modificar tasa para esta tienda"
-                              />
-                              <span className="text-[11px] font-bold text-emerald-900 shrink-0">
-                                {store.secondaryCurrency}
-                              </span>
+                          {store.exchangeRates && store.exchangeRates.length > 0 ? (
+                            <div className="space-y-1">
+                              {store.exchangeRates.map((r, idx) => (
+                                <div
+                                  key={r.id || idx}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs"
+                                >
+                                  <span className="font-mono font-bold text-emerald-950">
+                                    1 {r.fromCurrency} =
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0.0001"
+                                    step="any"
+                                    value={r.rate}
+                                    onChange={(e) => {
+                                      const newRateVal = Number(e.target.value) || 1;
+                                      const updatedRates = (store.exchangeRates || []).map((existing) =>
+                                        existing.id === r.id ? { ...existing, rate: newRateVal } : existing
+                                      );
+                                      onUpdateStore({
+                                        ...store,
+                                        exchangeRates: updatedRates,
+                                        usdToCupRate: idx === 0 ? newRateVal : store.usdToCupRate,
+                                      });
+                                    }}
+                                    className="w-14 px-1 py-0.5 rounded border border-emerald-300 bg-white text-center font-black text-xs text-emerald-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    title="Modificar tasa para esta tienda"
+                                  />
+                                  <span className="font-mono font-bold text-emerald-800">
+                                    {r.toCurrency}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-400 block">
-                              Sin tasa secundaria
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] text-slate-500 italic">
+                                {store.acceptedCurrencies && store.acceptedCurrencies.length > 0
+                                  ? store.acceptedCurrencies.join(', ')
+                                  : 'Sin tasas configuradas'}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -1390,7 +1395,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                               newIds.includes('pm-transferencia') ||
                               newIds.some((id) => id.toLowerCase().includes('transfer'));
                             const pay = store.paymentOptions || {
-                              acceptedCurrencies: ['USD', 'CUP'],
+                              acceptedCurrencies: [store.baseCurrency || 'USD', store.secondaryCurrency || 'EUR'].filter(Boolean),
                               transferFeePercentage: 10,
                               transferAccepted: true,
                             };
@@ -1429,6 +1434,24 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                             );
                           })}
                         </div>
+
+                        {/* Plataformas de Pago Aceptadas */}
+                        {store.paymentPlatformIds && store.paymentPlatformIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {store.paymentPlatformIds.map((ppId) => {
+                              const pp = paymentPlatformsCatalog.find((p) => p.id === ppId);
+                              return (
+                                <span
+                                  key={ppId}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                  title={`Plataforma: ${pp?.name || ppId}`}
+                                >
+                                  {pp?.name || ppId}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
 
                       {/* Estado Activa / Inactiva - Toggle Switch Interruptor */}
@@ -1552,51 +1575,54 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 bg-white px-6 gap-2 overflow-x-auto">
+            <div className="flex flex-wrap items-center border-b border-gray-200 bg-white px-6 py-2.5 gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('general')}
-                className={`py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'general'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
-                General
+                <StoreIcon className="w-4 h-4" />
+                <span>General</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('address')}
-                className={`py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeTab === 'address'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
-                Dirección
+                <MapPin className="w-4 h-4" />
+                <span>Dirección</span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('payment')}
-                className={`py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'payment'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                onClick={() => setActiveTab('delivery')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'delivery'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
-                Pagos y Mensajería
+                <Truck className="w-4 h-4" />
+                <span>Recogida y Plataformas</span>
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('currency')}
-                className={`py-3 px-3 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'currency'
-                    ? 'border-emerald-600 text-emerald-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                onClick={() => setActiveTab('rates')}
+                className={`px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === 'rates'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
                 <Coins className="w-4 h-4" />
-                <span>Monedas y Tasas</span>
+                <span>Monedas, Pagos y Tasas</span>
               </button>
             </div>
 
@@ -1605,6 +1631,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
               {/* TAB 1: GENERAL */}
               {activeTab === 'general' && (
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-1 border-b border-gray-100">
+                    <StoreIcon className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-sm font-bold text-gray-900">Identidad y Datos Principales</h4>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
@@ -1647,51 +1677,37 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                     />
                   </div>
 
-                  {/* WhatsApp Phone & Exchange rate */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* WhatsApp Phone & Estado */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                        WhatsApp
+                        WhatsApp de Contacto
                       </label>
                       <input
                         type="text"
                         value={whatsappPhone}
                         onChange={(e) => setWhatsappPhone(e.target.value)}
+                        placeholder="+53 52000000"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:border-emerald-500 outline-none font-mono"
                         required
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                        Tasa USD
+                    <div className="pt-4">
+                      <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-gray-100/60 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={(e) => setActive(e.target.checked)}
+                          id="activeStore"
+                          className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                        />
+                        <div>
+                          <span className="text-sm font-bold text-gray-900 block">Tienda Activa</span>
+                          <span className="text-[11px] text-gray-500">Visible en el catálogo público</span>
+                        </div>
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={usdToCupRate}
-                        onChange={(e) => setUsdToCupRate(Number(e.target.value))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold text-gray-900 focus:border-emerald-500 outline-none"
-                        required
-                      />
                     </div>
-                  </div>
-
-                  {/* Active Toggle */}
-                  <div className="flex items-center gap-2 pt-2">
-                    <input
-                      type="checkbox"
-                      checked={active}
-                      onChange={(e) => setActive(e.target.checked)}
-                      id="activeStore"
-                      className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
-                    />
-                    <label
-                      htmlFor="activeStore"
-                      className="text-sm font-semibold text-gray-700 cursor-pointer"
-                    >
-                      Tienda activa en el marketplace
-                    </label>
                   </div>
                 </div>
               )}
@@ -1699,6 +1715,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
               {/* TAB 2: ADDRESS */}
               {activeTab === 'address' && (
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-1 border-b border-gray-100">
+                    <MapPin className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-sm font-bold text-gray-900">Ubicación Geográfica y Dirección</h4>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
@@ -1848,283 +1868,70 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                 </div>
               )}
 
-              {/* TAB 3: PAYMENTS & DELIVERY (NOMENCLADORES DINÁMICOS) */}
-              {activeTab === 'payment' && (
+              {/* TAB 3: RECOGIDA Y ENTREGA */}
+              {activeTab === 'delivery' && (
                 <div className="space-y-6">
                   {/* Recogida y Entrega - Nomenclador */}
                   <div className="space-y-3">
                     <div>
                       <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-blue-600" />
+                        <Truck className="w-4 h-4 text-emerald-600" />
                         <span>Métodos de Recogida y Entrega</span>
                       </h4>
                       <p className="text-xs text-gray-500">
-                        Selecciona los tipos de entrega y recogida que ofrece esta tienda física u online.
+                        Selecciona los tipos de entrega y recogida que ofrece esta tienda a sus clientes.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {deliveryMethodsCatalog.map((dm) => {
-                        const isChecked = deliveryMethodIds.includes(dm.id);
-
-                        return (
-                          <div
-                            key={dm.id}
-                            onClick={() => toggleDeliveryMethod(dm.id)}
-                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                              isChecked
-                                ? 'bg-blue-50/70 border-blue-300 shadow-xs'
-                                : 'bg-gray-50/70 border-gray-200 hover:bg-gray-100/60'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div>
-                                <h5 className="text-sm font-bold text-gray-900">{dm.name}</h5>
-                                {dm.description && (
-                                  <p className="text-[11px] text-gray-500 line-clamp-1">{dm.description}</p>
-                                )}
-                              </div>
-                            </div>
-
-                            <label className="relative inline-flex items-center cursor-pointer pointer-events-none">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {}}
-                                className="sr-only peer"
-                              />
-                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <SearchableMultiSelect
+                      options={deliveryMethodsCatalog.map((dm) => ({
+                        value: dm.id,
+                        label: dm.name,
+                        sublabel: dm.description,
+                      }))}
+                      values={deliveryMethodIds}
+                      onChange={(newIds) => setDeliveryMethodIds(newIds)}
+                      placeholder="Seleccionar métodos de recogida y entrega..."
+                      allLabel="Todos los métodos activos"
+                    />
                   </div>
 
-                  {/* Tabla Relacional: Monedas ↔ Formas de Pago Aceptadas */}
-                  <div className="space-y-4 pt-4 border-t border-gray-200/80">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-emerald-600" />
-                          <span>Tabla Relacional: Moneda ↔ Formas de Pago Aceptadas</span>
-                        </h4>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Define qué formas de pago acepta esta tienda para cada moneda o transacción comercial.
-                        </p>
-                      </div>
-
-                      {/* Botones de configuración rápida */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={handleApplyCashOnlyPreset}
-                          className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold border border-amber-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                          title="Cobro únicamente en efectivo contra entrega para todas las monedas"
-                        >
-                          <Banknote className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Solo Efectivo</span>
-                        </button>
-                      </div>
+                  {/* Plataformas de Pago Aceptadas - Nomenclador */}
+                  <div className="space-y-3 pt-4 border-t border-gray-200">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                        <span>Plataformas de Pago Aceptadas</span>
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Selecciona desde cuáles entidades bancarias, pasarelas o plataformas acepta pagos esta tienda (ej. Banco Metropolitano, Zelle, PayPal, Tarjeta Clásica).
+                      </p>
                     </div>
 
-                    {/* Tabla de vínculos configurados */}
-                    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase tracking-wider">
-                            <th className="py-2.5 px-3">Moneda</th>
-                            <th className="py-2.5 px-3">Forma de Pago Aceptada</th>
-                            <th className="py-2.5 px-3">Notas / Condiciones</th>
-                            <th className="py-2.5 px-3 text-right">Acción</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {currencyPaymentMethods.length === 0 ? (
-                            <tr>
-                              <td colSpan={4} className="py-6 text-center text-gray-400 italic">
-                                No hay relaciones moneda-pago configuradas. Añade una debajo o selecciona "Solo Efectivo".
-                              </td>
-                            </tr>
-                          ) : (
-                            currencyPaymentMethods.map((cpm) => {
-                              const currObj = (INITIAL_CURRENCIES_CATALOG || []).find(
-                                (c) => c.code.toUpperCase() === cpm.currency.toUpperCase()
-                              );
-                              const pmObj = paymentMethodsCatalog.find(
-                                (p) => p.id === cpm.paymentMethodId
-                              );
-                              const isCash = cpm.paymentMethodId.toLowerCase().includes('efectivo');
-
-                              return (
-                                <tr key={cpm.id || `${cpm.currency}-${cpm.paymentMethodId}`} className="hover:bg-gray-50/60">
-                                  {/* Moneda */}
-                                  <td className="py-2 px-3 font-bold">
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-900 text-white font-mono font-black text-xs">
-                                      <span>{currObj?.symbol || '$'}</span>
-                                      <span>{cpm.currency}</span>
-                                    </span>
-                                  </td>
-
-                                  {/* Forma de Pago */}
-                                  <td className="py-2 px-3">
-                                    <span
-                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs border ${
-                                        isCash
-                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                          : 'bg-purple-50 text-purple-800 border-purple-200'
-                                      }`}
-                                    >
-                                      {isCash ? (
-                                        <Banknote className="w-3.5 h-3.5 text-emerald-600" />
-                                      ) : (
-                                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
-                                      )}
-                                      <span>{pmObj?.name || cpm.paymentMethodId}</span>
-                                    </span>
-                                  </td>
-
-                                  {/* Notas / Condiciones */}
-                                  <td className="py-2 px-3">
-                                    <input
-                                      type="text"
-                                      value={cpm.notes || ''}
-                                      onChange={(e) => handleUpdateCpmNote(cpm.id, e.target.value)}
-                                      placeholder="Ej: Billetes limpios, Transfermóvil..."
-                                      className="w-full px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-emerald-500 text-gray-800 text-xs outline-none transition-colors"
-                                    />
-                                  </td>
-
-                                  {/* Eliminar */}
-                                  <td className="py-2 px-3 text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveCpm(cpm.id)}
-                                      className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                                      title="Desvincular forma de pago para esta moneda"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Barra para agregar nueva relación */}
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {/* Selector Moneda */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
-                            Moneda
-                          </label>
-                          <select
-                            value={newCpmCurrency}
-                            onChange={(e) => setNewCpmCurrency(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 focus:border-emerald-500 outline-none cursor-pointer"
-                          >
-                            {(INITIAL_CURRENCIES_CATALOG || [
-                              { code: 'USD', name: 'Dólar Estadounidense' },
-                              { code: 'CUP', name: 'Peso Cubano' },
-                              { code: 'EUR', name: 'Euro' },
-                              { code: 'MLC', name: 'Moneda Libremente Convertible' },
-                            ]).map((c) => (
-                              <option key={c.code} value={c.code}>
-                                {c.code} - {c.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Selector Forma de Pago */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
-                            Forma de Pago Aceptada
-                          </label>
-                          <select
-                            value={newCpmPaymentMethodId}
-                            onChange={(e) => setNewCpmPaymentMethodId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-900 focus:border-emerald-500 outline-none cursor-pointer"
-                          >
-                            {paymentMethodsCatalog.map((pm) => (
-                              <option key={pm.id} value={pm.id}>
-                                {pm.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Detalle / Nota */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">
-                            Condición (Opcional)
-                          </label>
-                          <input
-                            type="text"
-                            value={newCpmNotes}
-                            onChange={(e) => setNewCpmNotes(e.target.value)}
-                            placeholder="Ej: En mano, EnZona..."
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white text-xs text-gray-800 focus:border-emerald-500 outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleAddCpm}
-                        className="px-3.5 py-2 mt-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs shrink-0 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Vincular</span>
-                      </button>
-                    </div>
-
-                    {/* Comisión por transferencia si aplica */}
-                    {currencyPaymentMethods.some(
-                      (cpm) =>
-                        cpm.paymentMethodId === 'pm-transferencia' ||
-                        cpm.paymentMethodId.toLowerCase().includes('transfer')
-                    ) && (
-                      <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-3">
-                        <div>
-                          <label className="block text-xs font-bold uppercase text-purple-900 mb-0.5">
-                            Recargo / Comisión por Transferencia (%)
-                          </label>
-                          <p className="text-xs text-purple-700">
-                            Porcentaje adicional que aplica la tienda en pagos electrónicos (ej: EnZona, Transfermóvil).
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <input
-                            type="number"
-                            min="0"
-                            max="50"
-                            step="0.5"
-                            value={transferFeePercentage}
-                            onChange={(e) => setTransferFeePercentage(Number(e.target.value))}
-                            className="w-20 px-3 py-2 rounded-xl border border-purple-300 bg-white text-center text-sm font-black text-purple-900 focus:border-purple-600 outline-none"
-                          />
-                          <span className="text-xs font-bold text-purple-900">%</span>
-                        </div>
-                      </div>
-                    )}
+                    <SearchableMultiSelect
+                      options={paymentPlatformsCatalog.map((pp) => ({
+                        value: pp.id,
+                        label: pp.name,
+                        sublabel: pp.description,
+                      }))}
+                      values={paymentPlatformIds}
+                      onChange={(newIds) => setPaymentPlatformIds(newIds)}
+                      placeholder="Seleccionar plataformas de pago..."
+                      allLabel="Todas las plataformas aceptadas"
+                    />
                   </div>
                 </div>
               )}
 
               {/* TAB 4: STORE EXCHANGE RATES AND PAYMENT METHODS WITH GRAVAMEN */}
-              {activeTab === 'currency' && (
+              {activeTab === 'rates' && (
                 <div className="space-y-6">
                   {/* Encabezado */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
                     <div>
                       <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         <Coins className="w-4 h-4 text-emerald-600" />
-                        <span>Configuración de Tasas y Tipos de Pago de la Tienda</span>
+                        <span>Monedas, Pagos y Tasas de la Tienda</span>
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5">
                         Agrega las tasas de cambio de la tienda y vincula a cada una los tipos de pago aceptados con sus respectivos gravámenes.
@@ -2504,9 +2311,10 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm cursor-pointer"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
-                  Cancelar
+                  <X className="w-4 h-4" />
+                  <span>Cancelar</span>
                 </button>
                 <button
                   type="submit"

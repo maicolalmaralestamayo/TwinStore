@@ -12,6 +12,10 @@ import {
   exportDepartmentsCsv,
   exportTagsCsv,
   exportConfigCsv,
+  exportProductTypesCsv,
+  exportPaymentMethodsCsv,
+  exportPaymentPlatformsCsv,
+  exportDeliveryMethodsCsv,
   parseAndImportAnyCsv,
   FullMarketplaceBackup,
 } from '../../lib/backupUtils';
@@ -31,6 +35,9 @@ import {
   Tag,
   Settings,
   FileText,
+  CreditCard,
+  Truck,
+  Layers,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -83,7 +90,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         marketplaceConfig.geoCatalog || [],
         marketplaceConfig.departmentsCatalog || [],
         marketplaceConfig.tagsCatalog || [],
-        marketplaceConfig
+        marketplaceConfig,
+        marketplaceConfig.productTypesCatalog,
+        marketplaceConfig.paymentMethodsCatalog,
+        marketplaceConfig.deliveryMethodsCatalog,
+        marketplaceConfig.paymentPlatformsCatalog
       );
       onShowToast('Respaldo Total Descargado', 'Copia completa guardada como archivo JSON');
     }
@@ -109,11 +120,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               geoCatalog: parsed.geoCatalog || marketplaceConfig.geoCatalog,
               departmentsCatalog: parsed.departmentsCatalog || marketplaceConfig.departmentsCatalog,
               tagsCatalog: parsed.tagsCatalog || marketplaceConfig.tagsCatalog,
+              productTypesCatalog: parsed.productTypesCatalog || marketplaceConfig.productTypesCatalog,
+              paymentMethodsCatalog: parsed.paymentMethodsCatalog || marketplaceConfig.paymentMethodsCatalog,
+              deliveryMethodsCatalog: parsed.deliveryMethodsCatalog || marketplaceConfig.deliveryMethodsCatalog,
+              paymentPlatformsCatalog: parsed.paymentPlatformsCatalog || marketplaceConfig.paymentPlatformsCatalog,
             };
             onUpdateMarketplaceConfig(updatedConfig);
           }
 
-          onShowToast('¡Respaldo Total Importado!', 'Se restauraron tiendas, productos, geografía, departamentos, etiquetas y configuraciones', 'success');
+          onShowToast('¡Respaldo Total Importado!', 'Se restauraron tiendas, productos, geografía, departamentos, nomencladores y configuraciones', 'success');
         } else {
           onShowToast('Archivo inválido', 'El archivo no tiene la estructura de respaldo requerida', 'error');
         }
@@ -149,6 +164,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         } else if (result.type === 'tags' && result.tagsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
           onUpdateMarketplaceConfig({ ...marketplaceConfig, tagsCatalog: result.tagsCatalog });
           onShowToast('CSV de Etiquetas cargado', `Se importaron ${result.tagsCatalog.length} superetiquetas y etiquetas`, 'success');
+        } else if (result.type === 'paymentPlatforms' && result.paymentPlatformsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, paymentPlatformsCatalog: result.paymentPlatformsCatalog });
+          onShowToast('CSV de Plataformas de Pago cargado', `Se importaron ${result.paymentPlatformsCatalog.length} plataformas de pago`, 'success');
+        } else if (result.type === 'paymentMethods' && result.paymentMethodsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, paymentMethodsCatalog: result.paymentMethodsCatalog });
+          onShowToast('CSV de Tipos de Pago cargado', `Se importaron ${result.paymentMethodsCatalog.length} tipos de pago`, 'success');
+        } else if (result.type === 'productTypes' && result.productTypesCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, productTypesCatalog: result.productTypesCatalog });
+          onShowToast('CSV de Tipos de Oferta cargado', `Se importaron ${result.productTypesCatalog.length} tipos de oferta`, 'success');
+        } else if (result.type === 'deliveryMethods' && result.deliveryMethodsCatalog && marketplaceConfig && onUpdateMarketplaceConfig) {
+          onUpdateMarketplaceConfig({ ...marketplaceConfig, deliveryMethodsCatalog: result.deliveryMethodsCatalog });
+          onShowToast('CSV de Tipos de Recogida cargado', `Se importaron ${result.deliveryMethodsCatalog.length} tipos de recogida`, 'success');
         } else if (result.type === 'config' && result.configPatch && marketplaceConfig && onUpdateMarketplaceConfig) {
           onUpdateMarketplaceConfig({ ...marketplaceConfig, ...result.configPatch });
           onShowToast('CSV de Configuración cargado', 'Se actualizaron las variables de configuración del marketplace', 'success');
@@ -204,10 +231,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           onClick={() => setActiveTab('config')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'config'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -219,7 +246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('stores')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'stores'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -233,7 +260,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('products')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'products'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -247,7 +274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <button
           onClick={() => setActiveTab('backup')}
-          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
             activeTab === 'backup'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -339,6 +366,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <Download className="w-4 h-4" />
                 <span>{interfaz.admin.backup.exportSection.fullBackupBtn}</span>
               </button>
+            </div>
+
+            {/* Word .DOCX Database Dictionary Document */}
+            <div className="border border-blue-300 rounded-2xl p-5 bg-blue-50/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div>
+                  <h5 className="font-extrabold text-slate-900 text-base">Diccionario de Datos y Modelo de BD (.docx)</h5>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Descarga el documento de Word oficial con la descripción tabla por tabla (campos, tipos, PK, FK, obligatoriedad) y el esquema de relaciones con políticas de eliminación y actualización en cascada.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/api/docs/download-db-schema"
+                download="Diccionario_Datos_Estructura_BD_TwinStore.docx"
+                onClick={() => {
+                  onShowToast('Descargando Documento Word (.docx)', 'Diccionario de Datos y Modelo Relacional');
+                }}
+                className="w-full sm:w-auto py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all shrink-0 cursor-pointer text-center no-underline"
+              >
+                <Download className="w-4 h-4" />
+                <span>Descargar Word .DOCX</span>
+              </a>
             </div>
 
             {/* Individual Table CSV Exporters */}
@@ -462,6 +515,106 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>{interfaz.admin.backup.exportSection.tagsCsv}</span>
+                </button>
+              </div>
+
+              {/* Plataformas de Pago CSV */}
+              <div className="border border-emerald-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-emerald-50/20 hover:border-emerald-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Plataformas de Pago</h6>
+                    <p className="text-[11px] text-slate-500">B. Metropolitano, Zelle, PayPal...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.paymentPlatformsCatalog) {
+                      exportPaymentPlatformsCsv(marketplaceConfig.paymentPlatformsCatalog);
+                      onShowToast('CSV de Plataformas de Pago generado', 'Tabla de plataformas de pago descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Plataformas CSV</span>
+                </button>
+              </div>
+
+              {/* Tipos de Oferta CSV */}
+              <div className="border border-indigo-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-indigo-50/20 hover:border-indigo-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Tipos de Oferta</h6>
+                    <p className="text-[11px] text-slate-500">Productos, Servicios, Alquileres...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.productTypesCatalog) {
+                      exportProductTypesCsv(marketplaceConfig.productTypesCatalog);
+                      onShowToast('CSV de Tipos de Oferta generado', 'Tabla de tipos de oferta descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Ofertas CSV</span>
+                </button>
+              </div>
+
+              {/* Tipos de Pago CSV */}
+              <div className="border border-violet-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-violet-50/20 hover:border-violet-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Tipos de Pago</h6>
+                    <p className="text-[11px] text-slate-500">Efectivo, Transferencia, Cripto...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.paymentMethodsCatalog) {
+                      exportPaymentMethodsCsv(marketplaceConfig.paymentMethodsCatalog);
+                      onShowToast('CSV de Tipos de Pago generado', 'Tabla de tipos de pago descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Tipos Pago CSV</span>
+                </button>
+              </div>
+
+              {/* Tipos de Recogida CSV */}
+              <div className="border border-sky-200 rounded-2xl p-4 flex flex-col justify-between gap-3 bg-sky-50/20 hover:border-sky-300 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h6 className="font-bold text-slate-900 text-xs">Tabla: Tipos de Recogida</h6>
+                    <p className="text-[11px] text-slate-500">Mensajería, Retiro en tienda...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (marketplaceConfig?.deliveryMethodsCatalog) {
+                      exportDeliveryMethodsCsv(marketplaceConfig.deliveryMethodsCatalog);
+                      onShowToast('CSV de Tipos de Recogida generado', 'Tabla de tipos de recogida descargada');
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Recogida CSV</span>
                 </button>
               </div>
 

@@ -262,15 +262,15 @@ export function saveStoreToDb(db: Database, store: Store) {
 
   let effectiveRates: StoreExchangeRate[] = Array.isArray(store.exchangeRates) && store.exchangeRates.length > 0
     ? store.exchangeRates
-    : [
+    : (INITIAL_STORES.find(s => s.id === store.id)?.exchangeRates || [
         {
-          id: `rate-${store.id}-USD-CUP`,
+          id: `rate-${store.id}-USD-EUR`,
           storeId: store.id,
           fromCurrency: 'USD',
-          toCurrency: 'CUP',
-          rate: Number(store.usdToCupRate) || 330,
+          toCurrency: 'EUR',
+          rate: 0.92,
         },
-      ];
+      ]);
 
   // Ensure storeId is set on each rate
   effectiveRates = effectiveRates.map((r) => ({
@@ -319,7 +319,7 @@ export function saveStoreToDb(db: Database, store: Store) {
     '$address_municipality': store.address?.municipality || '',
     '$address_province': store.address?.province || '',
     '$address_googleMapsUrl': store.address?.googleMapsUrl || '',
-    '$usdToCupRate': store.usdToCupRate || (effectiveRates.find(r => r.fromCurrency === 'USD' && r.toCurrency === 'CUP')?.rate || 330),
+    '$usdToCupRate': store.usdToCupRate || 0,
     '$deliveryAvailable': store.deliveryAvailable ? 1 : 0,
     '$paymentOptions_transferAccepted': store.paymentOptions?.transferAccepted ? 1 : 0,
     '$paymentOptions_transferFeePercentage': store.paymentOptions?.transferFeePercentage || 0,
@@ -370,7 +370,7 @@ export function rowToStore(row: any[]): Store {
     exchangeRatesStr, createdAt
   ] = row;
 
-  let acceptedCurrencies: string[] = ['USD', 'CUP'];
+  let acceptedCurrencies: string[] = ['USD', 'EUR'];
   try {
     if (paymentOptions_acceptedCurrencies) {
       acceptedCurrencies = JSON.parse(paymentOptions_acceptedCurrencies);
@@ -418,13 +418,14 @@ export function rowToStore(row: any[]): Store {
   } catch (e) {}
 
   if (exchangeRates.length === 0) {
-    exchangeRates = [
+    const defaultMatch = INITIAL_STORES.find((s) => s.id === id);
+    exchangeRates = defaultMatch?.exchangeRates || [
       {
-        id: `rate-${id}-USD-CUP`,
+        id: `rate-${id}-USD-EUR`,
         storeId: String(id),
         fromCurrency: 'USD',
-        toCurrency: 'CUP',
-        rate: Number(usdToCupRate) || 330,
+        toCurrency: 'EUR',
+        rate: 0.92,
       },
     ];
   }
@@ -451,7 +452,7 @@ export function rowToStore(row: any[]): Store {
       googleMapsUrl: String(address_googleMapsUrl || ''),
     },
     exchangeRates,
-    usdToCupRate: Number(usdToCupRate) || (exchangeRates.find(r => r.fromCurrency === 'USD' && r.toCurrency === 'CUP')?.rate || 330),
+    usdToCupRate: Number(usdToCupRate) || 0,
     deliveryAvailable: isDeliveryAvailable,
     paymentOptions: {
       transferAccepted: isTransferAccepted,
@@ -735,8 +736,12 @@ export function rowToConfig(row: any[], columns?: string[]): MarketplaceConfig {
     const uiIdx = columns.indexOf('uiTexts');
     if (uiIdx !== -1) uiTextsStr = row[uiIdx];
   }
-  if (uiTextsStr === undefined && row.length > 20) {
-    uiTextsStr = row[20];
+  if (uiTextsStr === undefined) {
+    if (row.length >= 22) {
+      uiTextsStr = row[21];
+    } else if (row.length === 21) {
+      uiTextsStr = row[20];
+    }
   }
 
   const [
@@ -744,8 +749,12 @@ export function rowToConfig(row: any[], columns?: string[]): MarketplaceConfig {
     bannerUrl, bannerTitle, bannerSubtitle, primaryColor, secondaryColor,
     accentColor, socialLinksStr, geoCatalogStr, departmentsCatalogStr, tagsCatalogStr,
     productTypesCatalogStr, paymentMethodsCatalogStr, deliveryMethodsCatalogStr,
-    currenciesCatalogStr, globalExchangeRatesStr
+    currenciesCatalogStr, globalExchangeRatesStr, rawUiTextsStr
   ] = row;
+
+  if (!uiTextsStr && rawUiTextsStr) {
+    uiTextsStr = rawUiTextsStr;
+  }
 
   let socialLinks = INITIAL_MARKETPLACE_CONFIG.socialLinks;
   try { if (socialLinksStr) socialLinks = JSON.parse(socialLinksStr); } catch (e) {}

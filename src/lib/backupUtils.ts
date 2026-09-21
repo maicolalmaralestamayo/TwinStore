@@ -20,6 +20,7 @@ export interface FullMarketplaceBackup {
   productTypesCatalog?: NomenclatorItem[];
   paymentMethodsCatalog?: NomenclatorItem[];
   deliveryMethodsCatalog?: NomenclatorItem[];
+  paymentPlatformsCatalog?: NomenclatorItem[];
   marketplaceConfig?: MarketplaceConfig;
 }
 
@@ -89,7 +90,8 @@ export function exportFullJsonBackup(
   marketplaceConfig: MarketplaceConfig,
   productTypesCatalog?: NomenclatorItem[],
   paymentMethodsCatalog?: NomenclatorItem[],
-  deliveryMethodsCatalog?: NomenclatorItem[]
+  deliveryMethodsCatalog?: NomenclatorItem[],
+  paymentPlatformsCatalog?: NomenclatorItem[]
 ) {
   const backupData: FullMarketplaceBackup = {
     version: '2.0.0',
@@ -102,11 +104,12 @@ export function exportFullJsonBackup(
     productTypesCatalog: productTypesCatalog || marketplaceConfig.productTypesCatalog || [],
     paymentMethodsCatalog: paymentMethodsCatalog || marketplaceConfig.paymentMethodsCatalog || [],
     deliveryMethodsCatalog: deliveryMethodsCatalog || marketplaceConfig.deliveryMethodsCatalog || [],
+    paymentPlatformsCatalog: paymentPlatformsCatalog || marketplaceConfig.paymentPlatformsCatalog || [],
     marketplaceConfig,
   };
   downloadJsonFile(
     backupData,
-    `MercadoCuba_RespaldoTotal_${new Date().toISOString().slice(0, 10)}.json`
+    `TwinStore_RespaldoTotal_${new Date().toISOString().slice(0, 10)}.json`
   );
 }
 
@@ -217,7 +220,7 @@ export function exportGeoCatalogCsv(geoCatalog: GeoProvince[]) {
   });
 
   const csvStr = arrayToCsv(headers, rows);
-  triggerDownload(csvStr, `Geografia_Cuba_${new Date().toISOString().slice(0, 10)}.csv`);
+  triggerDownload(csvStr, `Catalogo_Geografia_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
 // 5. Export Departments CSV (Departamentos & Subdepartamentos)
@@ -314,7 +317,21 @@ export function exportDeliveryMethodsCsv(deliveryMethodsCatalog: NomenclatorItem
   triggerDownload(csvStr, `Tipos_Recogida_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
-// 10. Export Marketplace Config CSV
+// 10. Export Payment Platforms CSV
+export function exportPaymentPlatformsCsv(paymentPlatformsCatalog: NomenclatorItem[]) {
+  const headers = ['id', 'name', 'description', 'iconName', 'active'];
+  const rows = paymentPlatformsCatalog.map((item) => [
+    item.id,
+    item.name,
+    item.description || '',
+    item.iconName || '',
+    item.active !== false,
+  ]);
+  const csvStr = arrayToCsv(headers, rows);
+  triggerDownload(csvStr, `Plataformas_Pago_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// 11. Export Marketplace Config CSV
 export function exportConfigCsv(config: MarketplaceConfig) {
   const headers = ['Key', 'Value'];
   const rows = [
@@ -350,6 +367,7 @@ export interface ImportedCsvResult {
     | 'productTypes'
     | 'paymentMethods'
     | 'deliveryMethods'
+    | 'paymentPlatforms'
     | 'config'
     | 'unknown';
   stores?: Store[];
@@ -360,6 +378,7 @@ export interface ImportedCsvResult {
   productTypesCatalog?: NomenclatorItem[];
   paymentMethodsCatalog?: NomenclatorItem[];
   deliveryMethodsCatalog?: NomenclatorItem[];
+  paymentPlatformsCatalog?: NomenclatorItem[];
   configPatch?: Partial<MarketplaceConfig>;
   error?: string;
 }
@@ -383,12 +402,12 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
         name: r[1],
         slogan: r[2] || '',
         description: r[3] || '',
-        whatsappPhone: r[4] || '+53 50000000',
-        location: r[5] || 'La Habana',
+        whatsappPhone: r[4] || '+1 5550000000',
+        location: r[5] || 'Sede Central',
         baseCurrency: 'USD',
-        secondaryCurrency: 'CUP',
-        exchangeRates: [{ id: `rate_${i}`, fromCurrency: 'USD', toCurrency: 'CUP', rate: Number(r[6]) || 335 }],
-        usdToCupRate: Number(r[6]) || 335,
+        secondaryCurrency: 'EUR',
+        exchangeRates: [{ id: `rate_${i}`, fromCurrency: 'USD', toCurrency: 'EUR', rate: Number(r[6]) || 0.92 }],
+        usdToCupRate: Number(r[6]) || 0,
         deliveryAvailable: r[7] === 'true' || r[7] === '1',
         active: r[8] !== 'false' && r[8] !== '0',
         rating: Number(r[9]) || 5.0,
@@ -584,6 +603,16 @@ export function parseAndImportAnyCsv(csvContent: string): ImportedCsvResult {
       return { type: 'productTypes', productTypesCatalog: items };
     } else if (firstId.startsWith('pm-') || firstName.includes('efectivo') || firstName.includes('transferencia') || firstName.includes('pago')) {
       return { type: 'paymentMethods', paymentMethodsCatalog: items };
+    } else if (
+      firstId.startsWith('pp-') ||
+      firstName.includes('banco') ||
+      firstName.includes('zelle') ||
+      firstName.includes('paypal') ||
+      firstName.includes('clásica') ||
+      firstName.includes('clasica') ||
+      firstName.includes('plataforma')
+    ) {
+      return { type: 'paymentPlatforms', paymentPlatformsCatalog: items };
     } else if (firstId.startsWith('dm-') || firstName.includes('mensajer') || firstName.includes('recogida') || firstName.includes('entrega')) {
       return { type: 'deliveryMethods', deliveryMethodsCatalog: items };
     } else {

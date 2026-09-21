@@ -20,7 +20,7 @@ import {
 } from '../../data/initialData';
 import {
   formatCurrency,
-  calculateCUP,
+  calculateProductPriceInCurrency,
   getStoreExchangeRate,
   formatNumberWithDots,
   getProductAllowedExchangeRates,
@@ -48,6 +48,7 @@ import {
   Coins,
   ArrowRightLeft,
   DollarSign,
+  Sparkles,
 } from 'lucide-react';
 
 const DEFAULT_PRODUCT_FILTERS: FilterState = {
@@ -166,8 +167,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   const availableSubcats = currentDept?.subcategories || [];
 
   const selectedStore = stores.find((s) => s.id === storeId) || stores[0];
-  const storeRate = selectedStore?.usdToCupRate || 330;
-  const cupEquivalent = calculateCUP(priceUSD || 0, storeRate);
+  const currentRates = selectedStore?.exchangeRates || [];
+  const primaryRate = currentRates[0]?.rate || selectedStore?.usdToCupRate || 1;
+  const secondaryCurrencyName = currentRates[0]?.toCurrency || marketplaceConfig?.secondaryCurrency || 'EUR';
+  const convertedPricePreview = Math.round((priceUSD || 0) * primaryRate * 100) / 100;
 
   const currentStoreRatesForCurrency = useMemo(() => {
     return (selectedStore?.exchangeRates || []).filter((r) => r.fromCurrency === currency);
@@ -471,11 +474,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       }
 
       // Price filter
-      const storeRate = pStore?.usdToCupRate || 330;
-      const evalPrice =
-        filters.priceCurrency === 'USD'
-          ? p.priceUSD
-          : calculateCUP(p.priceUSD, storeRate);
+      const evalPrice = calculateProductPriceInCurrency(p, pStore, filters.priceCurrency || 'USD');
       if (filters.minPrice !== '' && evalPrice < Number(filters.minPrice)) {
         return false;
       }
@@ -675,8 +674,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                           />
                           <div className="flex-1 space-y-1">
                             {/* Combo de Tienda */}
-                            <div className="flex items-center gap-1">
-                              <StoreIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <div>
                               <select
                                 value={p.storeId}
                                 onChange={(e) =>
@@ -710,8 +708,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       <td className="py-3 px-4 min-w-[200px]">
                         <div className="space-y-1">
                           {/* Combo 1er Escalón: Departamento */}
-                          <div className="flex items-center gap-1">
-                            <FolderTree className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <div>
                             <select
                               value={p.category}
                               onChange={(e) => {
@@ -734,8 +731,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                           </div>
 
                           {/* Combo 2do Escalón: Subdepartamento */}
-                          <div className="pl-4 flex items-center gap-1">
-                            <Tag className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <div className="pl-4">
                             {deptSubcats.length > 0 ? (
                               <select
                                 value={p.subcategory || ''}
@@ -1011,7 +1007,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-black text-gray-900">
-                {editingProduct ? 'Editar Publicación' : 'Nueva Publicación para MercadoCuba'}
+                {editingProduct ? 'Editar Publicación' : `Nueva Publicación para ${marketplaceConfig?.name || 'Marketplace'}`}
               </h3>
             </div>
 
@@ -1026,9 +1022,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     <button
                       type="button"
                       onClick={() => setCode(generateUniqueCode())}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer inline-flex items-center gap-1"
                     >
-                      Generar código
+                      <Sparkles className="w-3 h-3" />
+                      <span>Generar código</span>
                     </button>
                   </div>
                   <input
@@ -1053,14 +1050,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     options={stores.map((s) => ({
                       value: s.id,
                       label: s.name,
-                      sublabel: `Tasa: 1 USD = ${s.usdToCupRate} CUP`,
+                      sublabel: s.exchangeRates && s.exchangeRates.length > 0
+                        ? `Tasa: 1 ${s.exchangeRates[0].fromCurrency} = ${s.exchangeRates[0].rate} ${s.exchangeRates[0].toCurrency}`
+                        : (s.usdToCupRate ? `Tasa: ${s.usdToCupRate}` : 'Tasa estándar'),
                     }))}
                     value={storeId}
                     onChange={(val) => setStoreId(val || '')}
                     searchPlaceholder="Buscar tienda..."
                   />
                   <p className="text-[11px] text-emerald-700 mt-1">
-                    * Calcula su precio en CUP con la tasa de la tienda.
+                    * Calcula la equivalencia según las tasas configuradas de la tienda.
                   </p>
                 </div>
               </div>
@@ -1230,52 +1229,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         La tienda "{selectedStore?.name}" no tiene tasas registradas con origen {currency}.
                       </p>
                       <p className="text-[11px] text-amber-700 mt-0.5">
-                        Este producto se venderá y cobrará únicamente en <span className="font-bold">{currency}</span>. Si deseas permitir cobros en otras monedas (ej. CUP, MLC), añade las tasas correspondientes en la pestaña de Tasas de la Tienda.
+                        Este producto se venderá y cobrará únicamente en <span className="font-bold">{currency}</span>. Si deseas permitir cobros en otras monedas, añade las tasas correspondientes en la pestaña de Tasas de la Tienda.
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {currentStoreRatesForCurrency.map((rate) => {
-                        const isAllowed = allowedExchangeRateIds.includes(rate.id);
+                    <SearchableMultiSelect
+                      options={currentStoreRatesForCurrency.map((rate) => {
                         const convertedPrice = Math.round((priceUSD || 0) * rate.rate * 100) / 100;
-                        return (
-                          <label
-                            key={rate.id}
-                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                              isAllowed
-                                ? 'bg-emerald-50/80 border-emerald-300 shadow-2xs'
-                                : 'bg-white border-slate-200 hover:border-slate-300 opacity-75'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isAllowed}
-                                onChange={() => toggleAllowedRate(rate.id)}
-                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                              />
-                              <div>
-                                <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
-                                  <span>Permitir cobro en {rate.toCurrency}</span>
-                                </div>
-                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                  Tasa: 1 {rate.fromCurrency} = {rate.rate} {rate.toCurrency}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="text-right shrink-0">
-                              <div className="text-xs font-black font-mono text-emerald-800">
-                                {formatNumberWithDots(convertedPrice)} {rate.toCurrency}
-                              </div>
-                              <div className="text-[9px] font-semibold text-slate-400">
-                                {isAllowed ? 'Cobro habilitado' : 'No permitido'}
-                              </div>
-                            </div>
-                          </label>
-                        );
+                        return {
+                          value: rate.id,
+                          label: `Permitir cobro en ${rate.toCurrency} (${formatNumberWithDots(convertedPrice)} ${rate.toCurrency})`,
+                          sublabel: `Tasa: 1 ${rate.fromCurrency} = ${rate.rate} ${rate.toCurrency}`,
+                        };
                       })}
-                    </div>
+                      values={allowedExchangeRateIds}
+                      onChange={(newIds) => setAllowedExchangeRateIds(newIds)}
+                      placeholder="Seleccionar monedas de cobro permitidas..."
+                      allLabel="Todas las tasas habilitadas"
+                    />
                   )}
                 </div>
               </div>
@@ -1310,7 +1281,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 />
               </div>
 
-              {/* Multi-Tag Selection (Combo Superetiquetas -> Checkboxes Etiquetas -> List of Selected Tags) */}
+              {/* Multi-Tag Selection (Combo Superetiquetas -> Combobox Multi-Select Etiquetas -> List of Selected Tags) */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold uppercase text-slate-700 flex items-center gap-1.5">
@@ -1318,17 +1289,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     <span>Etiquetado de Producto (Superetiquetas y Etiquetas)</span>
                   </label>
                   {selectedTagSelections.length > 0 && (
-                    <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                      {selectedTagSelections.length} seleccionadas
+                    <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      <span>{selectedTagSelections.length} seleccionadas</span>
                     </span>
                   )}
                 </div>
 
-                {/* Combo con Superetiquetas */}
+                {/* Combos con Superetiquetas y Etiquetas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase text-slate-600 mb-1">
-                      Selecciona Superetiqueta (Opcional)
+                      Filtrar por Superetiqueta (Opcional)
                     </label>
                     <SearchableSelect
                       options={effectiveTagsCatalog.map((group) => ({
@@ -1338,93 +1310,53 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       }))}
                       value={selectedSupertagComboId}
                       onChange={(val) => setSelectedSupertagComboId(val || '')}
-                      searchPlaceholder="Seleccionar superetiqueta (opcional)..."
+                      searchPlaceholder="Todas las superetiquetas..."
                     />
                   </div>
 
-                  {/* Lista de Etiquetas con Checkboxes */}
+                  {/* Combobox Selección Múltiple de Etiquetas */}
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase text-slate-600 mb-1">
-                      Selecciona Etiquetas (Checkboxes - Opcional)
+                      Selecciona Etiquetas (Combobox Selección Múltiple)
                     </label>
-                    {(() => {
-                      if (!selectedSupertagComboId) {
-                        return (
-                          <div className="p-3 text-xs text-slate-400 bg-white rounded-xl border border-dashed border-slate-200 text-center font-medium">
-                            Selecciona una superetiqueta primero para ver sus etiquetas (opcional)
-                          </div>
-                        );
+                    <SearchableMultiSelect
+                      options={
+                        selectedSupertagComboId
+                          ? (effectiveTagsCatalog.find((g) => g.id === selectedSupertagComboId)?.tags || []).map((t) => ({
+                              value: t.id,
+                              label: t.name,
+                              sublabel: effectiveTagsCatalog.find((g) => g.id === selectedSupertagComboId)?.name,
+                            }))
+                          : effectiveTagsCatalog.flatMap((g) =>
+                              g.tags.map((t) => ({
+                                value: t.id,
+                                label: t.name,
+                                sublabel: g.name,
+                              }))
+                            )
                       }
-
-                      const activeGroup = effectiveTagsCatalog.find((g) => g.id === selectedSupertagComboId);
-
-                      if (!activeGroup || activeGroup.tags.length === 0) {
-                        return (
-                          <div className="p-2 text-xs text-slate-400 bg-white rounded-xl border border-slate-200 text-center">
-                            No hay etiquetas en esta superetiqueta
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 max-h-36 overflow-y-auto space-y-1.5">
-                          {activeGroup.tags.map((tagItem) => {
-                            const isChecked = selectedTagSelections.some(
-                              (ts) =>
-                                (ts.groupName === activeGroup.name ||
-                                  ts.group === activeGroup.name ||
-                                  ts.groupId === activeGroup.id) &&
-                                (ts.tagName === tagItem.name ||
-                                  ts.value === tagItem.name ||
-                                  ts.tagId === tagItem.id)
-                            );
-
-                            return (
-                              <label
-                                key={tagItem.id}
-                                className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-semibold text-slate-700"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedTagSelections((prev) => [
-                                        ...prev,
-                                        {
-                                          group: activeGroup.name,
-                                          groupName: activeGroup.name,
-                                          groupId: activeGroup.id,
-                                          value: tagItem.name,
-                                          tagName: tagItem.name,
-                                          tagId: tagItem.id,
-                                        },
-                                      ]);
-                                    } else {
-                                      setSelectedTagSelections((prev) =>
-                                        prev.filter(
-                                          (ts) =>
-                                            !(
-                                              (ts.groupName === activeGroup.name ||
-                                                ts.group === activeGroup.name ||
-                                                ts.groupId === activeGroup.id) &&
-                                              (ts.tagName === tagItem.name ||
-                                                ts.value === tagItem.name ||
-                                                ts.tagId === tagItem.id)
-                                            )
-                                        )
-                                      );
-                                    }
-                                  }}
-                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                />
-                                <span>{tagItem.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
+                      values={selectedTagSelections.map((ts) => ts.tagId || ts.tagName || ts.value || '')}
+                      onChange={(selectedTagIds) => {
+                        const newSelections: ProductTagSelection[] = [];
+                        effectiveTagsCatalog.forEach((group) => {
+                          group.tags.forEach((tagItem) => {
+                            if (selectedTagIds.includes(tagItem.id) || selectedTagIds.includes(tagItem.name)) {
+                              newSelections.push({
+                                group: group.name,
+                                groupName: group.name,
+                                groupId: group.id,
+                                value: tagItem.name,
+                                tagName: tagItem.name,
+                                tagId: tagItem.id,
+                              });
+                            }
+                          });
+                        });
+                        setSelectedTagSelections(newSelections);
+                      }}
+                      placeholder="Seleccionar etiquetas..."
+                      allLabel="Todas las etiquetas asignadas"
+                    />
                   </div>
                 </div>
 
@@ -1445,6 +1377,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                             key={idx}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs"
                           >
+                            <Tag className="w-3 h-3 shrink-0 opacity-80" />
                             <span className="opacity-75">{gName}:</span>
                             <span>{vName}</span>
                             <button
@@ -1514,15 +1447,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
-                  Cancelar
+                  <X className="w-4 h-4" />
+                  <span>Cancelar</span>
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md cursor-pointer"
+                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
-                  {editingProduct ? 'Guardar Cambios' : 'Publicar en MercadoCuba'}
+                  <Check className="w-4 h-4" />
+                  <span>{editingProduct ? 'Guardar Cambios' : `Publicar en ${marketplaceConfig?.name || 'Marketplace'}`}</span>
                 </button>
               </div>
             </form>

@@ -217,10 +217,12 @@ export const StoreDirectoryModal: React.FC<StoreDirectoryModalProps> = ({
                     <div className="bg-indigo-50/70 dark:bg-slate-800/80 border border-indigo-100 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between text-xs">
                       <div>
                         <span className="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold uppercase block">
-                          Tasa USD/CUP:
+                          Tasa de Cambio:
                         </span>
                         <strong className="text-indigo-900 dark:text-indigo-200 font-extrabold text-sm font-mono">
-                          1 USD x {formatNumberWithDots(store.usdToCupRate)} CUP
+                          {store.exchangeRates && store.exchangeRates.length > 0
+                            ? `1 ${store.exchangeRates[0].fromCurrency} x ${formatNumberWithDots(store.exchangeRates[0].rate)} ${store.exchangeRates[0].toCurrency}`
+                            : (store.usdToCupRate ? `Tasa: ${formatNumberWithDots(store.usdToCupRate)}` : 'Estándar')}
                         </strong>
                       </div>
                       <div className="text-right">

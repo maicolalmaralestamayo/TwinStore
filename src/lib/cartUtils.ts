@@ -23,7 +23,7 @@ import {
  * Always returns whole configured currencies; first one is the default.
  */
 export function getStoreAcceptedCurrencies(store: Store | undefined): string[] {
-  if (!store) return ['USD', 'CUP'];
+  if (!store) return ['USD', 'EUR'];
   const currencies: string[] = [];
 
   const addCurr = (curr?: string) => {
@@ -58,14 +58,14 @@ export function getStoreAcceptedCurrencies(store: Store | undefined): string[] {
     });
   }
 
-  // 6. USD and CUP fallback
+  // 6. Base / secondary fallback
   if (store.usdToCupRate && store.usdToCupRate > 0) {
-    addCurr('USD');
-    addCurr('CUP');
+    addCurr(store.baseCurrency || 'USD');
+    addCurr(store.secondaryCurrency || 'EUR');
   }
 
   if (currencies.length === 0) {
-    currencies.push('USD', 'CUP');
+    currencies.push(store.baseCurrency || 'USD', store.secondaryCurrency || 'EUR');
   }
 
   return currencies;
@@ -88,7 +88,9 @@ export function formatStoreExchangeRatesText(store: Store | undefined): string {
       });
   } else if (store.usdToCupRate && store.usdToCupRate > 0) {
     const intRate = Math.round(store.usdToCupRate);
-    parts.push(`1 USD = ${formatNumberWithDots(intRate)} CUP`);
+    const base = store.baseCurrency || 'USD';
+    const sec = store.secondaryCurrency || 'EUR';
+    parts.push(`1 ${base} = ${formatNumberWithDots(intRate)} ${sec}`);
   }
 
   return parts.join(' • ');

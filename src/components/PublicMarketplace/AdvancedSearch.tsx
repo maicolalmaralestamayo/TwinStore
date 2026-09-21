@@ -11,6 +11,7 @@ import {
   NomenclatorItem,
   PaymentMethodItem,
   DeliveryMethodItem,
+  CurrencyItem,
 } from '../../types';
 import {
   INITIAL_DEPARTMENT_CATALOG,
@@ -19,6 +20,7 @@ import {
   INITIAL_PRODUCT_TYPES_CATALOG,
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
+  INITIAL_CURRENCIES_CATALOG,
 } from '../../data/initialData';
 import {
   getStorePaymentMethodsForCurrency,
@@ -57,6 +59,7 @@ interface AdvancedSearchProps {
   offerTypesCatalog?: NomenclatorItem[];
   paymentMethodsCatalog?: PaymentMethodItem[];
   deliveryMethodsCatalog?: DeliveryMethodItem[];
+  currenciesCatalog?: CurrencyItem[];
   stores: Store[];
   filters: FilterState;
   onFilterChange: (newFilters: FilterState) => void;
@@ -75,6 +78,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   offerTypesCatalog,
   paymentMethodsCatalog,
   deliveryMethodsCatalog,
+  currenciesCatalog,
   stores,
   filters,
   onFilterChange,
@@ -105,6 +109,10 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     deliveryMethodsCatalog && deliveryMethodsCatalog.length > 0
       ? deliveryMethodsCatalog
       : INITIAL_DELIVERY_METHODS_CATALOG;
+  const effectiveCurrencies =
+    currenciesCatalog && currenciesCatalog.length > 0
+      ? currenciesCatalog
+      : INITIAL_CURRENCIES_CATALOG;
 
   // --- DEPENDENCY & DISABLING LOGIC ---
 
@@ -1343,7 +1351,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   {t.groups.priceRange || 'Rango de Precios y Moneda'}
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t.groups.priceRangeDesc || 'Establece el rango de precios en USD o su equivalente calculado en CUP'}
+                  {t.groups.priceRangeDesc || 'Establece el rango de precios en la moneda de referencia o su equivalente'}
                 </p>
               </div>
             </div>
@@ -1394,10 +1402,12 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                   <span>{t.labels.priceCurrency || 'Moneda de Referencia'}</span>
                 </label>
                 <SearchableSelect
-                  options={[
-                    { value: 'USD', label: t.placeholders.currencyUsd || 'Moneda: USD (Dólares)' },
-                    { value: 'CUP', label: t.placeholders.currencyCup || 'Moneda: CUP (Pesos Cubanos)' },
-                  ]}
+                  options={effectiveCurrencies
+                    .filter((c) => c.active !== false)
+                    .map((c) => ({
+                      value: c.code,
+                      label: `Moneda: ${c.code} (${c.name})`,
+                    }))}
                   value={filters.priceCurrency || 'USD'}
                   onChange={(val) =>
                     handleUpdate('priceCurrency', (val || 'USD') as PriceFilterCurrency)

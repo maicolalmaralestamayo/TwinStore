@@ -19,6 +19,7 @@ import {
   INITIAL_TAGS_CATALOG,
   INITIAL_PRODUCT_TYPES_CATALOG,
   INITIAL_PAYMENT_METHODS_CATALOG,
+  INITIAL_PAYMENT_PLATFORMS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
   INITIAL_CURRENCIES_CATALOG,
 } from '../../data/initialData';
@@ -88,7 +89,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   onUpdateStores,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
-    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel' | 'currencies' | 'uiTexts'
+    'identity' | 'geography' | 'taxonomy' | 'tags' | 'businessModel' | 'currencies'
   >('identity');
 
   // Business Model Nomenclators State
@@ -110,8 +111,14 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       : INITIAL_DELIVERY_METHODS_CATALOG
   );
 
+  const [paymentPlatformsCatalog, setPaymentPlatformsCatalog] = useState<NomenclatorItem[]>(
+    config.paymentPlatformsCatalog && config.paymentPlatformsCatalog.length > 0
+      ? config.paymentPlatformsCatalog
+      : INITIAL_PAYMENT_PLATFORMS_CATALOG
+  );
+
   const [activeNomCategory, setActiveNomCategory] = useState<
-    'productTypes' | 'paymentMethods' | 'deliveryMethods'
+    'productTypes' | 'paymentMethods' | 'deliveryMethods' | 'paymentPlatforms'
   >('productTypes');
 
   // Currencies catalog and marketplace global currencies state
@@ -125,10 +132,10 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     config.baseCurrency || 'USD'
   );
   const [globalSecondaryCurrency, setGlobalSecondaryCurrency] = useState<string>(
-    config.secondaryCurrency !== undefined ? config.secondaryCurrency : 'CUP'
+    config.secondaryCurrency !== undefined ? config.secondaryCurrency : 'EUR'
   );
   const [globalExchangeRate, setGlobalExchangeRate] = useState<number>(
-    config.globalExchangeRate || 330
+    config.globalExchangeRate || 0.92
   );
 
   // Global marketplace exchange rates state
@@ -136,14 +143,12 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     config.globalExchangeRates && config.globalExchangeRates.length > 0
       ? config.globalExchangeRates
       : [
-          { id: 'rate-global-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 335 },
-          { id: 'rate-global-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
-          { id: 'rate-global-mlc-cup', fromCurrency: 'MLC', toCurrency: 'CUP', rate: 290 },
+          { id: 'rate-global-usd-eur', fromCurrency: 'USD', toCurrency: 'EUR', rate: 0.92 },
         ]
   );
   const [newRateFrom, setNewRateFrom] = useState('USD');
-  const [newRateTo, setNewRateTo] = useState('CUP');
-  const [newRateValue, setNewRateValue] = useState<number | ''>(335);
+  const [newRateTo, setNewRateTo] = useState('EUR');
+  const [newRateValue, setNewRateValue] = useState<number | ''>(0.92);
 
   // New currency inputs
   const [newCurrCode, setNewCurrCode] = useState('');
@@ -225,14 +230,14 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     tagsCatalog.find((g) => g.id === selectedTagGroupId) || tagsCatalog[0];
 
   // Local editable identity state
-  const [name, setName] = useState(config.name || 'MercadoCuba');
+  const [name, setName] = useState(config.name || 'Marketplace');
   const [slogan, setSlogan] = useState(config.slogan || '');
   const [bannerTitle, setBannerTitle] = useState(
     config.bannerTitle || 'Compra directo a tiendas por WhatsApp'
   );
   const [bannerSubtitle, setBannerSubtitle] = useState(
     config.bannerSubtitle ||
-      'Sin pasarelas de pago ni intermediarios. Explora productos y servicios de múltiples proveedores, compara precios con la tasa de cambio USD/CUP de cada tienda y coordina tu compra con un solo clic.'
+      'Sin pasarelas de pago ni intermediarios. Explora productos y servicios de múltiples proveedores, compara precios con la tasa de cambio de cada tienda y coordina tu compra con un solo clic.'
   );
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
   const [bannerUrl, setBannerUrl] = useState(
@@ -292,7 +297,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     e.preventDefault();
     const updated: MarketplaceConfig = {
       ...config,
-      name: name.trim() || 'MercadoCuba',
+      name: name.trim() || 'Marketplace',
       slogan: slogan.trim(),
       bannerTitle: bannerTitle.trim(),
       bannerSubtitle: bannerSubtitle.trim(),
@@ -317,6 +322,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog,
       paymentMethodsCatalog,
       deliveryMethodsCatalog,
+      paymentPlatformsCatalog,
     };
     onUpdateConfig(updated);
     onShowToast(
@@ -380,6 +386,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog,
       paymentMethodsCatalog,
       deliveryMethodsCatalog,
+      paymentPlatformsCatalog,
     });
   };
 
@@ -594,6 +601,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog,
       paymentMethodsCatalog,
       deliveryMethodsCatalog,
+      paymentPlatformsCatalog,
     });
   };
 
@@ -880,6 +888,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog: updated,
       paymentMethodsCatalog,
       deliveryMethodsCatalog,
+      paymentPlatformsCatalog,
     });
   };
 
@@ -905,6 +914,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog,
       paymentMethodsCatalog: updated,
       deliveryMethodsCatalog,
+      paymentPlatformsCatalog,
     });
   };
 
@@ -930,6 +940,33 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       productTypesCatalog,
       paymentMethodsCatalog,
       deliveryMethodsCatalog: updated,
+      paymentPlatformsCatalog,
+    });
+  };
+
+  const savePaymentPlatformsCatalog = (updated: NomenclatorItem[]) => {
+    setPaymentPlatformsCatalog(updated);
+    onUpdateConfig({
+      ...config,
+      name,
+      slogan,
+      bannerTitle,
+      bannerSubtitle,
+      logoUrl,
+      bannerUrl,
+      defaultStoreLogoUrl,
+      defaultProductImageUrl,
+      primaryColor,
+      secondaryColor,
+      accentColor,
+      socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+      geoCatalog,
+      departmentsCatalog,
+      tagsCatalog,
+      productTypesCatalog,
+      paymentMethodsCatalog,
+      deliveryMethodsCatalog,
+      paymentPlatformsCatalog: updated,
     });
   };
 
@@ -942,7 +979,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
         ? 'pt'
         : activeNomCategory === 'paymentMethods'
         ? 'pm'
-        : 'dm';
+        : activeNomCategory === 'deliveryMethods'
+        ? 'dm'
+        : 'pp';
 
     const newItem: NomenclatorItem = {
       id: `${prefix}-${Date.now()}`,
@@ -963,10 +1002,14 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       const updated = [...paymentMethodsCatalog, newItem];
       savePaymentMethodsCatalog(updated);
       onShowToast('Tipo de pago creado', `Se añadió "${newItem.name}"`);
-    } else {
+    } else if (activeNomCategory === 'deliveryMethods') {
       const updated = [...deliveryMethodsCatalog, newItem];
       saveDeliveryMethodsCatalog(updated);
       onShowToast('Tipo de entrega creado', `Se añadió "${newItem.name}"`);
+    } else {
+      const updated = [...paymentPlatformsCatalog, newItem];
+      savePaymentPlatformsCatalog(updated);
+      onShowToast('Plataforma de pago creada', `Se añadió "${newItem.name}"`);
     }
 
     setNewNomName('');
@@ -981,7 +1024,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
         ? productTypesCatalog
         : activeNomCategory === 'paymentMethods'
         ? paymentMethodsCatalog
-        : deliveryMethodsCatalog;
+        : activeNomCategory === 'deliveryMethods'
+        ? deliveryMethodsCatalog
+        : paymentPlatformsCatalog;
 
     if (list.length <= 1) {
       onShowToast('No se puede eliminar', 'Debe existir al menos un elemento en el nomenclador', 'error');
@@ -993,8 +1038,10 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       saveProductTypesCatalog(updated);
     } else if (activeNomCategory === 'paymentMethods') {
       savePaymentMethodsCatalog(updated);
-    } else {
+    } else if (activeNomCategory === 'deliveryMethods') {
       saveDeliveryMethodsCatalog(updated);
+    } else {
+      savePaymentPlatformsCatalog(updated);
     }
     onShowToast('Elemento eliminado', `Se eliminó "${name}"`);
   };
@@ -1006,9 +1053,12 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     } else if (activeNomCategory === 'paymentMethods') {
       const updated = paymentMethodsCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
       savePaymentMethodsCatalog(updated);
-    } else {
+    } else if (activeNomCategory === 'deliveryMethods') {
       const updated = deliveryMethodsCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
       saveDeliveryMethodsCatalog(updated);
+    } else {
+      const updated = paymentPlatformsCatalog.map((i) => (i.id === id ? { ...i, active: !i.active } : i));
+      savePaymentPlatformsCatalog(updated);
     }
   };
 
@@ -1051,7 +1101,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           : i
       );
       savePaymentMethodsCatalog(updated);
-    } else {
+    } else if (activeNomCategory === 'deliveryMethods') {
       const updated = deliveryMethodsCatalog.map((i) =>
         i.id === editingNomId
           ? {
@@ -1063,6 +1113,18 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           : i
       );
       saveDeliveryMethodsCatalog(updated);
+    } else {
+      const updated = paymentPlatformsCatalog.map((i) =>
+        i.id === editingNomId
+          ? {
+              ...i,
+              name: editingNomName.trim(),
+              description: editingNomDesc.trim() || undefined,
+              active: editingNomActive,
+            }
+          : i
+      );
+      savePaymentPlatformsCatalog(updated);
     }
 
     setEditingNomId(null);
@@ -1076,9 +1138,15 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     } else if (activeNomCategory === 'paymentMethods') {
       savePaymentMethodsCatalog(INITIAL_PAYMENT_METHODS_CATALOG);
       onShowToast('Nomenclador restaurado', 'Se restablecieron los tipos de pago por defecto');
-    } else {
+    } else if (activeNomCategory === 'deliveryMethods') {
       saveDeliveryMethodsCatalog(INITIAL_DELIVERY_METHODS_CATALOG);
       onShowToast('Nomenclador restaurado', 'Se restablecieron los tipos de recogida por defecto');
+    } else {
+      savePaymentPlatformsCatalog(INITIAL_PAYMENT_PLATFORMS_CATALOG);
+      onShowToast(
+        'Nomenclador restaurado',
+        'Se restablecieron las plataformas de pago por defecto (Banco Metropolitano, Zelle, PayPal, Clásica, etc.)'
+      );
     }
   };
 
@@ -1185,7 +1253,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
 
   const handleResetCurrencies = () => {
     saveCurrenciesCatalog(INITIAL_CURRENCIES_CATALOG);
-    onShowToast('Monedas restablecidas', 'Se restablecieron las monedas por defecto (USD, CUP, EUR)');
+    onShowToast('Monedas restablecidas', 'Se restablecieron las monedas por defecto');
   };
 
   const handleSaveGlobalCurrencyConfig = () => {
@@ -1276,9 +1344,10 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           rate: gr.rate,
         };
         updatedStoresCount++;
+        const baseRate = existingRates.find((r) => r.fromCurrency === (config.baseCurrency || 'USD') && r.toCurrency === (config.secondaryCurrency || 'EUR')) || existingRates[0];
         return {
           ...store,
-          usdToCupRate: (gr.fromCurrency === 'USD' && gr.toCurrency === 'CUP') ? gr.rate : store.usdToCupRate,
+          usdToCupRate: baseRate ? baseRate.rate : store.usdToCupRate,
           exchangeRates: existingRates,
         };
       }
@@ -1336,10 +1405,10 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
 
       if (storeModified) {
         updatedStoresCount++;
-        const usdCup = existingRates.find((r) => r.fromCurrency === 'USD' && r.toCurrency === 'CUP');
+        const baseRate = existingRates.find((r) => r.fromCurrency === (config.baseCurrency || 'USD') && r.toCurrency === (config.secondaryCurrency || 'EUR')) || existingRates[0];
         return {
           ...store,
-          usdToCupRate: usdCup ? usdCup.rate : store.usdToCupRate,
+          usdToCupRate: baseRate ? baseRate.rate : store.usdToCupRate,
           exchangeRates: existingRates,
         };
       }
@@ -1371,10 +1440,10 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
         const rates = (s.exchangeRates || []).map((r) =>
           r.id === rateId ? { ...r, rate: newRateVal } : r
         );
-        const usdCup = rates.find((r) => r.fromCurrency === 'USD' && r.toCurrency === 'CUP');
+        const baseRate = rates.find((r) => r.fromCurrency === (config.baseCurrency || 'USD') && r.toCurrency === (config.secondaryCurrency || 'EUR')) || rates[0];
         return {
           ...s,
-          usdToCupRate: usdCup ? usdCup.rate : s.usdToCupRate,
+          usdToCupRate: baseRate ? baseRate.rate : s.usdToCupRate,
           exchangeRates: rates,
         };
       }
@@ -1389,7 +1458,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
       ? productTypesCatalog
       : activeNomCategory === 'paymentMethods'
       ? paymentMethodsCatalog
-      : deliveryMethodsCatalog;
+      : activeNomCategory === 'deliveryMethods'
+      ? deliveryMethodsCatalog
+      : paymentPlatformsCatalog;
 
   return (
     <div className="space-y-6">
@@ -1405,8 +1476,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <ImageIcon className="w-4 h-4" />
-            <span>Identidad</span>
+            <Sparkles className="w-4 h-4" />
+            <span>Identidad e Interfaz</span>
           </button>
 
           <button
@@ -1472,19 +1543,6 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           >
             <Coins className="w-4 h-4" />
             <span>Monedas y Tasas</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('uiTexts')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-              activeSubTab === 'uiTexts'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Type className="w-4 h-4" />
-            <span>Textos de Interfaz</span>
           </button>
         </div>
       </div>
@@ -2360,8 +2418,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
             </button>
           </div>
 
-          {/* 3 CATEGORY SELECTOR TABS (WITHOUT ICONS) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* CATEGORY SELECTOR TABS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <button
               type="button"
               onClick={() => {
@@ -2408,7 +2466,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1 truncate">
-                Efectivo CUP, Transferencia, USD, Cripto...
+                Efectivo, Transferencia, Tarjetas, Cripto...
               </p>
             </button>
 
@@ -2436,6 +2494,31 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 Mensajería, Tienda física, Envíos...
               </p>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNomCategory('paymentPlatforms');
+                setEditingNomId(null);
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                activeNomCategory === 'paymentPlatforms'
+                  ? 'bg-indigo-50/80 border-indigo-500 shadow-xs'
+                  : 'bg-white hover:bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                  Plataformas de Pago
+                </span>
+                <span className="text-[11px] font-bold bg-white/80 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                  {paymentPlatformsCatalog.length}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1 truncate">
+                Banco Metropolitano, Zelle, PayPal, Clásica...
+              </p>
+            </button>
           </div>
 
           {/* ADD NEW NOMENCLATOR ITEM FORM */}
@@ -2449,7 +2532,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                     ? 'Tipos de Oferta'
                     : activeNomCategory === 'paymentMethods'
                     ? 'Tipos de Pago'
-                    : 'Tipos de Recogida'}
+                    : activeNomCategory === 'deliveryMethods'
+                    ? 'Tipos de Recogida'
+                    : 'Plataformas de Pago'}
                 </span>
               </span>
             </h4>
@@ -2466,7 +2551,9 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                       ? 'ej. Alquiler de Equipos'
                       : activeNomCategory === 'paymentMethods'
                       ? 'ej. Criptomoneda USDT'
-                      : 'ej. Envío Nacional Expreso'
+                      : activeNomCategory === 'deliveryMethods'
+                      ? 'ej. Envío Nacional Expreso'
+                      : 'ej. Banco Metropolitano, Zelle, PayPal, Tarjeta Clásica'
                   }
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 outline-none focus:border-indigo-500"
                   required
@@ -2481,7 +2568,11 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   type="text"
                   value={newNomDesc}
                   onChange={(e) => setNewNomDesc(e.target.value)}
-                  placeholder="Detalles sobre cómo aplica..."
+                  placeholder={
+                    activeNomCategory === 'paymentPlatforms'
+                      ? 'ej. Transferencias o pagos con tarjeta/cuenta...'
+                      : 'Detalles sobre cómo aplica...'
+                  }
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 outline-none focus:border-indigo-500"
                 />
               </div>
@@ -2512,6 +2603,46 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 </button>
               </div>
             </form>
+
+            {/* Quick Suggestions for Payment Platforms */}
+            {activeNomCategory === 'paymentPlatforms' && (
+              <div className="mt-3 pt-3 border-t border-slate-200/80 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 mr-1">Sugerencias rápidas:</span>
+                {[
+                  { name: 'Banco Metropolitano', desc: 'Banca y transferencias en Banco Metropolitano (Cuba - CUP / USD)' },
+                  { name: 'Zelle', desc: 'Transferencias directas entre cuentas en EE.UU. (USD)' },
+                  { name: 'PayPal', desc: 'Pagos y envíos internacionales digitales con protección (USD / EUR)' },
+                  { name: 'Tarjeta Clásica', desc: 'Tarjeta prepagada en USD para compras y consumos (Fincimex)' },
+                  { name: 'BPA', desc: 'Banco Popular de Ahorro (CUP / USD)' },
+                  { name: 'BANDEC', desc: 'Banco de Crédito y Comercio (CUP / USD)' },
+                  { name: 'TropiPay', desc: 'Billetera electrónica internacional (EUR / USD)' },
+                  { name: 'Transfermóvil', desc: 'Plataforma oficial cubana de pagos móviles por banca electrónica' },
+                  { name: 'EnZona', desc: 'Pasarela cubana de comercio electrónico y pagos por código QR' },
+                ].map((sug) => {
+                  const alreadyExists = paymentPlatformsCatalog.some(
+                    (p) => p.name.toLowerCase() === sug.name.toLowerCase()
+                  );
+                  return (
+                    <button
+                      key={sug.name}
+                      type="button"
+                      disabled={alreadyExists}
+                      onClick={() => {
+                        setNewNomName(sug.name);
+                        setNewNomDesc(sug.desc);
+                      }}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-all ${
+                        alreadyExists
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 cursor-pointer shadow-2xs'
+                      }`}
+                    >
+                      + {sug.name} {alreadyExists ? '(Añadida)' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* LIST OF CURRENT NOMENCLATOR ITEMS */}
@@ -2696,7 +2827,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                 type="button"
                 onClick={handleResetCurrencies}
                 className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer border border-slate-200"
-                title="Restaurar a las monedas por defecto (USD, CUP, EUR)"
+                title="Restaurar a las monedas por defecto"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Restaurar por Defecto</span>
@@ -2733,7 +2864,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                     maxLength={6}
                     value={newCurrCode}
                     onChange={(e) => setNewCurrCode(e.target.value.toUpperCase())}
-                    placeholder="USD, CUP..."
+                    placeholder="USD, EUR..."
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500 uppercase font-mono"
                     required
                   />
@@ -2758,7 +2889,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                     maxLength={6}
                     value={newCurrSymbol}
                     onChange={(e) => setNewCurrSymbol(e.target.value)}
-                    placeholder="$, CUP, €..."
+                    placeholder="$, €, £..."
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -2956,7 +3087,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   <span>Tabla de Tasas de Cambio Globales del Marketplace</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Añadir una tasa significa poner dos tipos de moneda con el valor de conversión en una única dirección o sentido (ej. 1 USD = 335 CUP). Luego cada tasa puede propagarse opcionalmente a las tiendas que tengan esa misma combinación.
+                  Añadir una tasa significa poner dos tipos de moneda con el valor de conversión en una única dirección o sentido (ej. 1 USD = 0.92 EUR). Luego cada tasa puede propagarse opcionalmente a las tiendas que tengan esa misma combinación.
                 </p>
               </div>
 
@@ -3241,7 +3372,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                           <td className="px-4 py-3.5">
                             {rates.length === 0 ? (
                               <span className="text-[11px] text-slate-400 italic">
-                                Sin tasas configuradas (Opera en moneda base única)
+                                Sin tasas de cambio configuradas
                               </span>
                             ) : (
                               <div className="flex flex-wrap gap-2">
@@ -3314,22 +3445,22 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
           </div>
         </div>
       ) : (
-        /* SECTION 2: BRAND IDENTITY, LOGOS, THEME COLORS, AND SOCIAL LINKS */
-        <form
-          onSubmit={handleSaveIdentity}
-          className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-8"
-        >
-          {/* HEADER */}
-          <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
-              <span>Identidad</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Personaliza la marca general de MercadoCuba. Puedes elegir imágenes mediante enlace de internet o
-              cargándolas directamente desde tu computadora o teléfono.
-            </p>
-          </div>
+        /* SECTION 2: BRAND IDENTITY & UI TEXTS (IDENTIDAD E INTERFAZ) */
+        <div className="space-y-8">
+          <form
+            onSubmit={handleSaveIdentity}
+            className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-8"
+          >
+            {/* HEADER */}
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <span>Identidad e Interfaz</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Personaliza la marca del marketplace (nombre, eslogan, colores, logos, redes sociales) y los textos de la interfaz pública y administrativa.
+              </p>
+            </div>
 
           {/* BLOCK 1: PUBLIC NAME AND SLOGAN */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3343,7 +3474,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-900 focus:border-indigo-500 outline-none"
-                  placeholder="ej. MercadoCuba"
+                  placeholder="ej. Marketplace"
                 />
               </div>
 
@@ -3356,7 +3487,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                   onChange={(e) => setSlogan(e.target.value)}
                   rows={2}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs text-slate-700 focus:border-indigo-500 outline-none leading-relaxed"
-                  placeholder="ej. Conecta directo con tiendas y proveedores en Cuba..."
+                  placeholder="ej. Conecta directo con tiendas y proveedores locales..."
                 />
               </div>
 
@@ -3655,46 +3786,48 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
               className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm shadow-sm transition-all cursor-pointer flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
-              <span>Guardar Configuración Global</span>
+              <span>Guardar Marca e Identidad</span>
             </button>
           </div>
         </form>
-      )}
 
-      {activeSubTab === 'uiTexts' && (
-        <UiTextsManager
-          initialTexts={config.uiTexts}
-          onSave={(newTexts) => {
-            onUpdateConfig({
-              ...config,
-              name,
-              slogan,
-              bannerTitle,
-              bannerSubtitle,
-              logoUrl,
-              bannerUrl,
-              defaultStoreLogoUrl,
-              defaultProductImageUrl,
-              primaryColor,
-              secondaryColor,
-              accentColor,
-              socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
-              geoCatalog,
-              departmentsCatalog,
-              tagsCatalog,
-              productTypesCatalog,
-              paymentMethodsCatalog,
-              deliveryMethodsCatalog,
-              currenciesCatalog,
-              globalExchangeRates,
-              uiTexts: newTexts,
-            });
-          }}
-          onShowToast={(msg, type) => {
-            onShowToast('Textos de Interfaz', msg, type || 'info');
-          }}
-        />
-      )}
+        {/* Gestor de Textos de Interfaz integrado en la misma pestaña */}
+        <div className="pt-2">
+          <UiTextsManager
+            initialTexts={config.uiTexts}
+            onSave={(newTexts) => {
+              onUpdateConfig({
+                ...config,
+                name,
+                slogan,
+                bannerTitle,
+                bannerSubtitle,
+                logoUrl,
+                bannerUrl,
+                defaultStoreLogoUrl,
+                defaultProductImageUrl,
+                primaryColor,
+                secondaryColor,
+                accentColor,
+                socialLinks: { whatsapp, telegram, instagram, facebook, twitter, linkedin },
+                geoCatalog,
+                departmentsCatalog,
+                tagsCatalog,
+                productTypesCatalog,
+                paymentMethodsCatalog,
+                deliveryMethodsCatalog,
+                currenciesCatalog,
+                globalExchangeRates,
+                uiTexts: newTexts,
+              });
+            }}
+            onShowToast={(msg, type) => {
+              onShowToast('Textos de Interfaz', msg, type || 'info');
+            }}
+          />
+        </div>
+      </div>
+    )}
     </div>
   );
 };

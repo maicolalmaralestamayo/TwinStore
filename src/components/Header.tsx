@@ -65,11 +65,19 @@ export const Header: React.FC<HeaderProps> = ({
   );
 
   // Exchange rate statistics
-  const rates = activeStores.map((s) => s.usdToCupRate).filter(Boolean);
-  const avgRate = rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 675;
-  const minRate = rates.length > 0 ? Math.min(...rates) : 675;
-  const maxRate = rates.length > 0 ? Math.max(...rates) : 675;
-  const rateRangeText = minRate === maxRate ? `${minRate} CUP` : `${minRate} - ${maxRate} CUP`;
+  const baseCurr = marketplaceConfig?.baseCurrency || 'USD';
+  const secCurr = marketplaceConfig?.secondaryCurrency || 'EUR';
+  const rates = activeStores.map((s) => {
+    const directRate = s.exchangeRates?.find(
+      (r) => r.fromCurrency === baseCurr && r.toCurrency === secCurr
+    )?.rate;
+    return directRate || (s.exchangeRates && s.exchangeRates[0]?.rate) || s.usdToCupRate || 0;
+  }).filter(Boolean);
+  const avgRate = rates.length > 0 ? (rates.reduce((a, b) => a + b, 0) / rates.length) : (marketplaceConfig?.globalExchangeRate || 1);
+  const formattedAvg = Number.isInteger(avgRate) ? avgRate : Number(avgRate.toFixed(2));
+  const minRate = rates.length > 0 ? Math.min(...rates) : formattedAvg;
+  const maxRate = rates.length > 0 ? Math.max(...rates) : formattedAvg;
+  const rateRangeText = minRate === maxRate ? `${minRate} ${secCurr}` : `${minRate} - ${maxRate} ${secCurr}`;
 
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
@@ -128,12 +136,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center flex-wrap gap-1.5 sm:gap-2.5">
           {/* Average Exchange Rate Tag - Visible everywhere, text hidden on mobile/tablets */}
           <div
-            title={`${interfaz.header.avgRateLabel} 1 USD = ${avgRate} CUP (Rango: ${rateRangeText})`}
+            title={`${interfaz.header.avgRateLabel} 1 ${baseCurr} = ${formattedAvg} ${secCurr} (Rango: ${rateRangeText})`}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold shadow-2xs"
           >
             <TrendingUp className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span className="hidden lg:inline text-slate-600 dark:text-slate-400 font-semibold">{interfaz.header.avgRateLabel}</span>
-            <span>1 USD = {avgRate} CUP</span>
+            <span>1 {baseCurr} = {formattedAvg} {secCurr}</span>
           </div>
 
           {/* Active Products and Services Badge */}

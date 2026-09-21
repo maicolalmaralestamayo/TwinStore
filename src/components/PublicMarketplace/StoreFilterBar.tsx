@@ -1,9 +1,10 @@
 import React from 'react';
-import { StoreFilterState, GeoProvince, PaymentMethodItem, DeliveryMethodItem } from '../../types';
+import { StoreFilterState, GeoProvince, PaymentMethodItem, DeliveryMethodItem, CurrencyItem } from '../../types';
 import {
   INITIAL_GEO_CATALOG,
   INITIAL_PAYMENT_METHODS_CATALOG,
   INITIAL_DELIVERY_METHODS_CATALOG,
+  INITIAL_CURRENCIES_CATALOG,
 } from '../../data/initialData';
 import {
   MapPin,
@@ -23,6 +24,7 @@ interface StoreFilterBarProps {
   geoCatalog?: GeoProvince[];
   paymentMethodsCatalog?: PaymentMethodItem[];
   deliveryMethodsCatalog?: DeliveryMethodItem[];
+  currenciesCatalog?: CurrencyItem[];
   filters: StoreFilterState;
   onFilterChange: (filters: StoreFilterState) => void;
   onReset: () => void;
@@ -35,6 +37,7 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
   geoCatalog,
   paymentMethodsCatalog,
   deliveryMethodsCatalog,
+  currenciesCatalog,
   filters,
   onFilterChange,
   onReset,
@@ -53,6 +56,10 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
     deliveryMethodsCatalog && deliveryMethodsCatalog.length > 0
       ? deliveryMethodsCatalog
       : INITIAL_DELIVERY_METHODS_CATALOG;
+  const effectiveCurrencies =
+    currenciesCatalog && currenciesCatalog.length > 0
+      ? currenciesCatalog
+      : INITIAL_CURRENCIES_CATALOG;
 
   // --- DEPENDENCY & DISABLING LOGIC ---
   const isRepartoSelected = Boolean(filters.repartos && filters.repartos.length > 0);
@@ -121,12 +128,13 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
   }));
 
   // MONEDAS ACEPTADAS POR LA TIENDA
-  const currencyOptions = [
-    { value: 'USD', label: 'USD (Dólar estadounidense)', sublabel: 'Moneda extranjera' },
-    { value: 'CUP', label: 'CUP (Peso cubano)', sublabel: 'Moneda nacional' },
-    { value: 'EUR', label: 'EUR (Euro)', sublabel: 'Moneda extranjera' },
-    { value: 'MLC', label: 'MLC (Moneda Libremente Convertible)', sublabel: 'Tarjeta bancaria cubana' },
-  ];
+  const currencyOptions = effectiveCurrencies
+    .filter((c) => c.active !== false)
+    .map((c) => ({
+      value: c.code,
+      label: `${c.code} (${c.name})`,
+      sublabel: c.description || `Moneda ${c.symbol}`,
+    }));
 
   const handleUpdate = <K extends keyof StoreFilterState>(
     key: K,

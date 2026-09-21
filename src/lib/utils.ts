@@ -351,7 +351,7 @@ export function exportStoresToCsv(stores: Store[]): void {
   ]);
 
   const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-  downloadCsvFile(csv, `Tiendas_MercadoCuba_${new Date().toISOString().split('T')[0]}.csv`);
+  downloadCsvFile(csv, `Tiendas_Export_${new Date().toISOString().split('T')[0]}.csv`);
 }
 
 /**
@@ -372,7 +372,7 @@ export function exportProductsToCsv(products: Product[]): void {
   ]);
 
   const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-  downloadCsvFile(csv, `Productos_MercadoCuba_${new Date().toISOString().split('T')[0]}.csv`);
+  downloadCsvFile(csv, `Productos_Export_${new Date().toISOString().split('T')[0]}.csv`);
 }
 
 /**
@@ -430,12 +430,12 @@ export function parseAndImportCsvContent(
           name: row[1],
           slogan: row[2] || '',
           description: row[3] || '',
-          whatsappPhone: row[4] || '+53 50000000',
-          location: row[5] || 'La Habana',
+          whatsappPhone: row[4] || '+1 5550000000',
+          location: row[5] || 'Sede Central',
           baseCurrency: 'USD',
-          secondaryCurrency: 'CUP',
-          exchangeRates: [{ id: `rate_${i}`, fromCurrency: 'USD', toCurrency: 'CUP', rate: Number(row[6]) || 330 }],
-          usdToCupRate: Number(row[6]) || 330,
+          secondaryCurrency: 'EUR',
+          exchangeRates: [{ id: `rate_${i}`, fromCurrency: 'USD', toCurrency: 'EUR', rate: Number(row[6]) || 1 }],
+          usdToCupRate: Number(row[6]) || 1,
           deliveryAvailable: row[7] === 'true' || row[7] === '1',
           active: row[8] !== 'false' && row[8] !== '0',
           createdAt: new Date().toISOString(),
@@ -481,12 +481,12 @@ export function parseAndImportCsvContent(
           name: row[1],
           slogan: row[2] || '',
           description: row[3] || '',
-          whatsappPhone: row[4] || '+53 50000000',
-          location: row[5] || 'La Habana',
+          whatsappPhone: row[4] || '+1 5550000000',
+          location: row[5] || 'Sede Central',
           baseCurrency: 'USD',
-          secondaryCurrency: 'CUP',
-          exchangeRates: [{ id: `rate_fallback_${i}`, fromCurrency: 'USD', toCurrency: 'CUP', rate: Number(row[6]) || 330 }],
-          usdToCupRate: Number(row[6]) || 330,
+          secondaryCurrency: 'EUR',
+          exchangeRates: [{ id: `rate_fallback_${i}`, fromCurrency: 'USD', toCurrency: 'EUR', rate: Number(row[6]) || 1 }],
+          usdToCupRate: Number(row[6]) || 1,
           deliveryAvailable: row[7] === 'true',
           active: row[8] !== 'false',
           createdAt: new Date().toISOString(),

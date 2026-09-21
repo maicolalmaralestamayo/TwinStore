@@ -9,6 +9,7 @@ import {
   TagGroup,
   ProductTypeItem,
   PaymentMethodItem,
+  PaymentPlatformItem,
   DeliveryMethodItem,
   CurrencyItem,
   StoreExchangeRate,
@@ -25,19 +26,27 @@ export const INITIAL_CURRENCIES_CATALOG: CurrencyItem[] = [
     active: true,
   },
   {
-    id: 'curr-cup',
-    code: 'CUP',
-    name: 'Peso Cubano',
-    symbol: 'CUP',
-    description: 'Moneda nacional de curso legal en Cuba',
-    active: true,
-  },
-  {
     id: 'curr-eur',
     code: 'EUR',
     name: 'Euro',
     symbol: '€',
     description: 'Moneda oficial de la Unión Europea',
+    active: true,
+  },
+  {
+    id: 'curr-mxn',
+    code: 'MXN',
+    name: 'Peso Mexicano',
+    symbol: '$',
+    description: 'Moneda de curso legal de México',
+    active: true,
+  },
+  {
+    id: 'curr-cop',
+    code: 'COP',
+    name: 'Peso Colombiano',
+    symbol: '$',
+    description: 'Moneda de curso legal de Colombia',
     active: true,
   },
 ];
@@ -69,26 +78,92 @@ export const INITIAL_PAYMENT_METHODS_CATALOG: PaymentMethodItem[] = [
   {
     id: 'pm-efectivo',
     name: 'Efectivo',
-    description: 'Pago directo en mano en CUP, USD, MLC o Euros',
+    description: 'Pago directo en efectivo en tienda o contra entrega',
     gravamen: 0,
   },
   {
     id: 'pm-transferencia',
     name: 'Transferencia Bancaria',
-    description: 'Transfermóvil / EnZona (CUP, BPA, BANDEC, Banco Metropolitano)',
-    gravamen: 5,
+    description: 'Transferencia bancaria directa, SPEI o banca electrónica',
+    gravamen: 2,
   },
   {
     id: 'pm-moneda-ext',
-    name: 'Moneda Extranjera / Zelle',
-    description: 'Zelle, remesas directas del exterior, pagos en divisas o tarjetas MLC',
+    name: 'Transferencia Internacional / Digital',
+    description: 'Zelle, transferencia internacional, tarjeta de crédito o débito',
     gravamen: 0,
   },
   {
     id: 'pm-cripto',
     name: 'Criptomonedas',
-    description: 'Pagos mediante USDT, Bitcoin, Tron u otras criptomonedas',
-    gravamen: 2,
+    description: 'Pagos mediante USDT, Bitcoin u otras criptomonedas',
+    gravamen: 1.5,
+  },
+];
+
+export const INITIAL_PAYMENT_PLATFORMS_CATALOG: PaymentPlatformItem[] = [
+  {
+    id: 'pp-banmet',
+    name: 'Banco Metropolitano',
+    description: 'Banca y transferencias en Banco Metropolitano (Cuba - CUP / USD)',
+    iconName: 'Building2',
+    active: true,
+  },
+  {
+    id: 'pp-zelle',
+    name: 'Zelle',
+    description: 'Transferencias directas entre cuentas en EE.UU. (USD)',
+    iconName: 'Smartphone',
+    active: true,
+  },
+  {
+    id: 'pp-paypal',
+    name: 'PayPal',
+    description: 'Pagos y envíos internacionales digitales con protección (USD / EUR)',
+    iconName: 'Globe',
+    active: true,
+  },
+  {
+    id: 'pp-clasica',
+    name: 'Tarjeta Clásica',
+    description: 'Tarjeta prepagada en USD para compras y consumos (Fincimex)',
+    iconName: 'CreditCard',
+    active: true,
+  },
+  {
+    id: 'pp-bpa',
+    name: 'BPA (Banco Popular de Ahorro)',
+    description: 'Transferencias y banca electrónica BPA (CUP / USD)',
+    iconName: 'Building2',
+    active: true,
+  },
+  {
+    id: 'pp-bandec',
+    name: 'BANDEC',
+    description: 'Banco de Crédito y Comercio (CUP / USD)',
+    iconName: 'Building2',
+    active: true,
+  },
+  {
+    id: 'pp-tropipay',
+    name: 'TropiPay',
+    description: 'Billetera electrónica internacional para transferencias y cobros (EUR / USD)',
+    iconName: 'Wallet',
+    active: true,
+  },
+  {
+    id: 'pp-transfermovil',
+    name: 'Transfermóvil',
+    description: 'Plataforma oficial cubana de pagos móviles por banca electrónica',
+    iconName: 'Smartphone',
+    active: true,
+  },
+  {
+    id: 'pp-enzona',
+    name: 'EnZona',
+    description: 'Pasarela cubana de comercio electrónico y pagos por código QR',
+    iconName: 'QrCode',
+    active: true,
   },
 ];
 
@@ -106,12 +181,12 @@ export const INITIAL_DELIVERY_METHODS_CATALOG: DeliveryMethodItem[] = [
   {
     id: 'dm-punto-encuentro',
     name: 'Punto de Encuentro',
-    description: 'Entrega acordada en un punto de referencia céntrico (parque, terminal, etc.)',
+    description: 'Entrega acordada en un punto de referencia céntrico (plaza, centro comercial, etc.)',
   },
   {
     id: 'dm-envio-nacional',
-    name: 'Envío Interprovincial',
-    description: 'Envíos a otras provincias por paquetería, ómnibus o ferrocarril',
+    name: 'Envío Nacional / Regional',
+    description: 'Envíos a otras ciudades o regiones por paquetería express',
   },
 ];
 
@@ -272,201 +347,87 @@ export const INITIAL_DEPARTMENT_CATALOG: DepartmentCategory[] = [
 
 export const INITIAL_GEO_CATALOG: GeoProvince[] = [
   {
-    id: 'prov-lh',
-    name: 'La Habana',
+    id: 'prov-metro',
+    name: 'Región Metropolitana',
     municipalities: [
       {
-        id: 'mun-plaza',
-        name: 'Plaza de la Revolución',
+        id: 'mun-centro',
+        name: 'Distrito Centro',
         repartos: [
-          { id: 'rep-vedado', name: 'El Vedado' },
-          { id: 'rep-nvedado', name: 'Nuevo Vedado' },
-          { id: 'rep-plaza', name: 'Plaza' },
-          { id: 'rep-puentes', name: 'Puentes Grandes' },
-          { id: 'rep-principe', name: 'Príncipe' },
+          { id: 'rep-historico', name: 'Centro Histórico' },
+          { id: 'rep-comercial', name: 'Zona Comercial' },
+          { id: 'rep-financiero', name: 'Distrito Financiero' },
+          { id: 'rep-parque', name: 'Parque Central' },
         ],
       },
       {
-        id: 'mun-playa',
-        name: 'Playa',
+        id: 'mun-norte',
+        name: 'Distrito Norte',
         repartos: [
-          { id: 'rep-miramar', name: 'Miramar' },
-          { id: 'rep-buenavista', name: 'Buenavista' },
-          { id: 'rep-almendares', name: 'Almendares' },
-          { id: 'rep-siboney', name: 'Siboney' },
-          { id: 'rep-flores', name: 'Flores' },
-          { id: 'rep-ceiba', name: 'La Ceiba' },
+          { id: 'rep-norte-1', name: 'Valle Alto' },
+          { id: 'rep-norte-2', name: 'Los Pinos' },
+          { id: 'rep-norte-3', name: 'Colinas del Norte' },
         ],
       },
       {
-        id: 'mun-chabana',
-        name: 'Centro Habana',
+        id: 'mun-sur',
+        name: 'Distrito Sur',
         repartos: [
-          { id: 'rep-sitios', name: 'Los Sitios' },
-          { id: 'rep-cayo', name: 'Cayo Hueso' },
-          { id: 'rep-pnuevo', name: 'Pueblo Nuevo' },
-          { id: 'rep-dragones', name: 'Dragones' },
-          { id: 'rep-colon', name: 'Colón' },
+          { id: 'rep-sur-1', name: 'Mirador' },
+          { id: 'rep-sur-2', name: 'Residencial Sur' },
+          { id: 'rep-sur-3', name: 'Praderas' },
         ],
       },
       {
-        id: 'mun-hvieja',
-        name: 'La Habana Vieja',
+        id: 'mun-este',
+        name: 'Distrito Este',
         repartos: [
-          { id: 'rep-catedral', name: 'Catedral' },
-          { id: 'rep-pvieja', name: 'Plaza Vieja' },
-          { id: 'rep-belen', name: 'Belén' },
-          { id: 'rep-isidro', name: 'San Isidro' },
+          { id: 'rep-este-1', name: 'Costa Este' },
+          { id: 'rep-este-2', name: 'El Puerto' },
         ],
       },
       {
-        id: 'mun-boyeros',
-        name: 'Boyeros',
+        id: 'mun-oeste',
+        name: 'Distrito Oeste',
         repartos: [
-          { id: 'rep-fontanar', name: 'Fontanar' },
-          { id: 'rep-calabazar', name: 'Calabazar' },
-          { id: 'rep-santiago', name: 'Santiago de las Vegas' },
-          { id: 'rep-capdevila', name: 'Capdevila' },
-        ],
-      },
-      {
-        id: 'mun-10oct',
-        name: 'Diez de Octubre',
-        repartos: [
-          { id: 'rep-ssuarez', name: 'Santos Suárez' },
-          { id: 'rep-luyano', name: 'Luyanó' },
-          { id: 'rep-vibora', name: 'La Víbora' },
-          { id: 'rep-lawton', name: 'Lawton' },
-          { id: 'rep-sevillano', name: 'Sevillano' },
-        ],
-      },
-      {
-        id: 'mun-guana',
-        name: 'Guanabacoa',
-        repartos: [
-          { id: 'rep-vmaria', name: 'Villa María' },
-          { id: 'rep-chibas', name: 'Chibás' },
-          { id: 'rep-roble', name: 'El Roble' },
-          { id: 'rep-gcentro', name: 'Centro Histórico' },
-        ],
-      },
-      {
-        id: 'mun-marianao',
-        name: 'Marianao',
-        repartos: [
-          { id: 'rep-pogo', name: 'Pogolotti' },
-          { id: 'rep-zamora', name: 'Zamora' },
-          { id: 'rep-quemados', name: 'Los Quemados' },
-          { id: 'rep-coco', name: 'Coco Solo' },
+          { id: 'rep-oeste-1', name: 'Jardines del Sol' },
+          { id: 'rep-oeste-2', name: 'La Alameda' },
         ],
       },
     ],
   },
   {
-    id: 'prov-scu',
-    name: 'Santiago de Cuba',
+    id: 'prov-norte',
+    name: 'Región Norte',
     municipalities: [
       {
-        id: 'mun-stgo',
-        name: 'Santiago de Cuba',
+        id: 'mun-rn-1',
+        name: 'Ciudad Norte',
         repartos: [
-          { id: 'rep-stgocentro', name: 'Centro Histórico' },
-          { id: 'rep-valegre', name: 'Vista Alegre' },
-          { id: 'rep-pedrito', name: 'San Pedrito' },
-          { id: 'rep-santamaria', name: 'Abel Santamaría' },
-          { id: 'rep-sueno', name: 'Sueño' },
-          { id: 'rep-chichibacoa', name: 'Chichibacoa' },
+          { id: 'rep-rn-centro', name: 'Centro Urbano' },
+          { id: 'rep-rn-ind', name: 'Zona Industrial' },
         ],
       },
       {
-        id: 'mun-palma',
-        name: 'Palma Soriano',
+        id: 'mun-rn-2',
+        name: 'Costa Dorada',
         repartos: [
-          { id: 'rep-palmacentro', name: 'Centro' },
-          { id: 'rep-cuba', name: 'La Cuba' },
-          { id: 'rep-naranjo', name: 'Naranjo' },
+          { id: 'rep-cd-playa', name: 'Sector Costero' },
+          { id: 'rep-cd-boulevard', name: 'El Boulevard' },
         ],
       },
     ],
   },
   {
-    id: 'prov-vclara',
-    name: 'Villa Clara',
+    id: 'prov-sur',
+    name: 'Región Sur',
     municipalities: [
       {
-        id: 'mun-sclara',
-        name: 'Santa Clara',
+        id: 'mun-rs-1',
+        name: 'Ciudad del Sol',
         repartos: [
-          { id: 'rep-condado', name: 'Condado' },
-          { id: 'rep-sandino', name: 'Sandino' },
-          { id: 'rep-vigia', name: 'Vigía' },
-          { id: 'rep-virginia', name: 'Virginia' },
-          { id: 'rep-sclaracentro', name: 'Centro Histórico' },
-        ],
-      },
-      {
-        id: 'mun-remedios',
-        name: 'Remedios',
-        repartos: [
-          { id: 'rep-remcentro', name: 'Centro Histórico' },
-          { id: 'rep-vina', name: 'La Viña' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'prov-mtz',
-    name: 'Matanzas',
-    municipalities: [
-      {
-        id: 'mun-mtz',
-        name: 'Matanzas',
-        repartos: [
-          { id: 'rep-versalles', name: 'Versalles' },
-          { id: 'rep-mtzplaya', name: 'Playa' },
-          { id: 'rep-paltas', name: 'Peñas Altas' },
-          { id: 'rep-mtzcentro', name: 'Centro' },
-        ],
-      },
-      {
-        id: 'mun-card',
-        name: 'Cárdenas',
-        repartos: [
-          { id: 'rep-varadero', name: 'Varadero' },
-          { id: 'rep-cardpnuevo', name: 'Pueblo Nuevo' },
-          { id: 'rep-cardcentro', name: 'Centro' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'prov-holg',
-    name: 'Holguín',
-    municipalities: [
-      {
-        id: 'mun-holg',
-        name: 'Holguín',
-        repartos: [
-          { id: 'rep-peralta', name: 'Peralta' },
-          { id: 'rep-hpnuevo', name: 'Pueblo Nuevo' },
-          { id: 'rep-hvalegre', name: 'Vista Alegre' },
-          { id: 'rep-holgcentro', name: 'Centro' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'prov-cmg',
-    name: 'Camagüey',
-    municipalities: [
-      {
-        id: 'mun-cmg',
-        name: 'Camagüey',
-        repartos: [
-          { id: 'rep-cmgcentro', name: 'Centro Histórico' },
-          { id: 'rep-cmgvigia', name: 'Vigía' },
-          { id: 'rep-garrido', name: 'Garrido' },
-          { id: 'rep-caridad', name: 'La Caridad' },
+          { id: 'rep-rs-centro', name: 'Centro Histórico' },
+          { id: 'rep-rs-alameda', name: 'Paseo de la Alameda' },
         ],
       },
     ],
@@ -474,23 +435,23 @@ export const INITIAL_GEO_CATALOG: GeoProvince[] = [
 ];
 
 export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
-  name: 'MercadoCuba',
-  slogan: 'Conecta directo con tiendas y proveedores en Cuba • Tasa de Cambio USD/CUP en Vivo',
+  name: 'Marketplace',
+  slogan: 'Conecta directo con tiendas y proveedores • Múltiples Monedas y Tasas de Cambio en Vivo',
   logoUrl: 'local:logo', // Tienda fusionada con celular
   defaultStoreLogoUrl: 'local:store', // Establecimiento con toldo
   defaultProductImageUrl: 'local:product', // Bolsa de compras
   bannerUrl: 'local:banner', // Cajas estibadas
   bannerTitle: 'Compra directo a tiendas y proveedores por WhatsApp',
-  bannerSubtitle: 'Sin pasarelas de pago ni intermediarios. Explora productos y servicios de múltiples proveedores, compara precios con la tasa de cambio USD/CUP de cada tienda y coordina tu compra con un solo clic.',
+  bannerSubtitle: 'Sin pasarelas de pago ni intermediarios. Explora productos y servicios de múltiples proveedores, compara precios en diversas monedas con tasas de cambio en tiempo real y coordina tu compra con un solo clic.',
   primaryColor: '#4f46e5', // indigo-600
   secondaryColor: '#0284c7', // sky-600
   accentColor: '#10b981', // emerald-500
   socialLinks: {
-    whatsapp: '+53 50000000',
-    telegram: 'https://t.me/mercadocuba',
-    instagram: 'https://instagram.com/mercadocuba',
-    facebook: 'https://facebook.com/mercadocuba',
-    twitter: 'https://x.com/mercadocuba',
+    whatsapp: '+1 555 123 4567',
+    telegram: 'https://t.me/marketplacedemo',
+    instagram: 'https://instagram.com/marketplacedemo',
+    facebook: 'https://facebook.com/marketplacedemo',
+    twitter: 'https://x.com/marketplacedemo',
     linkedin: '',
   },
   geoCatalog: INITIAL_GEO_CATALOG,
@@ -498,14 +459,14 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
   tagsCatalog: INITIAL_TAGS_CATALOG,
   productTypesCatalog: INITIAL_PRODUCT_TYPES_CATALOG,
   paymentMethodsCatalog: INITIAL_PAYMENT_METHODS_CATALOG,
+  paymentPlatformsCatalog: INITIAL_PAYMENT_PLATFORMS_CATALOG,
   deliveryMethodsCatalog: INITIAL_DELIVERY_METHODS_CATALOG,
   currenciesCatalog: INITIAL_CURRENCIES_CATALOG,
   baseCurrency: 'USD',
-  secondaryCurrency: 'CUP',
-  globalExchangeRate: 330,
+  secondaryCurrency: 'EUR',
+  globalExchangeRate: 0.92,
   globalExchangeRates: [
-    { id: 'rate-usd-cup', fromCurrency: 'USD', toCurrency: 'CUP', rate: 330 },
-    { id: 'rate-eur-cup', fromCurrency: 'EUR', toCurrency: 'CUP', rate: 360 },
+    { id: 'rate-usd-eur', fromCurrency: 'USD', toCurrency: 'EUR', rate: 0.92 },
   ],
   uiTexts: DEFAULT_INTERFAZ,
 };
@@ -513,20 +474,20 @@ export const INITIAL_MARKETPLACE_CONFIG: MarketplaceConfig = {
 
 export const PRESET_MARKETPLACE_LOGOS = [
   { label: 'Ícono Por Defecto (Tienda + Celular)', url: 'local:logo' },
-  { label: 'Emblema Comercio Caribeño', url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=300&q=80' },
+  { label: 'Emblema Comercio Digital', url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=300&q=80' },
   { label: 'Logo Tienda Digital / Carrito', url: 'https://images.unsplash.com/photo-1556742049-0a67d55febc4?auto=format&fit=crop&w=300&q=80' },
   { label: 'Emblema Sol y Palma', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80' },
   { label: 'Bolsa de Compras Express', url: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=300&q=80' },
-  { label: 'Sello Cuba Import / Agro', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80' },
+  { label: 'Sello Comercio Internacional', url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=300&q=80' },
 ];
 
 export const PRESET_BRAND_COLORS = [
-  { label: 'Indigo Caribe (Por Defecto)', primary: '#4f46e5', secondary: '#0284c7' },
-  { label: 'Verde Palma / Agro Cubano', primary: '#16a34a', secondary: '#15803d' },
-  { label: 'Rojo Habana / Coral Tropical', primary: '#e11d48', secondary: '#f97316' },
-  { label: 'Azul Varadero / Mar Caribe', primary: '#0284c7', secondary: '#0d9488' },
-  { label: 'Ámbar Tropical / Sol de Cuba', primary: '#d97706', secondary: '#b45309' },
-  { label: 'Morado Malecón / Vibrante', primary: '#7c3aed', secondary: '#db2777' },
+  { label: 'Indigo Corporativo (Por Defecto)', primary: '#4f46e5', secondary: '#0284c7' },
+  { label: 'Verde Esmeralda / Naturaleza', primary: '#16a34a', secondary: '#15803d' },
+  { label: 'Rojo Coral / Dinámico', primary: '#e11d48', secondary: '#f97316' },
+  { label: 'Azul Océano / Elegante', primary: '#0284c7', secondary: '#0d9488' },
+  { label: 'Ámbar Dorado / Comercial', primary: '#d97706', secondary: '#b45309' },
+  { label: 'Púrpura Vibrante / Moderno', primary: '#7c3aed', secondary: '#db2777' },
   { label: 'Gris Ejecutivo / Oscuro', primary: '#1e293b', secondary: '#475569' },
 ];
 
@@ -656,6 +617,7 @@ export const INITIAL_STORES: Store[] = [
       },
     ],
     deliveryAvailable: true,
+    paymentPlatformIds: ['pp-banmet', 'pp-zelle', 'pp-clasica', 'pp-transfermovil'],
     paymentOptions: {
       transferAccepted: true,
       transferFeePercentage: 0,
@@ -1068,11 +1030,11 @@ export const INITIAL_STORES: Store[] = [
     ? s.exchangeRates
     : [
         {
-          id: `rate-${s.id}-usd-cup`,
+          id: `rate-${s.id}-usd-eur`,
           storeId: s.id,
           fromCurrency: 'USD',
-          toCurrency: 'CUP',
-          rate: s.usdToCupRate || 335,
+          toCurrency: 'EUR',
+          rate: s.usdToCupRate || 0.92,
         },
       ];
 
@@ -1080,35 +1042,27 @@ export const INITIAL_STORES: Store[] = [
   const explicitCpm = s.currencyPaymentMethods && s.currencyPaymentMethods.length > 0
     ? s.currencyPaymentMethods
     : [
-        // USD: En Cuba los dólares se cobran casi siempre en efectivo
+        // USD: Efectivo
         {
           id: `cpm-${s.id}-usd-cash`,
           storeId: s.id,
           currency: 'USD',
           paymentMethodId: 'pm-efectivo',
-          notes: 'Pago en mano en billetes de dólar',
+          notes: 'Pago en mano en local o entrega',
         },
-        // CUP: Efectivo
-        {
-          id: `cpm-${s.id}-cup-cash`,
-          storeId: s.id,
-          currency: 'CUP',
-          paymentMethodId: 'pm-efectivo',
-          notes: 'Pago en mano en CUP',
-        },
-        // CUP: Transferencia (solo si la tienda la acepta)
+        // USD: Transferencia
         ...(hasTransfer
           ? [
               {
-                id: `cpm-${s.id}-cup-transf`,
+                id: `cpm-${s.id}-usd-transf`,
                 storeId: s.id,
-                currency: 'CUP',
+                currency: 'USD',
                 paymentMethodId: 'pm-transferencia',
-                notes: 'Transfermóvil o EnZona',
+                notes: 'Transferencia bancaria o digital',
               },
             ]
           : []),
-        // EUR: En efectivo si la tienda acepta euros
+        // EUR
         ...(s.paymentOptions?.acceptedCurrencies?.includes('EUR')
           ? [
               {
@@ -1116,7 +1070,7 @@ export const INITIAL_STORES: Store[] = [
                 storeId: s.id,
                 currency: 'EUR',
                 paymentMethodId: 'pm-efectivo',
-                notes: 'Billetes de Euro en mano',
+                notes: 'Pago en mano en Euros',
               },
             ]
           : []),
@@ -1127,7 +1081,7 @@ export const INITIAL_STORES: Store[] = [
   return {
     ...s,
     exchangeRates: storeRates,
-    usdToCupRate: s.usdToCupRate || (storeRates[0]?.rate || 335),
+    usdToCupRate: s.usdToCupRate || (storeRates[0]?.rate || 1),
     currencyPaymentMethods: explicitCpm,
     paymentMethodIds: s.paymentMethodIds && s.paymentMethodIds.length > 0 ? s.paymentMethodIds : derivedPayIds,
   };
@@ -1681,7 +1635,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: priceVal,
     priceUSD: p.priceUSD !== undefined && p.priceUSD !== null ? p.priceUSD : priceVal,
     currency: currVal,
-    allowedExchangeRateIds: p.allowedExchangeRateIds || [`rate-${p.storeId}-usd-cup`],
+    allowedExchangeRateIds: p.allowedExchangeRateIds || [`rate-${p.storeId}-usd-eur`],
     productTypeId: p.productTypeId || (isServ ? 'pt-servicio' : 'pt-producto'),
     productType: p.productType || (isServ ? 'Servicios Profesionales' : 'Productos Físicos'),
     paymentMethodIds: p.paymentMethodIds || ['pm-efectivo', 'pm-transferencia'],

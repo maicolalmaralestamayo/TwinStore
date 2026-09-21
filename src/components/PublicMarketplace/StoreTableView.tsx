@@ -99,14 +99,13 @@ export const StoreTableView: React.FC<StoreTableViewProps> = ({
                   <td className="py-3 px-4 min-w-[170px]">
                     <div className="flex flex-col gap-1 text-xs">
                       <div className="flex items-center gap-1 text-slate-700 font-medium">
-                        <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                         <span className="line-clamp-1">
                           {store.address?.province || 'Sin provincia'}
                           {store.address?.municipality ? `, ${store.address.municipality}` : ''}
                         </span>
                       </div>
                       {store.address?.neighborhood && (
-                        <span className="text-[11px] text-slate-400 pl-4.5 line-clamp-1">
+                        <span className="text-[11px] text-slate-400 line-clamp-1">
                           {store.address.neighborhood}
                         </span>
                       )}
@@ -116,7 +115,7 @@ export const StoreTableView: React.FC<StoreTableViewProps> = ({
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold pl-4.5"
+                          className="inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
                         >
                           <span>Ver en mapa</span>
                           <ExternalLink className="w-2.5 h-2.5" />
@@ -128,9 +127,12 @@ export const StoreTableView: React.FC<StoreTableViewProps> = ({
                   {/* Tasas & Monedas */}
                   <td className="py-3 px-4 min-w-[150px]">
                     <div className="flex flex-col gap-1">
-                      <div className="inline-flex items-center gap-1 text-xs font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 w-fit">
-                        <Coins className="w-3 h-3 text-indigo-600" />
-                        <span>1 USD = {store.usdToCupRate || 330} CUP</span>
+                      <div className="inline-flex items-center gap-1 text-xs font-bold text-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 dark:text-indigo-300 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 w-fit font-mono">
+                        <span>
+                          {store.exchangeRates && store.exchangeRates.length > 0
+                            ? `1 ${store.exchangeRates[0].fromCurrency} = ${store.exchangeRates[0].rate} ${store.exchangeRates[0].toCurrency}`
+                            : (store.usdToCupRate ? `Tasa: ${store.usdToCupRate}` : 'Tasa Estándar')}
+                        </span>
                       </div>
                       <span className="text-[10px] text-slate-400 font-medium">
                         Base: {store.baseCurrency || 'USD'}
@@ -146,7 +148,6 @@ export const StoreTableView: React.FC<StoreTableViewProps> = ({
                           store.deliveryAvailable ? 'text-emerald-700' : 'text-slate-500'
                         }`}
                       >
-                        <Truck className="w-3.5 h-3.5" />
                         <span>{store.deliveryAvailable ? 'Mensajería' : 'Recogida en local'}</span>
                       </span>
                       {store.deliveryCoverage && (

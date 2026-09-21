@@ -3,7 +3,6 @@ import { Product, Store, MarketplaceConfig } from '../../types';
 import { ThemeImage } from '../common/ThemeImage';
 import {
   formatNumberWithDots,
-  calculateCUP,
   generateWhatsAppOrderUrl,
   getStoreLogoUrl,
   extractProductDisplayTags,
@@ -161,8 +160,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const alternatePrices = productPrices.filter((p) => !p.isOriginal);
   const allowedRates = getProductAllowedExchangeRates(product, store);
 
-  // Fallback for legacy cupPrice if used anywhere else
-  const cupPrice = alternatePrices.find(p => p.currency === 'CUP')?.amount ?? calculateCUP(primaryPriceItem.amount, store.usdToCupRate || 330);
+  // Fallback for legacy price if used anywhere else
+  const cupPrice = alternatePrices[0]?.amount ?? primaryPriceItem.amount;
 
   // Tipo de oferta
   const isServiceItem =
@@ -187,7 +186,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const provincia = store.address?.province || 'No especificado';
 
   // Tipos de pago (Formas y monedas aceptadas)
-  const acceptedCurrencies = store.paymentOptions?.acceptedCurrencies || ['CUP', 'USD'];
+  const acceptedCurrencies = store.paymentOptions?.acceptedCurrencies || (store.exchangeRates && store.exchangeRates.length > 0 ? Array.from(new Set([store.exchangeRates[0].fromCurrency, ...store.exchangeRates.map(r => r.toCurrency)])) : ['USD']);
 
   // WhatsApp Order
   const handleOpenWhatsApp = () => {

@@ -27,6 +27,27 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "TwinStore API (SQLite Powered: twinstore.sqlite)" });
 });
 
+// API route: Download Database Schema DOCX Specification
+app.get("/api/docs/download-db-schema", async (req, res) => {
+  const filePath = path.join(process.cwd(), "public", "docs", "Diccionario_Datos_Estructura_BD_TwinStore.docx");
+  if (!fs.existsSync(filePath)) {
+    try {
+      const { generateDatabaseDocumentationDocx } = await import("./scripts/generateDocx.ts");
+      await generateDatabaseDocumentationDocx();
+    } catch (e: any) {
+      console.error("Error generating docx dynamically:", e);
+    }
+  }
+
+  if (fs.existsSync(filePath)) {
+    res.setHeader("Content-Disposition", 'attachment; filename="Diccionario_Datos_Estructura_BD_TwinStore.docx"');
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.download(filePath, "Diccionario_Datos_Estructura_BD_TwinStore.docx");
+  } else {
+    res.status(404).json({ error: "Documento DOCX no encontrado" });
+  }
+});
+
 // API route: Get UI Strings from SQLite database (no longer from a file)
 app.get("/api/interfaz", async (req, res) => {
   try {

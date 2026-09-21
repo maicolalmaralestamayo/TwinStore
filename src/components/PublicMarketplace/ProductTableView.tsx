@@ -160,7 +160,6 @@ export const ProductTableView: React.FC<ProductTableViewProps> = ({
                       )}
                       {store && (
                         <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-200/60 dark:border-slate-700/60">
-                          <CreditCard className="w-3 h-3 text-indigo-500 shrink-0" />
                           <span>
                             {getStorePaymentMethodsForCurrency(store, primaryItem.currency)
                               .map((m) => m.name)

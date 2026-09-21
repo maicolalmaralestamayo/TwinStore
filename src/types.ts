@@ -26,7 +26,7 @@ export interface StoreAddress {
 export interface StorePaymentOptions {
   transferAccepted: boolean; // si acepta pagos por transferencia
   transferFeePercentage?: number; // comisión por dicho pago (ej: 0%, 5%)
-  acceptedCurrencies: string[]; // si acepta pago en otras monedas (ej: ['CUP', 'USD', 'MLC', 'EUR', 'Zelle'])
+  acceptedCurrencies: string[]; // si acepta pago en otras monedas (ej: ['USD', 'EUR', 'GBP'])
   notes?: string;
 }
 
@@ -34,14 +34,14 @@ export interface StoreExchangeRate {
   id: string; // ID único del registro de tasa de cambio
   storeId?: string; // Llave foránea de la tienda (tabla relacionada 1:N)
   fromCurrency: string; // Primera moneda / origen (llave del nomenclador tipos de moneda, ej: "USD")
-  toCurrency: string; // Segunda moneda / destino (llave del nomenclador tipos de moneda, ej: "CUP")
-  rate: number; // Tasa de cambio de la tienda: 1 fromCurrency = rate toCurrency (ej: 335)
+  toCurrency: string; // Segunda moneda / destino (llave del nomenclador tipos de moneda, ej: "EUR")
+  rate: number; // Tasa de cambio de la tienda: 1 fromCurrency = rate toCurrency (ej: 0.92)
 }
 
 export interface GlobalExchangeRate {
   id: string; // ID único del nomenclador de tasas globales
   fromCurrency: string; // Primera moneda / origen (llave del nomenclador tipos de moneda, ej: "USD")
-  toCurrency: string; // Segunda moneda / destino (llave del nomenclador tipos de moneda, ej: "CUP")
+  toCurrency: string; // Segunda moneda / destino (llave del nomenclador tipos de moneda, ej: "EUR")
   rate: number; // Tasa de cambio global
   description?: string; // Nota descriptiva opcional
 }
@@ -54,10 +54,10 @@ export interface ProductAllowedExchangeRate {
 }
 
 export interface CurrencyItem {
-  id: string; // e.g. "curr-usd", "curr-cup", "curr-eur"
-  code: string; // e.g. "USD", "CUP", "EUR"
-  name: string; // e.g. "Dólar Estadounidense", "Peso Cubano", "Euro"
-  symbol: string; // e.g. "$", "CUP", "€"
+  id: string; // e.g. "curr-usd", "curr-eur", "curr-gbp"
+  code: string; // e.g. "USD", "EUR", "GBP"
+  name: string; // e.g. "Dólar Estadounidense", "Euro", "Libra Esterlina"
+  symbol: string; // e.g. "$", "€", "£"
   description?: string;
   active?: boolean;
 }
@@ -65,9 +65,9 @@ export interface CurrencyItem {
 export interface StoreCurrencyPaymentMethod {
   id: string; // ID único del enlace relacional
   storeId?: string; // Llave foránea de la tienda
-  currency: string; // Moneda asociada (llave del nomenclador de monedas, ej: 'USD', 'CUP', 'EUR')
+  currency: string; // Moneda asociada (llave del nomenclador de monedas, ej: 'USD', 'EUR')
   paymentMethodId: string; // ID del tipo de pago aceptado para esta moneda (ej: 'pm-efectivo', 'pm-transferencia')
-  notes?: string; // Nota descriptiva opcional (ej: 'Solo efectivo en billetes', 'Transfermóvil / EnZona')
+  notes?: string; // Nota descriptiva opcional (ej: 'Solo efectivo en billetes', 'Transferencia bancaria')
 }
 
 export interface StoreRatePaymentMethod {
@@ -75,7 +75,7 @@ export interface StoreRatePaymentMethod {
   storeId?: string; // Llave foránea de la tienda
   exchangeRateId: string; // Llave foránea de la tasa de cambio de la tienda
   paymentMethodId: string; // ID del tipo de pago aceptado (ej: 'pm-efectivo', 'pm-transferencia')
-  gravamen: number; // Porcentaje de gravamen para este tipo de pago en esta tasa (ej: 0 para efectivo, 10 para transferencia)
+  gravamen: number; // Porcentaje de gravamen para este tipo de pago en esta tasa (ej: 0 para efectivo, 2 para transferencia)
   notes?: string; // Nota descriptiva opcional
 }
 
@@ -86,11 +86,11 @@ export interface Store {
   images?: string[]; // Gallery of multiple store photos
   slogan?: string;
   description: string;
-  whatsappPhone: string; // e.g. "+53 54321098"
-  location: string; // e.g. "La Habana - Vedado", "Santiago de Cuba"
+  whatsappPhone: string; // e.g. "+1 5550000000"
+  location: string; // e.g. "Sede Central", "Distrito Norte"
   address?: StoreAddress; // Normalized relational address structure
   exchangeRates?: StoreExchangeRate[]; // Tabla de tasas de cambio relacionadas (1 a muchos con la tienda)
-  ratePaymentMethods?: StoreRatePaymentMethod[]; // Tabla relacional: Tasas de cambio ↔ Tipos de pago aceptados y gravamen (ej: tasa 1 USD a CUP 530 -> efectivo 0% gravamen, transferencia 10% gravamen)
+  ratePaymentMethods?: StoreRatePaymentMethod[]; // Tabla relacional: Tasas de cambio ↔ Tipos de pago aceptados y gravamen (ej: tasa 1 USD a EUR 0.92 -> efectivo 0% gravamen, transferencia 2% gravamen)
   usdToCupRate?: number; // Compatibilidad de acceso rápido
   baseCurrency?: string; // Compatibilidad
   secondaryCurrency?: string; // Compatibilidad
@@ -99,6 +99,7 @@ export interface Store {
   currencyPaymentMethods?: StoreCurrencyPaymentMethod[]; // Tabla relacional: Moneda ↔ Formas de pago aceptadas en esta tienda
   paymentMethodIds?: string[]; // IDs de Tipos de Pago del nomenclador asociados a esta tienda (ej: ["pm-efectivo", "pm-transferencia"])
   deliveryMethodIds?: string[]; // IDs de Tipos de Recogida / Entrega del nomenclador asociados a esta tienda (ej: ["dm-mensajeria", "dm-recogida"])
+  paymentPlatformIds?: string[]; // IDs de Plataformas de Pago del nomenclador asociadas a esta tienda (ej: ["pp-banmet", "pp-zelle", "pp-paypal", "pp-clasica"])
   active: boolean;
   rating?: number;
   badge?: string; // e.g. "Envío Rápido", "Tienda Verificada"
@@ -154,6 +155,7 @@ export interface NomenclatorItem {
 export type ProductTypeItem = NomenclatorItem;
 export type PaymentMethodItem = NomenclatorItem;
 export type DeliveryMethodItem = NomenclatorItem;
+export type PaymentPlatformItem = NomenclatorItem;
 
 export interface Product {
   id: string;
@@ -163,7 +165,7 @@ export interface Product {
   description: string;
   price?: number; // Precio en la moneda asignada al producto
   priceUSD: number; // Base price in USD (compatibilidad con cálculos previos)
-  currency?: string; // Moneda en la que está expresado el precio (llave del nomenclador, ej: 'USD', 'CUP', 'EUR')
+  currency?: string; // Moneda en la que está expresado el precio (llave del nomenclador, ej: 'USD', 'EUR')
   allowedExchangeRateIds?: string[]; // IDs de las tasas de la tienda permitidas para cobro de este producto (relación N:M)
   category?: CategoryType | string; // Departamento Principal (1er Escalón, opcional)
   departmentId?: string; // ID del Departamento
@@ -193,16 +195,16 @@ export interface CategoryItem {
   description: string;
 }
 
-export type CurrencyDisplayMode = 'BOTH' | 'CUP' | 'USD';
+export type CurrencyDisplayMode = 'BOTH' | 'SECONDARY' | 'PRIMARY' | 'CUP' | 'USD';
 
-export type PriceFilterCurrency = string; // 'USD' | 'CUP' | 'EUR' | dinámico
+export type PriceFilterCurrency = string; // 'USD' | 'EUR' | dinámico
 
 export interface FilterState {
   searchQuery: string;
   code?: string; // Búsqueda específica por código único de producto
   storeIds: string[]; // empty = all stores selected
-  storeCurrencies?: string[]; // Monedas de tienda (ej: ['USD', 'CUP'])
-  currencies?: string[]; // Filtrar por moneda(s) nativa(s) del producto (ej: ['USD', 'CUP', 'EUR'])
+  storeCurrencies?: string[]; // Monedas de tienda (ej: ['USD', 'EUR'])
+  currencies?: string[]; // Filtrar por moneda(s) nativa(s) del producto (ej: ['USD', 'EUR'])
   categories: string[]; // empty = all categories/departments selected
   subcategories: string[]; // empty = all subcategories selected
   tagGroups: string[]; // empty = all supertags selected
@@ -214,7 +216,7 @@ export interface FilterState {
   itemTypes?: string[]; // 'product' | 'service', empty = all (compatibilidad)
   paymentMethods?: string[]; // IDs o nombres del nomenclador de tipos de pago, empty = all
   deliveryMethods?: string[]; // IDs o nombres del nomenclador de tipos de recogida/entrega, empty = all
-  priceCurrency: PriceFilterCurrency; // Moneda de referencia para el rango de precios ('USD' | 'CUP' | 'EUR')
+  priceCurrency: PriceFilterCurrency; // Moneda de referencia para el rango de precios ('USD' | 'EUR')
   minPrice: number | '';
   maxPrice: number | '';
   deliveryOnly?: boolean; // Legacy/convenience
@@ -238,12 +240,13 @@ export interface FilterState {
 
 export interface StoreFilterState {
   searchQuery: string;
-  currencies?: string[]; // Monedas aceptadas por la tienda (ej: ['USD', 'CUP'])
+  currencies?: string[]; // Monedas aceptadas por la tienda (ej: ['USD', 'EUR'])
   provinces: string[]; // empty = all provinces selected
   municipalities: string[]; // empty = all municipalities selected
   repartos: string[]; // empty = all repartos selected
   paymentMethods?: string[]; // 'transfer' | 'cash' o IDs del nomenclador, empty = all
   deliveryMethods?: string[]; // 'delivery' | 'pickup', empty = all
+  paymentPlatforms?: string[]; // IDs de plataformas de pago del nomenclador (ej: Banco Metropolitano, Zelle, PayPal)
   deliveryOnly?: boolean;
   transferOnly?: boolean;
   // Optional backwards-compatibility fields
@@ -310,10 +313,11 @@ export interface MarketplaceConfig {
   tagsCatalog?: TagGroup[]; // Sistema de etiquetado de 2 niveles (Grupos -> Etiquetas)
   productTypesCatalog?: ProductTypeItem[]; // Nomenclador dinámico de Tipos de Producto / Oferta (ej: Físicos, Servicios, Alquileres)
   paymentMethodsCatalog?: PaymentMethodItem[]; // Nomenclador dinámico de Tipos de Pago (ej: Efectivo, Transferencia, Zelle)
+  paymentPlatformsCatalog?: PaymentPlatformItem[]; // Nomenclador global de Plataformas de Pago (ej: Banco Metropolitano, Zelle, PayPal, Clásica)
   deliveryMethodsCatalog?: DeliveryMethodItem[]; // Nomenclador dinámico de Tipos de Recogida / Entrega (ej: Mensajería, Recogida en Local)
-  currenciesCatalog?: CurrencyItem[]; // Nomenclador dinámico de Tipos de Moneda (USD, CUP, EUR, etc.)
+  currenciesCatalog?: CurrencyItem[]; // Nomenclador dinámico de Tipos de Moneda (USD, EUR, GBP, etc.)
   baseCurrency?: string; // Moneda base global del marketplace (ej: 'USD')
-  secondaryCurrency?: string; // Moneda secundaria global del marketplace (ej: 'CUP')
+  secondaryCurrency?: string; // Moneda secundaria global del marketplace (ej: 'EUR')
   globalExchangeRate?: number; // Tasa de cambio global para tiendas con la combinación base/secundaria
   globalExchangeRates?: GlobalExchangeRate[]; // Nomenclador de tasas de cambio globales del marketplace
   uiTexts?: Record<string, any>; // Textos de la interfaz gestionados y persistidos en la base de datos
@@ -329,7 +333,7 @@ export interface CartItem {
 }
 
 export interface StoreCartPreferences {
-  selectedCurrency: string; // Moneda de pago seleccionada para la tienda (ej: 'USD', 'CUP', 'EUR')
+  selectedCurrency: string; // Moneda de pago seleccionada para la tienda (ej: 'USD', 'EUR')
   selectedPaymentMethodId?: string; // Forma de pago elegida
   selectedDeliveryMethodId?: string; // Forma de entrega/recogida elegida
   notes?: string;
