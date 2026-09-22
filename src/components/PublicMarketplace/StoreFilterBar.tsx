@@ -87,7 +87,7 @@ export const StoreFilterBar: React.FC<StoreFilterBarProps> = ({
     (p.municipalities || []).map((m) => ({
       value: m.name,
       label: m.name,
-      sublabel: p.name,
+      sublabel: `${m.codigo_postal || m.codigoPostal ? `CP ${m.codigo_postal || m.codigoPostal} • ` : ''}${p.name}`,
     }))
   );
 

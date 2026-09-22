@@ -169,7 +169,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
     (p.municipalities || []).map((m) => ({
       value: m.name,
       label: m.name,
-      sublabel: p.name,
+      sublabel: `${m.codigo_postal || m.codigoPostal ? `CP ${m.codigo_postal || m.codigoPostal} • ` : ''}${p.name}`,
     }))
   );
 

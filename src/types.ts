@@ -21,6 +21,7 @@ export interface StoreAddress {
   municipality: string; // municipio
   province: string; // provincia
   googleMapsUrl?: string; // link de google maps
+  codigoPostal?: string; // Código postal
 }
 
 export interface StorePaymentOptions {
@@ -89,6 +90,10 @@ export interface Store {
   whatsappPhone: string; // e.g. "+1 5550000000"
   location: string; // e.g. "Sede Central", "Distrito Norte"
   address?: StoreAddress; // Normalized relational address structure
+  provincia_id?: number; // Llave foránea de provincias
+  municipio_id?: number; // Llave foránea de municipios
+  reparto_id?: number; // Llave foránea de repartos
+  codigo_postal?: string; // Código postal normalizado
   exchangeRates?: StoreExchangeRate[]; // Tabla de tasas de cambio relacionadas (1 a muchos con la tienda)
   ratePaymentMethods?: StoreRatePaymentMethod[]; // Tabla relacional: Tasas de cambio ↔ Tipos de pago aceptados y gravamen (ej: tasa 1 USD a EUR 0.92 -> efectivo 0% gravamen, transferencia 2% gravamen)
   usdToCupRate?: number; // Compatibilidad de acceso rápido
@@ -275,6 +280,8 @@ export interface GeoReparto {
 export interface GeoMunicipality {
   id: string;
   name: string;
+  codigo_postal?: string;
+  codigoPostal?: string;
   repartos: GeoReparto[];
 }
 
@@ -282,6 +289,95 @@ export interface GeoProvince {
   id: string;
   name: string;
   municipalities: GeoMunicipality[];
+}
+
+// ============================================================
+// Modelos Canónicos SQLite Estrictos (Fase 1: Catálogos y Geografía)
+// ============================================================
+export interface DbProvincia {
+  id: number;
+  provincia: string;
+  descripcion: string | null;
+}
+
+export interface DbMoneda {
+  id: number;
+  moneda: string;
+  abreviatura: string;
+  descripcion: string | null;
+}
+
+export interface DbDepartamento {
+  id: number;
+  departamento: string;
+  descripcion: string | null;
+}
+
+export interface DbEtiqueta {
+  id: number;
+  etiqueta: string;
+  descripcion: string | null;
+}
+
+export interface DbTipoOferta {
+  id: number;
+  oferta: string;
+  descripcion: string | null;
+}
+
+export interface DbTipoPago {
+  id: number;
+  pago: string;
+  descripcion: string | null;
+}
+
+export interface DbTipoRecogida {
+  id: number;
+  recogida: string;
+  descripcion: string | null;
+}
+
+export interface DbMunicipio {
+  id: number;
+  municipio: string;
+  descripcion: string | null;
+  provincia_id: number | null;
+  codigo_postal: string;
+}
+
+export interface DbReparto {
+  id: number;
+  reparto: string;
+  descripcion: string | null;
+  municipio_id: number | null;
+}
+
+export interface DbSubetiqueta {
+  id: number;
+  subetiqueta: string;
+  descripcion: string | null;
+  etiqueta_id: number | null;
+}
+
+export interface DbSubdepartamento {
+  id: number;
+  subdepartamento: string;
+  descripcion: string | null;
+  departamento_id: number | null;
+}
+
+export interface DbCatalogosResponse {
+  provincias: DbProvincia[];
+  municipios: DbMunicipio[];
+  repartos: DbReparto[];
+  monedas: DbMoneda[];
+  departamentos: DbDepartamento[];
+  subdepartamentos: DbSubdepartamento[];
+  etiquetas: DbEtiqueta[];
+  subetiquetas: DbSubetiqueta[];
+  tipo_ofertas: DbTipoOferta[];
+  tipo_pagos: DbTipoPago[];
+  tipo_recogidas: DbTipoRecogida[];
 }
 
 export interface MarketplaceSocialLinks {

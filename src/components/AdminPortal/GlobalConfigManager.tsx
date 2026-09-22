@@ -281,6 +281,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
   // New item input states
   const [newProvName, setNewProvName] = useState('');
   const [newMunName, setNewMunName] = useState('');
+  const [newMunPostalCode, setNewMunPostalCode] = useState('');
   const [newRepName, setNewRepName] = useState('');
 
   // Edit item states
@@ -426,6 +427,8 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     const newMun: GeoMunicipality = {
       id: `mun-${Date.now()}`,
       name: newMunName.trim(),
+      codigo_postal: newMunPostalCode.trim() || undefined,
+      codigoPostal: newMunPostalCode.trim() || undefined,
       repartos: [],
     };
     const updated = geoCatalog.map((p) => {
@@ -440,6 +443,7 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
     saveGeoCatalog(updated);
     setSelectedMunId(newMun.id);
     setNewMunName('');
+    setNewMunPostalCode('');
     onShowToast('Municipio creado', `Se añadió "${newMun.name}" a ${selectedProvince.name}`);
   };
 
@@ -1943,8 +1947,16 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                       type="text"
                       value={newMunName}
                       onChange={(e) => setNewMunName(e.target.value)}
-                      placeholder={`Nuevo municipio en ${selectedProvince.name}...`}
+                      placeholder={`Nuevo municipio...`}
                       className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-indigo-500 font-medium"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={newMunPostalCode}
+                      onChange={(e) => setNewMunPostalCode(e.target.value)}
+                      placeholder="CP (ej: 10400)"
+                      className="w-24 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono outline-none focus:border-indigo-500 font-medium"
                     />
                     <button
                       type="submit"
@@ -1997,6 +2009,17 @@ export const GlobalConfigManager: React.FC<GlobalConfigManagerProps> = ({
                             ) : (
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="text-xs truncate">{mun.name}</span>
+                                {(mun.codigo_postal || mun.codigoPostal) && (
+                                  <span
+                                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold shrink-0 ${
+                                      isSelected
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    }`}
+                                  >
+                                    CP {mun.codigo_postal || mun.codigoPostal}
+                                  </span>
+                                )}
                                 <span
                                   className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ${
                                     isSelected

@@ -8,10 +8,14 @@ import {
   persistDb,
   saveStoreToDb,
   rowToStore,
+  getStoresFromDb,
   saveProductToDb,
   rowToProduct,
   saveConfigToDb,
   rowToConfig,
+  getCatalogosFromDb,
+  buildHierarchicalCatalogsFromDb,
+  seedCatalogosIfEmpty,
 } from "./server/database.ts";
 import { DEFAULT_INTERFAZ } from "./src/data/defaultInterfaz.ts";
 
@@ -99,11 +103,7 @@ app.post("/api/interfaz", async (req, res) => {
 app.get("/api/stores", async (req, res) => {
   try {
     const db = await getDb();
-    const result = db.exec("SELECT * FROM stores ORDER BY name ASC");
-    if (!result[0] || !result[0].values) {
-      return res.json([]);
-    }
-    const stores = result[0].values.map(rowToStore);
+    const stores = getStoresFromDb(db);
     res.json(stores);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -205,7 +205,59 @@ app.get("/api/config", async (req, res) => {
       return res.json({});
     }
     const config = rowToConfig(result[0].values[0], result[0].columns);
+
+    // Hydrate relational catalogs from SQLite tables (Phase 1)
+    try {
+      const dbCatalogs = getCatalogosFromDb(db);
+      if (dbCatalogs.provincias && dbCatalogs.provincias.length > 0) {
+        const hierarchical = buildHierarchicalCatalogsFromDb(dbCatalogs);
+        config.geoCatalog = hierarchical.geoCatalog;
+        config.departmentsCatalog = hierarchical.departmentsCatalog;
+        config.tagsCatalog = hierarchical.tagsCatalog;
+        config.currenciesCatalog = hierarchical.currenciesCatalog;
+        config.productTypesCatalog = hierarchical.productTypesCatalog;
+        config.paymentMethodsCatalog = hierarchical.paymentMethodsCatalog;
+        config.deliveryMethodsCatalog = hierarchical.deliveryMethodsCatalog;
+      }
+    } catch (e) {
+      console.warn("Could not hydrate relational catalogs into config:", e);
+    }
+
     res.json(config);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Phase 1 relational catalogs from SQLite
+app.get("/api/catalogos", async (req, res) => {
+  try {
+    const db = await getDb();
+    const catalogos = getCatalogosFromDb(db);
+    const hierarchical = buildHierarchicalCatalogsFromDb(catalogos);
+    res.json({
+      success: true,
+      raw: catalogos,
+      hierarchical,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Force sync / seed Phase 1 catalogs if needed
+app.post("/api/catalogos/sync", async (req, res) => {
+  try {
+    const db = await getDb();
+    seedCatalogosIfEmpty(db);
+    persistDb();
+    const catalogos = getCatalogosFromDb(db);
+    const hierarchical = buildHierarchicalCatalogsFromDb(catalogos);
+    res.json({
+      success: true,
+      raw: catalogos,
+      hierarchical,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

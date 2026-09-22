@@ -142,3 +142,43 @@ export async function saveInterfazApi(texts: Record<string, any>): Promise<boole
   }
 }
 
+export interface CatalogosApiResponse {
+  success: boolean;
+  raw: any;
+  hierarchical: {
+    geoCatalog: any[];
+    departmentsCatalog: any[];
+    tagsCatalog: any[];
+    currenciesCatalog: any[];
+    productTypesCatalog: any[];
+    paymentMethodsCatalog: any[];
+    deliveryMethodsCatalog: any[];
+  };
+}
+
+export async function fetchCatalogosApi(): Promise<CatalogosApiResponse | null> {
+  try {
+    const res = await fetch('/api/catalogos');
+    if (!res.ok) throw new Error('Error al obtener catálogos de SQLite');
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    console.warn('Fallback o error al obtener catálogos relacionales de SQLite:', e);
+    return null;
+  }
+}
+
+export async function syncCatalogosApi(): Promise<CatalogosApiResponse | null> {
+  try {
+    const res = await fetch('/api/catalogos/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Error al sincronizar catálogos');
+    return await res.json();
+  } catch (e) {
+    console.warn('Error al sincronizar catálogos:', e);
+    return null;
+  }
+}
+

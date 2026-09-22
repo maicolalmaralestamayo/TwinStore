@@ -869,6 +869,11 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
 
     const formattedLocation = `${finalRep ? `${finalRep}, ` : ''}${finalMun} - ${finalProv}`;
 
+    const selectedMunObj = geoCatalog
+      .find((p) => p.name === finalProv)
+      ?.municipalities.find((m) => m.name === finalMun);
+    const resolvedPostalCode = selectedMunObj?.codigo_postal || selectedMunObj?.codigoPostal || '';
+
     const normalizedAddress: StoreAddress = {
       street: finalStreet,
       number: finalNumber,
@@ -880,6 +885,7 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
       municipality: finalMun,
       province: finalProv,
       googleMapsUrl: finalMapsUrl,
+      codigoPostal: resolvedPostalCode,
     };
 
     const derivedPaymentMethodIds = Array.from(
@@ -1818,14 +1824,21 @@ export const StoreManager: React.FC<StoreManagerProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                        Municipio
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold uppercase text-gray-600">
+                          Municipio
+                        </label>
+                        {selectedMunObj && (selectedMunObj.codigo_postal || selectedMunObj.codigoPostal) && (
+                          <span className="text-[11px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            CP: {selectedMunObj.codigo_postal || selectedMunObj.codigoPostal}
+                          </span>
+                        )}
+                      </div>
                       <SearchableSelect
                         options={municipalitiesList.map((mun) => ({
                           value: mun.name,
                           label: mun.name,
-                          sublabel: `${mun.repartos?.length || 0} repartos`,
+                          sublabel: `${mun.codigo_postal || mun.codigoPostal ? `CP ${mun.codigo_postal || mun.codigoPostal} • ` : ''}${mun.repartos?.length || 0} repartos`,
                         }))}
                         value={municipality}
                         onChange={(val) => handleMunicipalityChange(val || '')}

@@ -430,6 +430,22 @@ export default function App() {
               Array.isArray(dbConfig.tagsCatalog) && dbConfig.tagsCatalog.length > 0
                 ? dbConfig.tagsCatalog
                 : prev.tagsCatalog,
+            currenciesCatalog:
+              Array.isArray(dbConfig.currenciesCatalog) && dbConfig.currenciesCatalog.length > 0
+                ? dbConfig.currenciesCatalog
+                : prev.currenciesCatalog,
+            productTypesCatalog:
+              Array.isArray(dbConfig.productTypesCatalog) && dbConfig.productTypesCatalog.length > 0
+                ? dbConfig.productTypesCatalog
+                : prev.productTypesCatalog,
+            paymentMethodsCatalog:
+              Array.isArray(dbConfig.paymentMethodsCatalog) && dbConfig.paymentMethodsCatalog.length > 0
+                ? dbConfig.paymentMethodsCatalog
+                : prev.paymentMethodsCatalog,
+            deliveryMethodsCatalog:
+              Array.isArray(dbConfig.deliveryMethodsCatalog) && dbConfig.deliveryMethodsCatalog.length > 0
+                ? dbConfig.deliveryMethodsCatalog
+                : prev.deliveryMethodsCatalog,
           }));
         } else if (effectiveUiTexts) {
           setMarketplaceConfig((prev) => ({
